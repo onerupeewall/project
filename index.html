@@ -3,80 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIP Crystal Cards</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: radial-gradient(circle at center, #150f2c 0%, #05030a 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        /* यहाँ गैप कम कर दिया है ताकि कार्ड्स पास-पास आ जाएं */
-        .crystal-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .crystal-card {
-            width: 210px;
-            height: 310px;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-            .crystal-card img {
-                width: 100%;
-                height: 100%;
-                object-fit: contain;
-                filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.8));
-            }
-
-        /* बीच वाला गोल्ड कार्ड थोड़ा बड़ा और आकर्षक दिखेगा */
-        .gold-spot {
-            transform: scale(1.12);
-            z-index: 2; /* ताकि ये साइड वाले कार्ड के ऊपर हल्का सा ओवरलैप हो सके */
-        }
-
-        .crystal-card:hover {
-            transform: translateY(-8px) scale(1.05);
-        }
-
-        .gold-spot:hover {
-            transform: translateY(-8px) scale(1.18);
-        }
-    </style>
+    <title>MTB Locked Search Engine - AI Oracle</title>
+    <!-- आलीशान शाई लुक की फ्रेश सीएसएस -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="crystal-container">
+    <!-- 🌌 द रॉयल कॉस्मिक वॉइड (पूरी स्क्रीन का गहरा जादुई अंतरिक्ष बैकग्राउंड) -->
+    <div class="shahi-void-container">
 
-        <!-- सिल्वर कार्ड -->
-        <div class="crystal-card">
-            <img src="silver-card.png.png" alt="Silver Card">
+        <!-- 🧭 TOP NAV BAR: हेडर लिंक्स -->
+        <nav class="top-nav-bar">
+            <div class="nav-links-wrapper">
+                <a href="#" class="nav-item active">Home</a>
+                <a href="#" class="nav-item">Plans</a>
+                <a href="#" class="nav-item">About</a>
+            </div>
+        </nav>
+
+        <!-- 💎 MAIN CRYSTAL LAYER: ३ आलीशान असली ३डी हीरों की रो (Row) -->
+        <div class="crystal-container">
+
+            <!-- ७५ CR - सिल्वर हीरा (बाएं वाला - थोड़ा नीचे लटका) -->
+            <div class="crystal-card silver-spot" onclick="openEscrowForm('Elite Silver', '75 CR')">
+                <img src="silver-card.png.png" alt="Silver Card">
+            </div>
+
+            <!-- १०० CR - गोल्ड हीरा (बीच वाला - सबसे ऊपर शीर्ष पर) -->
+            <div class="crystal-card gold-spot" onclick="openEscrowForm('Premium Gold', '100 CR')">
+                <img src="gold-card.png.png" alt="Gold Card">
+            </div>
+
+            <!-- ५० CR - ब्रॉन्ज हीरा (दाएं वाला - थोड़ा नीचे लटका) -->
+            <div class="crystal-card bronze-spot" onclick="openEscrowForm('Bronze Empire', '50 CR')">
+                <img src="bronze-card.png.png" alt="Bronze Card">
+            </div>
+
         </div>
 
-        <!-- गोल्ड कार्ड (बीच वाला) -->
-        <div class="crystal-card gold-spot">
-            <img src="gold-card.png.png" alt="Gold Card">
+        <!-- 🔒 PERFECT CENTER HUB: फ्यूचरिस्टिक ताले वाला सर्च इंजन और बटन -->
+        <div class="oracle-search-hub">
+
+            <!-- शुरू में दिखने वाला गेटवे (ताले वाला लुक और बाय बटन) -->
+            <div id="mtbLockGate" class="cyber-lock-gate">
+
+                <!-- 🔐 द फ्यूचरिस्टिक शील्ड इनपुट (MTB Locked Search Engine) -->
+                <div class="futuristic-shield-bar">
+                    <span class="lock-shield-icon">🔒</span>
+                    <span class="shield-placeholder-text">MTB Locked Search Engine</span>
+                    <span class="search-lens-icon">🔍</span>
+                </div>
+
+                <!-- 🛒 द नियॉन पर्पल कैप्सूल बाय बटन -->
+                <button class="btn-buy-purple-capsule" onclick="processUnlockPayment()">
+                    Buy 1$ &nbsp;&rarr;
+                </button>
+            </div>
+
+            <!-- 🔓 अनलॉक होने के बाद का असली जादुई एआई सर्च बार (शुरू में छुपा रहेगा) -->
+            <div id="mtbActiveSearch" class="cyber-active-search-bar" style="display: none;">
+                <span class="unlocked-shield-icon">🔓</span>
+                <input type="text" id="brandSearchInput" placeholder="Enter Registered Brand Name (e.g. TATA, Nike)...">
+                <button id="btnAiSearch" onclick="triggerAiBrandSearch()">AI SEARCH</button>
+            </div>
+
         </div>
 
-        <!-- ब्रॉन्ज कार्ड -->
-        <div class="crystal-card">
-            <img src="bronze-card.png.png" alt="Bronze Card">
+        <!-- 📊 BOTTOM LIVE COUNTER: लाइव ओनर्स संख्या -->
+        <div class="oracle-live-counter-bar">
+            <div class="live-status-pill">
+                <span class="pulsing-live-dot"></span>
+                <span class="live-counter-text"><strong class="gold-glow-number">5,42,108</strong> OWNERS UNLOCKED THIS ORACLE</span>
+            </div>
         </div>
 
     </div>
 
+    <!-- =======================================================
+         📦 THE GLOBAL MODALS LAYER: जादुई ब्रांड कार्ड, वेरिफिकेशन, एस्क्रो फॉर्म
+         ======================================================= -->
+    <div id="globalModalOverlay" class="global-modal-overlay" style="display: none;">
+        <div id="dynamicModalContent"></div>
+    </div>
+
+    <!-- जावास्क्रिप्ट फाइल लिंक -->
+    <script src="script.js"></script>
 </body>
 </html>

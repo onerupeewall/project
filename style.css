@@ -1,0 +1,379 @@
+/* =======================================================
+   👑 THE DOLLAR BRAND ORACLE - SHAHI CRYSTAL STYLE SHEET 👑
+   ======================================================= */
+
+/* १. यूनिवर्सल रीसेट और टेक्स्ट सिलेक्शन लॉक */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    outline: none !important;
+}
+
+/* २. गहरा जादुई कॉस्मिक पर्पल-ब्लैक अंतरिक्ष बैकग्राउंड */
+body {
+    margin: 0;
+    padding: 0;
+    background: radial-gradient(circle at center, #150f2c 0%, #05030a 100%);
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* ३. आउटर फ्रेम कंटेनर */
+.shahi-void-container {
+    width: 100%;
+    height: 100vh;
+    max-width: 1100px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+}
+
+/* 🧭 TOP NAV BAR: हेडर लिंक्स डिज़ाइन */
+.top-nav-bar {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 5px;
+}
+
+.nav-links-wrapper {
+    display: flex;
+    gap: 35px;
+}
+
+.nav-item {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transition: color 0.3s ease;
+}
+
+    .nav-item.active, .nav-item:hover {
+        color: #ffffff;
+    }
+
+/* =======================================================
+   💎 MAIN CRYSTAL LAYER: ३ असली ३डी हीरों की हाइट का वीआईपी फिक्स
+   ======================================================= */
+.crystal-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* 🚨 शीर्ष को बराबर करके ऊपर-नीचे करने के लिए */
+    gap: 12px; /* कार्ड्स को पास-पास रखने के लिए सही गैप */
+    margin: 15px 0 auto 0;
+    width: 100%;
+}
+
+.crystal-card {
+    width: 200px;
+    height: 300px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+    .crystal-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.8));
+    }
+
+/* 🥇 बीच वाला गोल्ड कार्ड (यह ऊपर रहेगा और थोड़ा बड़ा दिखेगा) */
+.gold-spot {
+    transform: scale(1.12) translateY(0) !important;
+    z-index: 5;
+}
+
+/* 🥈 सिल्वर कार्ड (यह गोल्ड से थोड़ा नीचे लटकेगा) */
+.silver-spot {
+    transform: translateY(35px) !important; /* 🚨 जादुई फिक्स: इसे ३५px नीचे लटकाया */
+}
+
+/* 🥉 ब्रॉन्ज कार्ड (यह भी गोल्ड से थोड़ा नीचे लटकेगा) */
+.bronze-spot {
+    transform: translateY(35px) !important; /* 🚨 जादुई फिक्स: इसे भी ३५px नीचे लटकाया */
+}
+
+/* होवर इफ़ेक्ट्स */
+.crystal-card:hover {
+    transform: translateY(25px) scale(1.05) !important; /* सिल्वर-ब्रॉन्ज का होवर */
+}
+
+.gold-spot:hover {
+    transform: translateY(-8px) scale(1.18) !important; /* गोल्ड का कड़क होवर */
+}
+
+/* =======================================================
+   🔒 PERFECT CENTER HUB: सिंगल लाइन सर्च और नीचे कैप्सूल बटन
+   ======================================================= */
+.oracle-search-hub {
+    width: 100%;
+    max-width: 480px;
+    margin: auto 0;
+}
+
+.cyber-lock-gate {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+/* 🔐 पतली सिंगल लाइन का ताले वाला इनपुट बार */
+.futuristic-shield-bar {
+    width: 100%;
+    height: 46px;
+    background: rgba(20, 16, 35, 0.6);
+    border: 1.5px solid rgba(168, 85, 247, 0.5);
+    border-radius: 25px;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+}
+
+.lock-shield-icon {
+    font-size: 18px;
+    color: #ffffff;
+}
+
+.search-lens-icon {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.shield-placeholder-text {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    flex: 1;
+    text-align: left;
+    padding-left: 15px;
+}
+
+/* 🛒 द नियॉन पर्पल कैप्सूल बाय बटन */
+.btn-buy-purple-capsule {
+    background: linear-gradient(180deg, #7c3aed 0%, #4c1d95 100%) !important;
+    border: 1.5px solid #a78bfa !important;
+    color: #ffffff !important;
+    padding: 12px 45px !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    border-radius: 30px !important;
+    cursor: pointer !important;
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.6) !important;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .btn-buy-purple-capsule:hover {
+        transform: scale(1.04);
+        box-shadow: 0 0 30px rgba(124, 58, 237, 0.9) !important;
+    }
+
+/* 🔓 अनलॉक होने के बाद का असली जादुई सर्च बार */
+.cyber-active-search-bar {
+    width: 100%;
+    background: #141122;
+    border: 2px solid #ffd700;
+    border-radius: 30px;
+    padding: 6px 6px 6px 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 0 35px rgba(255, 215, 0, 0.25);
+}
+
+.unlocked-shield-icon {
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+.cyber-active-search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 8px 0;
+}
+
+    .cyber-active-search-bar input::placeholder {
+        color: #4b4863;
+    }
+
+#btnAiSearch {
+    background: linear-gradient(180deg, #ffd700 0%, #b58212 100%);
+    color: #000000;
+    border: 1px solid #ffffff;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+/* =======================================================
+   📊 BOTTOM LIVE COUNTER: लाइव संख्या डिज़ाइन
+   ======================================================= */
+.oracle-live-counter-bar {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 5px;
+}
+
+.live-status-pill {
+    background: rgba(13, 11, 22, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px 24px;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+.pulsing-live-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #ff1a1a;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ff1a1a;
+    animation: counterPulse 1.5s infinite;
+}
+
+@keyframes counterPulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 26, 26, 0.8);
+    }
+
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 6px rgba(255, 26, 26, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 26, 26, 0);
+    }
+}
+
+.live-counter-text {
+    font-size: 14px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.8);
+    letter-spacing: 0.5px;
+}
+
+.gold-glow-number {
+    color: #ffd700 !important;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+/* =======================================================
+   👑 यूनिवर्सल परफेक्ट 3D मोडलOverlay (iPhone Black Blur)
+   ======================================================= */
+.global-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(4, 3, 8, 0.94) !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+    z-index: 99999999 !important;
+    display: flex;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+}
+
+@keyframes popupSlideIn {
+    from {
+        transform: scale(0.9) translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.search-result-modal {
+    animation: popupSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+/* =======================================================
+   🏆 राय साहब का डायनेमिक ऑटो-हाइट ब्रांड कार्ड इंजन 🏆
+   ======================================================= */
+
+/* १. ब्रांड कार्ड की साइज, गैपिंग और फोंट को एकदम नॉर्मल और वीआईपी करना */
+.search-result-modal {
+    background: #ffffff !important;
+    border: 3.5px solid #ffd700 !important;
+    padding: 30px 25px !important; /* गैपिंग एकदम नॉर्मल */
+    border-radius: 20px !important;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.7) !important;
+    color: #000000 !important;
+    width: 460px !important; /* एकदम सुडौल चौड़ाई */
+    max-width: 92% !important;
+    /* 🚨 महा-फिक्स: हाइट अब फिक्स नहीं होगी, डेटा के हिसाब से ऑटोमेटिक मैनेज होगी */
+    height: auto !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+    /* २. कार्ड के अंदर के फोंट को बहुत बड़ा होने से रोकना */
+    .search-result-modal h2 {
+        font-size: 22px !important; /* नाम एकदम साफ़ और सुडौल */
+        margin: 0 !important;
+    }
+
+    .search-result-modal h4 {
+        font-size: 18px !important;
+        margin-bottom: 10px !important;
+    }
+
+/* ३. लिस्ट की लाइनों को क्लिन और नॉर्मल गैप देना */
+.branch-list-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 14px !important; /* फोंट साइज एकदम सही */
+    font-weight: 700 !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 4px !important;
+    width: 100% !important;
+}
