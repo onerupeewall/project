@@ -2,8 +2,8 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>MTB Crystal Cards & Exact 1 Lakh Square Grid Globe</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Dots Globe with 3D Crystal Cards</title>
     <style>
         * {
             margin: 0;
@@ -14,288 +14,305 @@
         body, html {
             width: 100%;
             height: 100%;
-            background-color: #030712;
-            overflow-x: hidden;
-            font-family: sans-serif;
+            overflow: hidden;
+            background-color: #01040d;
+            font-family: Arial, sans-serif;
         }
 
-        .shahi-void-container {
-            position: relative;
-            width: 100%;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-        }
-
-        .crystal-container {
-            display: flex;
-            gap: 15px;
-            padding: 15px;
-            z-index: 10;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .crystal-card {
-            width: 75px;
-            height: 110px;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
-
-            .crystal-card:hover {
-                transform: scale(1.08);
-            }
-
-            .crystal-card img {
-                width: 100%;
-                height: 100%;
-                object-fit: contain;
-            }
-
-        #canvas-globe-viewport {
-            position: relative;
-            width: 100%;
-            height: 70vh;
-            z-index: 1;
-        }
-
-        canvas {
-            display: block;
+        #canvas-container {
             width: 100%;
             height: 100%;
         }
 
-        .grid-counter-badge {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #00a8ff;
-            background: rgba(3, 7, 18, 0.85);
-            padding: 6px 14px;
-            border: 1px solid rgba(0, 168, 255, 0.4);
-            border-radius: 20px;
-            font-size: 12px;
-            z-index: 10;
-            letter-spacing: 1px;
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00f0ff;
+            background: rgba(2, 8, 20, 0.85);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid #00f0ff55;
             pointer-events: none;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
         }
+
+        .stat {
+            font-size: 13px;
+            margin: 4px 0;
+            color: #88ccff;
+        }
+
+            .stat span {
+                font-weight: bold;
+                color: #00ffff;
+            }
     </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
-    <div class="shahi-void-container">
-
-        <!-- 💎 MAIN CRYSTAL LAYER (File names corrected to match folder: bronze-card, gold-card, silver-card) -->
-        <div class="crystal-container">
-            <div class="crystal-card silver-spot" onclick="alert('VIP 75 CR: Wire Transfer Required.')">
-                <img src="silver-card" alt="Silver Card" onerror="this.src='silver-card.png'">
-            </div>
-            <div class="crystal-card gold-spot" onclick="alert('VIP 100 CR: Wire Transfer Required.')">
-                <img src="gold-card" alt="Gold Card" onerror="this.src='gold-card.png'">
-            </div>
-            <div class="crystal-card bronze-spot" onclick="alert('VIP 50 CR: Wire Transfer Required.')">
-                <img src="bronze-card" alt="Bronze Card" onerror="this.src='bronze-card.png'">
-            </div>
-        </div>
-
-        <!-- 🗺️ Exact 1 Lakh Grid Globe Viewport -->
-        <div id="canvas-globe-viewport">
-            <canvas id="globeCanvas"></canvas>
-        </div>
-
-        <!-- Live Confirmation Badge -->
-        <div class="grid-counter-badge">
-            ⚡ 1,00,000 SQUARE CELLS
-        </div>
-
+    <div id="ui-panel">
+        <div style="font-weight: bold; color: #fff; margin-bottom: 5px;">CRYSTAL CARDS GLOBE</div>
+        <div class="stat">Camera Distance: <span id="dist-val">0.0</span></div>
+        <div class="stat">Active Layer: <span id="layer-val">Level 1 (Golden Dots Grid)</span></div>
     </div>
 
+    <div id="canvas-container"></div>
+
     <script>
-                const canvas = document.getElementById('globeCanvas');
-                const ctx = canvas.getContext('2d');
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
 
-                let width = canvas.width = window.innerWidth;
-                let height = canvas.height = canvas.parentElement.clientHeight || window.innerHeight;
+            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0.5, 4.5);
 
-                const radius = Math.min(width, height) * 0.38;
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
 
-                // 🌐 Exact 1 Lakh Grid Setup (250 rows * 400 cols = 1,00,000 cells)
-                const rows = 250;
-                const cols = 400;
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 1.05;
+            controls.maxDistance = 8;
 
-                let angleY = 0.001;
-                let angleX = 0;
-                let zoomScale = 1;
-                let isDragging = false;
-                let previousMousePosition = { x: 0, y: 0 };
-                let initialPinchDistance = null;
+            // Lighting setup for 3D Crystal Mesh
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
 
-                function rotateAndProject(x, y, z) {
-                    let cosY = Math.cos(angleY), sinY = Math.sin(angleY);
-                    let x1 = x * cosY - z * sinY;
-                    let z1 = x * sinY + z * cosY;
+            const dirLight1 = new THREE.DirectionalLight(0x00f0ff, 1.2);
+            dirLight1.position.set(5, 5, 5);
+            scene.add(dirLight1);
 
-                    let cosX = Math.cos(angleX), sinX = Math.sin(angleX);
-                    let y2 = y * cosX - z1 * sinX;
-                    let z2 = y * sinX + z1 * cosX;
+            const dirLight2 = new THREE.DirectionalLight(0xffd700, 1.0);
+            dirLight2.position.set(-5, 5, -5);
+            scene.add(dirLight2);
 
-                    const fov = 600;
-                    const scale = (fov / (fov + z2 * zoomScale)) * zoomScale;
+            const GLOBE_RADIUS = 1.0;
 
-                    return {
-                        x: width / 2 + x1 * scale,
-                        y: height / 2 + y2 * scale,
-                        z: z2,
-                        scale: scale
-                    };
+            // Dark Core Sphere
+            const coreGeo = new THREE.SphereGeometry(GLOBE_RADIUS - 0.003, 64, 64);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0x020714 });
+            const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+            scene.add(coreMesh);
+
+            const globeGroup = new THREE.Group();
+            scene.add(globeGroup);
+
+            // Glowing Golden Dot Texture
+            function createGlowDotTexture() {
+              const canvas = document.createElement('canvas');
+              canvas.width = 128;
+              canvas.height = 128;
+              const ctx = canvas.getContext('2d');
+
+              const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+              gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+              gradient.addColorStop(0.2, 'rgba(255, 215, 0, 1)');
+              gradient.addColorStop(0.5, 'rgba(255, 165, 0, 0.8)');
+              gradient.addColorStop(1, 'rgba(255, 140, 0, 0)');
+
+              ctx.fillStyle = gradient;
+              ctx.beginPath();
+              ctx.arc(64, 64, 64, 0, Math.PI * 2);
+              ctx.fill();
+
+              return new THREE.CanvasTexture(canvas);
+            }
+
+            const goldGlowTexture = createGlowDotTexture();
+
+            // Create Grid with Golden Glow Dots
+            function createAlignedGridWithGoldenDots(radius, latDivisions, color, lineOpacity, pointSize, pointOpacity) {
+              const lonDivisions = latDivisions * 2;
+              const positions = [];
+              const cornerPositions = [];
+
+              for (let i = 1; i < latDivisions; i++) {
+                const phi = (i / latDivisions) * Math.PI;
+                const r = radius * Math.sin(phi);
+                const y = radius * Math.cos(phi);
+
+                for (let j = 0; j < lonDivisions; j++) {
+                  const theta1 = (j / lonDivisions) * Math.PI * 2;
+                  const theta2 = ((j + 1) / lonDivisions) * Math.PI * 2;
+
+                  const x1 = r * Math.sin(theta1);
+                  const z1 = r * Math.cos(theta1);
+                  const x2 = r * Math.sin(theta2);
+                  const z2 = r * Math.cos(theta2);
+
+                  positions.push(x1, y, z1, x2, y, z2);
+                  cornerPositions.push(x1, y, z1);
                 }
+              }
 
-                // Generate Exact 1 Lakh Grid Lines
-                const gridLines = [];
+              for (let j = 0; j < lonDivisions; j++) {
+                const theta = (j / lonDivisions) * Math.PI * 2;
+                for (let i = 0; i < latDivisions; i++) {
+                  const phi1 = (i / latDivisions) * Math.PI;
+                  const phi2 = ((i + 1) / latDivisions) * Math.PI;
 
-                for (let r = 0; r <= rows; r++) {
-                    const lat = -Math.PI / 2 + (r * Math.PI) / rows;
-                    const ringPoints = [];
-                    for (let c = 0; c <= cols; c++) {
-                        const lon = -Math.PI + (c * 2 * Math.PI) / cols;
-                        const x = radius * Math.cos(lat) * Math.cos(lon);
-                        const y = radius * Math.sin(lat);
-                        const z = radius * Math.cos(lat) * Math.sin(lon);
-                        ringPoints.push({ x, y, z });
-                    }
-                    gridLines.push({ points: ringPoints });
+                  positions.push(
+                    radius * Math.sin(phi1) * Math.sin(theta), radius * Math.cos(phi1), radius * Math.sin(phi1) * Math.cos(theta),
+                    radius * Math.sin(phi2) * Math.sin(theta), radius * Math.cos(phi2), radius * Math.sin(phi2) * Math.cos(theta)
+                  );
                 }
+              }
 
-                for (let c = 0; c <= cols; c++) {
-                    const lon = -Math.PI + (c * 2 * Math.PI) / cols;
-                    const arcPoints = [];
-                    for (let r = 0; r <= rows; r++) {
-                        const lat = -Math.PI / 2 + (r * Math.PI) / rows;
-                        const x = radius * Math.cos(lat) * Math.cos(lon);
-                        const y = radius * Math.sin(lat);
-                        const z = radius * Math.cos(lat) * Math.sin(lon);
-                        arcPoints.push({ x, y, z });
-                    }
-                    gridLines.push({ points: arcPoints });
-                }
+              const lineGeometry = new THREE.BufferGeometry();
+              lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+              const lineMaterial = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: lineOpacity
+              });
+              const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
 
-                function drawLoop() {
-                    ctx.clearRect(0, 0, width, height);
+              const pointGeometry = new THREE.BufferGeometry();
+              pointGeometry.setAttribute('position', new THREE.Float32BufferAttribute(cornerPositions, 3));
 
-                    // 💡 Center Backlight Glow
-                    const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, radius * zoomScale * 1.1);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-                    gradient.addColorStop(0.25, 'rgba(0, 168, 255, 0.35)');
-                    gradient.addColorStop(0.7, 'rgba(6, 17, 41, 0.05)');
-                    gradient.addColorStop(1, 'rgba(3, 7, 18, 0)');
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(0, 0, width, height);
+              const pointMaterial = new THREE.PointsMaterial({
+                map: goldGlowTexture,
+                size: pointSize,
+                transparent: true,
+                opacity: pointOpacity,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+              });
 
-                    ctx.lineWidth = 0.55;
-                    ctx.strokeStyle = 'rgba(0, 180, 255, 0.55)';
+              const points = new THREE.Points(pointGeometry, pointMaterial);
 
-                    // Render Exact Square Grid Lines
-                    for (let line of gridLines) {
-                        ctx.beginPath();
-                        let pathStarted = false;
+              const gridGroup = new THREE.Group();
+              gridGroup.add(lines);
+              gridGroup.add(points);
 
-                        for (let pt of line.points) {
-                            const p = rotateAndProject(pt.x, pt.y, pt.z);
+              return { group: gridGroup, lineMat: lineMaterial, pointMat: pointMaterial };
+            }
 
-                            if (p.z < 0) {
-                                if (!pathStarted) {
-                                    ctx.moveTo(p.x, p.y);
-                                    pathStarted = true;
-                                } else {
-                                    ctx.lineTo(p.x, p.y);
-                                }
-                            } else {
-                                pathStarted = false;
-                            }
-                        }
-                        ctx.stroke();
-                    }
+            const layer1 = createAlignedGridWithGoldenDots(GLOBE_RADIUS, 24, 0x00f0ff, 0.95, 0.045, 1.0);
+            const layer2 = createAlignedGridWithGoldenDots(GLOBE_RADIUS + 0.001, 48, 0x00b4ff, 0.0, 0.035, 0.0);
+            const layer3 = createAlignedGridWithGoldenDots(GLOBE_RADIUS + 0.002, 96, 0x33eaff, 0.0, 0.025, 0.0);
 
-                    if (!isDragging && initialPinchDistance === null) {
-                        angleY += 0.001;
-                        angleX *= 0.95;
-                    }
+            globeGroup.add(layer1.group);
+            globeGroup.add(layer2.group);
+            globeGroup.add(layer3.group);
 
-                    requestAnimationFrame(drawLoop);
-                }
+            // --- 3D CRYSTAL CARDS CREATION ---
+            const textureLoader = new THREE.TextureLoader();
+            const cardsGroup = new THREE.Group();
+            scene.add(cardsGroup);
 
-                // 🖱️ Mouse Drag & Zoom
-                window.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
-                window.addEventListener('mouseup', () => { isDragging = false; });
+            // Card Box Geometry with rounded depth thickness
+            const cardGeo = new THREE.BoxGeometry(0.38, 0.56, 0.015);
 
-                window.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
-                    const deltaX = e.clientX - previousMousePosition.x;
-                    const deltaY = e.clientY - previousMousePosition.y;
+            function createCrystalCard(texturePath, posX, posY, posZ) {
+              const texture = textureLoader.load(texturePath);
 
-                    angleY += deltaX * 0.007;
-                    angleX += deltaY * 0.007;
+              // Glass Crystal Material with Reflection & Opacity
+              const cardMat = new THREE.MeshPhysicalMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.9,
+                roughness: 0.1,
+                metalness: 0.1,
+                transmission: 0.2, // Crystal Glass effect
+                thickness: 0.5,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                reflectivity: 0.9
+              });
 
-                    previousMousePosition = { x: e.clientX, y: e.clientY };
-                });
+              const cardMesh = new THREE.Mesh(cardGeo, cardMat);
+              cardMesh.position.set(posX, posY, posZ);
 
-                window.addEventListener('wheel', (e) => {
-                    zoomScale -= e.deltaY * 0.001;
-                    zoomScale = Math.max(0.4, Math.min(3.5, zoomScale));
-                });
+              // Subtle Outer Glowing Edge Frame
+              const edgesGeo = new THREE.EdgesGeometry(cardGeo);
+              const edgesMat = new THREE.LineBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.6 });
+              const edgeLines = new THREE.LineSegments(edgesGeo, edgesMat);
+              cardMesh.add(edgeLines);
 
-                // 📱 Mobile Touch Support (Pinch-to-Zoom & Drag Rotation Enabled)
-                window.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 1) {
-                        isDragging = true;
-                        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                        initialPinchDistance = null;
-                    } else if (e.touches.length === 2) {
-                        isDragging = false;
-                        initialPinchDistance = Math.hypot(
-                            e.touches[0].clientX - e.touches[1].clientX,
-                            e.touches[0].clientY - e.touches[1].clientY
-                        );
-                    }
-                }, { passive: true });
+              return cardMesh;
+            }
 
-                window.addEventListener('touchmove', (e) => {
-                    if (e.touches.length === 1 && isDragging) {
-                        const deltaX = e.touches[0].clientX - previousMousePosition.x;
-                        const deltaY = e.touches[0].clientY - previousMousePosition.y;
+            // Positions for 3 Cards right above the Globe
+            const cardSilver = createCrystalCard('silver.card.png', -0.5, 1.45, 0);
+            const cardGold   = createCrystalCard('gold.card.png',    0.0, 1.55, 0.1);
+            const cardBronze = createCrystalCard('bronze.card.png',  0.5, 1.45, 0);
 
-                        angleY += deltaX * 0.007;
-                        angleX += deltaY * 0.007;
+            cardsGroup.add(cardSilver);
+            cardsGroup.add(cardGold);
+            cardsGroup.add(cardBronze);
 
-                        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    } else if (e.touches.length === 2 && initialPinchDistance !== null) {
-                        const currentPinchDistance = Math.hypot(
-                            e.touches[0].clientX - e.touches[1].clientX,
-                            e.touches[0].clientY - e.touches[1].clientY
-                        );
-                        const zoomFactor = currentPinchDistance / initialPinchDistance;
-                        zoomScale *= zoomFactor;
-                        zoomScale = Math.max(0.4, Math.min(3.5, zoomScale));
-                        initialPinchDistance = currentPinchDistance;
-                    }
-                }, { passive: true });
+            const distEl = document.getElementById('dist-val');
+            const layerEl = document.getElementById('layer-val');
 
-                window.addEventListener('touchend', (e) => {
-                    if (e.touches.length < 2) initialPinchDistance = null;
-                    if (e.touches.length === 0) isDragging = false;
-                });
+            let clock = new THREE.Clock();
 
-                window.addEventListener('resize', () => {
-                    width = canvas.width = window.innerWidth;
-                    height = canvas.height = canvas.parentElement.clientHeight || window.innerHeight;
-                });
+            function animate() {
+              requestAnimationFrame(animate);
 
-                drawLoop();
+              const elapsedTime = clock.getElapsedTime();
+
+              // Continuous Slow Globe Rotation
+              globeGroup.rotation.y += 0.0008;
+
+              // Floating 3D Crystal Card Animation
+              cardSilver.position.y = 1.45 + Math.sin(elapsedTime * 1.5) * 0.03;
+              cardGold.position.y   = 1.55 + Math.sin(elapsedTime * 1.5 + 0.8) * 0.04;
+              cardBronze.position.y = 1.45 + Math.sin(elapsedTime * 1.5 + 1.6) * 0.03;
+
+              cardSilver.rotation.y = Math.sin(elapsedTime * 0.8) * 0.12 - 0.1;
+              cardGold.rotation.y   = Math.sin(elapsedTime * 0.8 + 0.5) * 0.15;
+              cardBronze.rotation.y = Math.sin(elapsedTime * 0.8 + 1.0) * 0.12 + 0.1;
+
+              controls.update();
+
+              const distance = camera.position.distanceTo(globeGroup.position) - GLOBE_RADIUS;
+              distEl.innerText = distance.toFixed(2);
+
+              // Controlled Zoom Opacity Transitions
+              if (distance < 2.0) {
+                const op = Math.min(0.9, (2.0 - distance) / 1.0);
+                layer2.lineMat.opacity = op;
+                layer2.pointMat.opacity = op;
+              } else {
+                layer2.lineMat.opacity = 0;
+                layer2.pointMat.opacity = 0;
+              }
+
+              if (distance < 0.8) {
+                const op = Math.min(0.85, (0.8 - distance) / 0.4);
+                layer3.lineMat.opacity = op;
+                layer3.pointMat.opacity = op;
+              } else {
+                layer3.lineMat.opacity = 0;
+                layer3.pointMat.opacity = 0;
+              }
+
+              // UI Update
+              if (distance > 2.0) {
+                layerEl.innerText = "Level 1 (Golden Dots Grid)";
+              } else if (distance > 0.8) {
+                layerEl.innerText = "Level 2 (2x Sub-Grid + Golden Dots)";
+              } else {
+                layerEl.innerText = "Level 3 (4x Micro-Grid + Golden Dots)";
+              }
+
+              renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+              camera.aspect = window.innerWidth / window.innerHeight;
+              camera.updateProjectionMatrix();
+              renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
     </script>
 </body>
 </html>
