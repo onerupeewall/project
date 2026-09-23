@@ -2,28 +2,27 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>MTB Crystal Cards & Exact 1 Lakh Square Grid Globe</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            touch-action: none; /* Prevent default mobile gestures like pinch-zoom page scroll */
         }
 
         body, html {
             width: 100%;
             height: 100%;
             background-color: #030712;
-            overflow: hidden;
+            overflow-x: hidden;
             font-family: sans-serif;
         }
 
         .shahi-void-container {
             position: relative;
             width: 100%;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -58,11 +57,9 @@
             }
 
         #canvas-globe-viewport {
-            position: absolute;
-            top: 0;
-            left: 0;
+            position: relative;
             width: 100%;
-            height: 100%;
+            height: 70vh;
             z-index: 1;
         }
 
@@ -73,7 +70,7 @@
         }
 
         .grid-counter-badge {
-            position: absolute;
+            position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
@@ -93,16 +90,16 @@
 
     <div class="shahi-void-container">
 
-        <!-- 💎 MAIN CRYSTAL LAYER -->
+        <!-- 💎 MAIN CRYSTAL LAYER (File names corrected to match folder: bronze-card, gold-card, silver-card) -->
         <div class="crystal-container">
             <div class="crystal-card silver-spot" onclick="alert('VIP 75 CR: Wire Transfer Required.')">
-                <img src="silver-card.png" alt="Silver Card" onerror="this.style.border='1px dashed #00a8ff'">
+                <img src="silver-card" alt="Silver Card" onerror="this.src='silver-card.png'">
             </div>
             <div class="crystal-card gold-spot" onclick="alert('VIP 100 CR: Wire Transfer Required.')">
-                <img src="gold-card.png" alt="Gold Card" onerror="this.style.border='1px dashed #ffa500'">
+                <img src="gold-card" alt="Gold Card" onerror="this.src='gold-card.png'">
             </div>
             <div class="crystal-card bronze-spot" onclick="alert('VIP 50 CR: Wire Transfer Required.')">
-                <img src="bronze-card.png" alt="Bronze Card" onerror="this.style.border='1px dashed #ff4500'">
+                <img src="bronze-card" alt="Bronze Card" onerror="this.src='bronze-card.png'">
             </div>
         </div>
 
@@ -123,9 +120,9 @@
                 const ctx = canvas.getContext('2d');
 
                 let width = canvas.width = window.innerWidth;
-                let height = canvas.height = window.innerHeight;
+                let height = canvas.height = canvas.parentElement.clientHeight || window.innerHeight;
 
-                const radius = Math.min(width, height) * 0.30;
+                const radius = Math.min(width, height) * 0.38;
 
                 // 🌐 Exact 1 Lakh Grid Setup (250 rows * 400 cols = 1,00,000 cells)
                 const rows = 250;
@@ -152,7 +149,7 @@
 
                     return {
                         x: width / 2 + x1 * scale,
-                        y: height / 2 + 40 + y2 * scale,
+                        y: height / 2 + y2 * scale,
                         z: z2,
                         scale: scale
                     };
@@ -191,7 +188,7 @@
                     ctx.clearRect(0, 0, width, height);
 
                     // 💡 Center Backlight Glow
-                    const gradient = ctx.createRadialGradient(width / 2, height / 2 + 40, 0, width / 2, height / 2 + 40, radius * zoomScale * 1.1);
+                    const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, radius * zoomScale * 1.1);
                     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
                     gradient.addColorStop(0.25, 'rgba(0, 168, 255, 0.35)');
                     gradient.addColorStop(0.7, 'rgba(6, 17, 41, 0.05)');
@@ -252,7 +249,7 @@
                     zoomScale = Math.max(0.4, Math.min(3.5, zoomScale));
                 });
 
-                // 📱 Mobile Touch Support (Pinch-to-Zoom & Drag Rotation)
+                // 📱 Mobile Touch Support (Pinch-to-Zoom & Drag Rotation Enabled)
                 window.addEventListener('touchstart', (e) => {
                     if (e.touches.length === 1) {
                         isDragging = true;
@@ -265,7 +262,7 @@
                             e.touches[0].clientY - e.touches[1].clientY
                         );
                     }
-                }, { passive: false });
+                }, { passive: true });
 
                 window.addEventListener('touchmove', (e) => {
                     if (e.touches.length === 1 && isDragging) {
@@ -286,7 +283,7 @@
                         zoomScale = Math.max(0.4, Math.min(3.5, zoomScale));
                         initialPinchDistance = currentPinchDistance;
                     }
-                }, { passive: false });
+                }, { passive: true });
 
                 window.addEventListener('touchend', (e) => {
                     if (e.touches.length < 2) initialPinchDistance = null;
@@ -295,7 +292,7 @@
 
                 window.addEventListener('resize', () => {
                     width = canvas.width = window.innerWidth;
-                    height = canvas.height = window.innerHeight;
+                    height = canvas.height = canvas.parentElement.clientHeight || window.innerHeight;
                 });
 
                 drawLoop();
