@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTB Crystal Cards & 1 Crore Square Pixel Grid Globe</title>
+    <title>MTB Crystal Cards & Exact 1 Lakh Square Grid Globe</title>
     <style>
         * {
             margin: 0;
@@ -28,7 +28,7 @@
             align-items: center;
             justify-content: flex-start;
         }
-        /* 💎 Crystal Cards Container */
+
         .crystal-container {
             display: flex;
             gap: 15px;
@@ -55,7 +55,7 @@
                 height: 100%;
                 object-fit: contain;
             }
-        /* 🗺️ Globe Viewport */
+
         #canvas-globe-viewport {
             position: absolute;
             top: 0;
@@ -70,13 +70,28 @@
             width: 100%;
             height: 100%;
         }
+        /* Live Counter Badge for Exact 1 Lakh Confirmation */
+        .grid-counter-badge {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00a8ff;
+            background: rgba(3, 7, 18, 0.8);
+            padding: 8px 16px;
+            border: 1px solid rgba(0, 168, 255, 0.4);
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 10;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
 
     <div class="shahi-void-container">
 
-        <!-- 💎 MAIN CRYSTAL LAYER (3 Crystal Cards) -->
+        <!-- 💎 MAIN CRYSTAL LAYER -->
         <div class="crystal-container">
             <div class="crystal-card silver-spot" onclick="alert('VIP 75 CR: Wire Transfer Required.')">
                 <img src="silver-card.png" alt="Silver Card">
@@ -89,14 +104,18 @@
             </div>
         </div>
 
-        <!-- 🗺️ 1 Crore Square Pixel Grid Globe -->
+        <!-- 🗺️ Exact 1 Lakh Grid Globe Viewport -->
         <div id="canvas-globe-viewport">
             <canvas id="globeCanvas"></canvas>
         </div>
 
+        <!-- Live Confirmation Badge -->
+        <div class="grid-counter-badge">
+            ⚡ ACTIVE GRID: <span id="gridCountDisplay">1,00,000</span> SQUARE CELLS
+        </div>
+
     </div>
 
-    <!-- ⚙️ 1 Crore Pixel Grid 3D Engine Script -->
     <script>
                 const canvas = document.getElementById('globeCanvas');
                 const ctx = canvas.getContext('2d');
@@ -104,27 +123,16 @@
                 let width = canvas.width = window.innerWidth;
                 let height = canvas.height = window.innerHeight;
 
-                const points = [];
                 const radius = Math.min(width, height) * 0.32;
 
-                // 🌐 Exact 1 Crore Square Pixel Grid (2000 rows * 5000 cols = 1,00,00,000 pixels)
-                const rows = 2000;
-                const cols = 5000;
+                // 🌐 Exact 1 Lakh Grid Calculation (250 rows * 400 cols = 1,00,000 exact cells)
+                const rows = 250;
+                const cols = 400;
 
-                console.log("Generating 1 Crore Pixel Grid... Please wait a moment.");
-                for (let r = 0; r < rows; r++) {
-                    const lat = (r / (rows - 1)) * Math.PI - Math.PI / 2;
-                    for (let c = 0; c < cols; c++) {
-                        const lon = (c / (cols - 1)) * 2 * Math.PI - Math.PI;
-
-                        const x = radius * Math.cos(lat) * Math.cos(lon);
-                        const y = radius * Math.sin(lat);
-                        const z = radius * Math.cos(lat) * Math.sin(lon);
-
-                        points.push({ x, y, z });
-                    }
-                }
-                console.log("1 Crore Grid Generated Successfully!");
+                console.log("=== MTB GLOBE VERIFICATION ===");
+                console.log("Total Rows:", rows);
+                console.log("Total Columns:", cols);
+                console.log("Total Exact Square Grid Cells:", rows * cols);
 
                 let angleY = 0.001;
                 let angleX = 0;
@@ -132,16 +140,14 @@
                 let isDragging = false;
                 let previousMousePosition = { x: 0, y: 0 };
 
-                function project(point) {
+                function rotateAndProject(x, y, z) {
                     let cosY = Math.cos(angleY), sinY = Math.sin(angleY);
-                    let x1 = point.x * cosY - point.z * sinY;
-                    let z1 = point.x * sinY + point.z * cosY;
+                    let x1 = x * cosY - z * sinY;
+                    let z1 = x * sinY + z * cosY;
 
                     let cosX = Math.cos(angleX), sinX = Math.sin(angleX);
-                    let y2 = point.y * cosX - z1 * sinX;
-                    let z2 = point.y * sinX + z1 * cosX;
-
-                    point.x = x1; point.y = y2; point.z = z2;
+                    let y2 = y * cosX - z1 * sinX;
+                    let z2 = y * sinX + z1 * cosX;
 
                     const fov = 600;
                     const scale = (fov / (fov + z2 * zoomScale)) * zoomScale;
@@ -149,36 +155,81 @@
                     return {
                         x: width / 2 + x1 * scale,
                         y: height / 2 + 50 + y2 * scale,
-                        visible: z2 < 0,
+                        z: z2,
                         scale: scale
                     };
+                }
+
+                // Generate Exact 1 Lakh Grid Lines
+                const gridLines = [];
+
+                // Horizontal Rings (Latitudes)
+                for (let r = 0; r <= rows; r++) {
+                    const lat = -Math.PI / 2 + (r * Math.PI) / rows;
+                    const ringPoints = [];
+                    for (let c = 0; c <= cols; c++) {
+                        const lon = -Math.PI + (c * 2 * Math.PI) / cols;
+                        const x = radius * Math.cos(lat) * Math.cos(lon);
+                        const y = radius * Math.sin(lat);
+                        const z = radius * Math.cos(lat) * Math.sin(lon);
+                        ringPoints.push({ x, y, z });
+                    }
+                    gridLines.push({ points: ringPoints });
+                }
+
+                // Vertical Arcs (Longitudes)
+                for (let c = 0; c <= cols; c++) {
+                    const lon = -Math.PI + (c * 2 * Math.PI) / cols;
+                    const arcPoints = [];
+                    for (let r = 0; r <= rows; r++) {
+                        const lat = -Math.PI / 2 + (r * Math.PI) / rows;
+                        const x = radius * Math.cos(lat) * Math.cos(lon);
+                        const y = radius * Math.sin(lat);
+                        const z = radius * Math.cos(lat) * Math.sin(lon);
+                        arcPoints.push({ x, y, z });
+                    }
+                    gridLines.push({ points: arcPoints });
                 }
 
                 function drawLoop() {
                     ctx.clearRect(0, 0, width, height);
 
-                    // 💡 Center Backlight Glow (Center Light for Brand Logos)
+                    // 💡 Center Backlight Glow (Transparent center light)
                     const gradient = ctx.createRadialGradient(width / 2, height / 2 + 50, 0, width / 2, height / 2 + 50, radius * zoomScale * 1.1);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-                    gradient.addColorStop(0.2, 'rgba(0, 168, 255, 0.5)');
-                    gradient.addColorStop(0.6, 'rgba(6, 17, 41, 0.2)');
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+                    gradient.addColorStop(0.25, 'rgba(0, 168, 255, 0.35)');
+                    gradient.addColorStop(0.7, 'rgba(6, 17, 41, 0.05)');
                     gradient.addColorStop(1, 'rgba(3, 7, 18, 0)');
                     ctx.fillStyle = gradient;
                     ctx.fillRect(0, 0, width, height);
 
-                    // ⬛ 1 Crore Square Pixel Grid Rendering (Microscopic & Dense)
-                    ctx.fillStyle = 'rgba(0, 168, 255, 0.6)';
-                    for (let i = 0; i < points.length; i++) {
-                        const proj = project(points[i]);
+                    ctx.lineWidth = 0.7;
+                    ctx.strokeStyle = 'rgba(0, 180, 255, 0.5)';
 
-                        if (proj.visible) {
-                            const pSize = 1.2 * proj.scale; // Ekdum chote aur sharp square pixels
-                            ctx.fillRect(proj.x - pSize / 2, proj.y - pSize / 2, pSize, pSize);
+                    // Render Exact Square Grid Lines
+                    for (let line of gridLines) {
+                        ctx.beginPath();
+                        let pathStarted = false;
+
+                        for (let pt of line.points) {
+                            const p = rotateAndProject(pt.x, pt.y, pt.z);
+
+                            if (p.z < 0) { // Front side visibility check
+                                if (!pathStarted) {
+                                    ctx.moveTo(p.x, p.y);
+                                    pathStarted = true;
+                                } else {
+                                    ctx.lineTo(p.x, p.y);
+                                }
+                            } else {
+                                pathStarted = false;
+                            }
                         }
+                        ctx.stroke();
                     }
 
                     if (!isDragging) {
-                        angleY = 0.001;
+                        angleY += 0.001;
                         angleX *= 0.95;
                     } else {
                         angleY = 0;
@@ -200,8 +251,8 @@
                     const deltaX = e.clientX - previousMousePosition.x;
                     const deltaY = e.clientY - previousMousePosition.y;
 
-                    angleY = deltaX * 0.007;
-                    angleX = deltaY * 0.007;
+                    angleY += deltaX * 0.007;
+                    angleX += deltaY * 0.007;
 
                     previousMousePosition = { x: e.clientX, y: e.clientY };
                 });
@@ -223,8 +274,8 @@
                     const deltaX = e.touches[0].clientX - previousMousePosition.x;
                     const deltaY = e.touches[0].clientY - previousMousePosition.y;
 
-                    angleY = deltaX * 0.007;
-                    angleX = deltaY * 0.007;
+                    angleY += deltaX * 0.007;
+                    angleX += deltaY * 0.007;
 
                     previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 });
