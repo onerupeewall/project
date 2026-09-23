@@ -3,28 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTB Double-Lock Oracle - Ultimate 3D Edition</title>
+    <title>MTB Crystal Cards & 1 Crore Square Pixel Grid Globe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    <!-- 🌐 प्राथमिक 3D लाइब्रेरी लोड (Three.js) -->
-    <script src="https://cloudflare.com"></script>
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: #030712;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
 
-    <!-- 🎨 आपकी अलग CSS फ़ाइल का लिंक -->
-    <link rel="stylesheet" href="style.css">
+        .shahi-void-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        /* 💎 Crystal Cards Container */
+        .crystal-container {
+            display: flex;
+            gap: 15px;
+            padding: 20px;
+            z-index: 10;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .crystal-card {
+            width: 90px;
+            height: 130px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+            .crystal-card:hover {
+                transform: scale(1.08);
+            }
+
+            .crystal-card img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+        /* 🗺️ Globe Viewport */
+        #canvas-globe-viewport {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
 
     <div class="shahi-void-container">
 
-        <!-- 🧭 TOP NAV BAR -->
-        <nav class="top-nav-bar">
-            <div class="shahi-hamburger-menu" onclick="togglePostPagePanel()">
-                <span class="bar-line"></span>
-                <span class="bar-line"></span>
-                <span class="bar-line"></span>
-            </div>
-        </nav>
-
-        <!-- 💎 MAIN CRYSTAL LAYER: ३ आलीशान डायमंड कार्ड्स -->
+        <!-- 💎 MAIN CRYSTAL LAYER (3 Crystal Cards) -->
         <div class="crystal-container">
             <div class="crystal-card silver-spot" onclick="alert('VIP 75 CR: Wire Transfer Required.')">
                 <img src="silver-card.png" alt="Silver Card">
@@ -37,161 +89,153 @@
             </div>
         </div>
 
-        <!-- 🗺️ 3D ग्लोब व्यूपोर्ट (स्क्रीन के बिल्कुल पीछे सेंटर में रेंडर होगा) -->
-        <div id="mtb-3d-globe-viewport"></div>
-
-        <!-- 📊 BOTTOM LIVE COUNTER BAR -->
-        <div class="oracle-live-counter-bar">
-            <div class="live-status-pill">
-                <span class="pulsing-live-dot"></span>
-                <span class="live-counter-text"><strong class="gold-glow-number">5,42,108</strong> OWNERS UNLOCKED</span>
-            </div>
+        <!-- 🗺️ 1 Crore Square Pixel Grid Globe -->
+        <div id="canvas-globe-viewport">
+            <canvas id="globeCanvas"></canvas>
         </div>
 
     </div>
 
-    <!-- 📝 SIDE VIP SLIDER PANEL -->
-    <div id="sidePostPagePanel" class="shahi-side-panel">
-        <span class="close-panel-btn" onclick="togglePostPagePanel()">×</span>
-        <div class="side-panel-content">
-            <h3>Post Your Page</h3>
-            <p>Publish your business card live inside the deep 3D pixel grid void.</p>
-            <button class="btn-post-page-locked" onclick="alert('Connecting Gateway...')">
-                🔒 Unlock Post Page ($1)
-            </button>
-        </div>
-    </div>
-
-    <!-- ⚙️ हाई-चमक और कड़क विजुअल 3D इंजन स्क्रिप्ट -->
+    <!-- ⚙️ 1 Crore Pixel Grid 3D Engine Script -->
     <script>
-                if (typeof THREE === 'undefined') {
-                    const script = document.createElement('script');
-                    script.src = "https://unpkg.com";
-                    document.head.appendChild(script);
-                    script.onload = () => { init3DGlobeEngine(); };
-                } else {
-                    window.addEventListener('DOMContentLoaded', () => { init3DGlobeEngine(); });
-                }
+                const canvas = document.getElementById('globeCanvas');
+                const ctx = canvas.getContext('2d');
 
-                function init3DGlobeEngine() {
-                    const container = document.getElementById('mtb-3d-globe-viewport');
-                    if (!container) return;
+                let width = canvas.width = window.innerWidth;
+                let height = canvas.height = window.innerHeight;
 
-                    const scene = new THREE.Scene();
-                    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const points = [];
+                const radius = Math.min(width, height) * 0.32;
 
-                    // कैमरे की पोजीशन सेट ताकि ग्लोब कार्ड्स के नीचे एकदम साफ और बड़ा दिखे
-                    camera.position.set(0, -0.5, 12.5);
+                // 🌐 Exact 1 Crore Square Pixel Grid (2000 rows * 5000 cols = 1,00,00,000 pixels)
+                const rows = 2000;
+                const cols = 5000;
 
-                    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                    renderer.setSize(window.innerWidth, window.innerHeight);
-                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-                    container.appendChild(renderer.domElement);
+                console.log("Generating 1 Crore Pixel Grid... Please wait a moment.");
+                for (let r = 0; r < rows; r++) {
+                    const lat = (r / (rows - 1)) * Math.PI - Math.PI / 2;
+                    for (let c = 0; c < cols; c++) {
+                        const lon = (c / (cols - 1)) * 2 * Math.PI - Math.PI;
 
-                    // 🗺️ ग्लोब का साइज और ग्रिड सेगमेंट्स
-                    const radius = 3.7;
-                    const segments = 40;
+                        const x = radius * Math.cos(lat) * Math.cos(lon);
+                        const y = radius * Math.sin(lat);
+                        const z = radius * Math.cos(lat) * Math.sin(lon);
 
-                    const globeGeometry = new THREE.SphereGeometry(radius, segments, segments);
-
-                    // 💡 यहाँ मटीरियल को 'LineBasicMaterial' में बदला है ताकि लाइन्स एकदम कड़क और साफ़ दिखें
-                    const globeMaterial = new THREE.LineBasicMaterial({
-                        color: 0x00a8ff, // सुपर ब्राइट इलेक्ट्रिक सियान/ब्लू जो काले बैकग्राउंड पर खिलेगा
-                        transparent: true,
-                        opacity: 0.95, // ओपेसिटी बढ़ाकर लाइन्स को एकदम गाढ़ा किया है
-                        linewidth: 2   // कुछ ब्राउज़र्स में मोटाई बढ़ाने के लिए
-                    });
-
-                    // ग्रिड लाइन्स को उभारने के लिए इसे 'LineSegments' के रूप में सीन में जोड़ा
-                    const wireframe = new THREE.EdgesGeometry(globeGeometry);
-                    const mainPixelGlobe = new THREE.LineSegments(wireframe, globeMaterial);
-                    scene.add(mainPixelGlobe);
-
-                    // 🔥 द कोर ग्लो लाइट (केंद्र की चमकता हुआ पावर सोर्स)
-                    const coreGeo = new THREE.SphereGeometry(radius * 0.15, 16, 16);
-                    const coreMat = new THREE.MeshBasicMaterial({
-                        color: 0xffffff, // शुद्ध सफेद तीव्र रोशनी
-                        transparent: true,
-                        opacity: 1.0,
-                        blending: THREE.AdditiveBlending
-                    });
-                    const centerCoreGlow = new THREE.Mesh(coreGeo, coreMat);
-                    scene.add(centerCoreGlow);
-
-                    // बाहरी वातावरण की चमक के लिए एक अतिरिक्त एम्बिएंट लाइट
-                    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-                    scene.add(ambientLight);
-
-                    // 🖱️ इंटरैक्शन: ड्रैग टू रोटेट और व्हील टू ज़ूम इन/आउट
-                    let isDragging = false;
-                    let previousMousePosition = { x: 0, y: 0 };
-
-                    container.addEventListener('mousedown', () => { isDragging = true; });
-                    window.addEventListener('mouseup', () => { isDragging = false; });
-
-                    container.addEventListener('mousemove', (e) => {
-                        const deltaMove = {
-                            x: e.clientX - previousMousePosition.x,
-                            y: e.clientY - previousMousePosition.y
-                        };
-
-                        if (isDragging) {
-                            mainPixelGlobe.rotation.y += deltaMove.x * 0.005;
-                            mainPixelGlobe.rotation.x += deltaMove.y * 0.005;
-                        }
-                        previousMousePosition = { x: e.clientX, y: e.clientY };
-                    });
-
-                    // माउस व्हील से गूगल मैप्स की तरह ज़ूम इन/आउट
-                    window.addEventListener('wheel', (e) => {
-                        if (e.target.tagName === 'CANVAS') {
-                            camera.position.z += e.deltaY * 0.012;
-                            camera.position.z = Math.max(6.0, Math.min(18.0, camera.position.z));
-                        }
-                    });
-
-                    // मोबाइल टच रिस्पॉन्सिवनेस
-                    container.addEventListener('touchstart', (e) => {
-                        if (e.touches.length === 1) {
-                            isDragging = true;
-                            previousMousePosition = { x: e.touches.clientX, y: e.touches.clientY };
-                        }
-                    });
-                    container.addEventListener('touchmove', (e) => {
-                        if (isDragging && e.touches.length === 1) {
-                            const deltaMove = {
-                                x: e.touches.clientX - previousMousePosition.x,
-                                y: e.touches.clientY - previousMousePosition.y
-                            };
-                            mainPixelGlobe.rotation.y += deltaMove.x * 0.005;
-                            mainPixelGlobe.rotation.x += deltaMove.y * 0.005;
-                            previousMousePosition = { x: e.touches.clientX, y: e.touches.clientY };
-                        }
-                    });
-                    container.addEventListener('touchend', () => { isDragging = false; });
-
-                    // 5. ऑटो-रोटेशन और रेंडर लूप
-                    function animate() {
-                        requestAnimationFrame(animate);
-                        if (!isDragging) {
-                            mainPixelGlobe.rotation.y += 0.0015; // स्मूथ घूमता हुआ ग्लोब
-                        }
-                        renderer.render(scene, camera);
+                        points.push({ x, y, z });
                     }
-                    animate();
+                }
+                console.log("1 Crore Grid Generated Successfully!");
 
-                    // रीसाइज सपोर्ट
-                    window.addEventListener('resize', () => {
-                        camera.aspect = window.innerWidth / window.innerHeight;
-                        camera.updateProjectionMatrix();
-                        renderer.setSize(window.innerWidth, window.innerHeight);
-                    });
+                let angleY = 0.001;
+                let angleX = 0;
+                let zoomScale = 1;
+                let isDragging = false;
+                let previousMousePosition = { x: 0, y: 0 };
+
+                function project(point) {
+                    let cosY = Math.cos(angleY), sinY = Math.sin(angleY);
+                    let x1 = point.x * cosY - point.z * sinY;
+                    let z1 = point.x * sinY + point.z * cosY;
+
+                    let cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+                    let y2 = point.y * cosX - z1 * sinX;
+                    let z2 = point.y * sinX + z1 * cosX;
+
+                    point.x = x1; point.y = y2; point.z = z2;
+
+                    const fov = 600;
+                    const scale = (fov / (fov + z2 * zoomScale)) * zoomScale;
+
+                    return {
+                        x: width / 2 + x1 * scale,
+                        y: height / 2 + 50 + y2 * scale,
+                        visible: z2 < 0,
+                        scale: scale
+                    };
                 }
 
-                function togglePostPagePanel() {
-                    const sidePanel = document.getElementById('sidePostPagePanel');
-                    if (sidePanel) sidePanel.classList.toggle('active');
+                function drawLoop() {
+                    ctx.clearRect(0, 0, width, height);
+
+                    // 💡 Center Backlight Glow (Center Light for Brand Logos)
+                    const gradient = ctx.createRadialGradient(width / 2, height / 2 + 50, 0, width / 2, height / 2 + 50, radius * zoomScale * 1.1);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+                    gradient.addColorStop(0.2, 'rgba(0, 168, 255, 0.5)');
+                    gradient.addColorStop(0.6, 'rgba(6, 17, 41, 0.2)');
+                    gradient.addColorStop(1, 'rgba(3, 7, 18, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, width, height);
+
+                    // ⬛ 1 Crore Square Pixel Grid Rendering (Microscopic & Dense)
+                    ctx.fillStyle = 'rgba(0, 168, 255, 0.6)';
+                    for (let i = 0; i < points.length; i++) {
+                        const proj = project(points[i]);
+
+                        if (proj.visible) {
+                            const pSize = 1.2 * proj.scale; // Ekdum chote aur sharp square pixels
+                            ctx.fillRect(proj.x - pSize / 2, proj.y - pSize / 2, pSize, pSize);
+                        }
+                    }
+
+                    if (!isDragging) {
+                        angleY = 0.001;
+                        angleX *= 0.95;
+                    } else {
+                        angleY = 0;
+                        angleX = 0;
+                    }
+
+                    requestAnimationFrame(drawLoop);
                 }
+
+                // 🖱️ Google Map Style Drag & Zoom
+                window.addEventListener('mousedown', () => { isDragging = true; });
+                window.addEventListener('mouseup', () => { isDragging = false; });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (!isDragging) {
+                        previousMousePosition = { x: e.clientX, y: e.clientY };
+                        return;
+                    }
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+
+                    angleY = deltaX * 0.007;
+                    angleX = deltaY * 0.007;
+
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                });
+
+                window.addEventListener('wheel', (e) => {
+                    zoomScale -= e.deltaY * 0.001;
+                    zoomScale = Math.max(0.5, Math.min(3.0, zoomScale));
+                });
+
+                // 📱 Mobile Touch Support
+                window.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        isDragging = true;
+                        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    }
+                });
+                window.addEventListener('touchmove', (e) => {
+                    if (!isDragging || e.touches.length !== 1) return;
+                    const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                    const deltaY = e.touches[0].clientY - previousMousePosition.y;
+
+                    angleY = deltaX * 0.007;
+                    angleX = deltaY * 0.007;
+
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                });
+                window.addEventListener('touchend', () => { isDragging = false; });
+
+                window.addEventListener('resize', () => {
+                    width = canvas.width = window.innerWidth;
+                    height = canvas.height = window.innerHeight;
+                });
+
+                drawLoop();
     </script>
 </body>
 </html>
