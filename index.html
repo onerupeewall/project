@@ -9,6 +9,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            touch-action: none; /* Prevent default mobile gestures like pinch-zoom page scroll */
         }
 
         body, html {
@@ -32,7 +33,7 @@
         .crystal-container {
             display: flex;
             gap: 15px;
-            padding: 20px;
+            padding: 15px;
             z-index: 10;
             justify-content: center;
             align-items: center;
@@ -40,8 +41,8 @@
         }
 
         .crystal-card {
-            width: 90px;
-            height: 130px;
+            width: 75px;
+            height: 110px;
             cursor: pointer;
             transition: transform 0.3s ease;
         }
@@ -70,20 +71,21 @@
             width: 100%;
             height: 100%;
         }
-        /* Live Counter Badge for Exact 1 Lakh Confirmation */
+
         .grid-counter-badge {
             position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             color: #00a8ff;
-            background: rgba(3, 7, 18, 0.8);
-            padding: 8px 16px;
+            background: rgba(3, 7, 18, 0.85);
+            padding: 6px 14px;
             border: 1px solid rgba(0, 168, 255, 0.4);
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 12px;
             z-index: 10;
             letter-spacing: 1px;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -94,13 +96,13 @@
         <!-- 💎 MAIN CRYSTAL LAYER -->
         <div class="crystal-container">
             <div class="crystal-card silver-spot" onclick="alert('VIP 75 CR: Wire Transfer Required.')">
-                <img src="silver-card.png" alt="Silver Card">
+                <img src="silver-card.png" alt="Silver Card" onerror="this.style.border='1px dashed #00a8ff'">
             </div>
             <div class="crystal-card gold-spot" onclick="alert('VIP 100 CR: Wire Transfer Required.')">
-                <img src="gold-card.png" alt="Gold Card">
+                <img src="gold-card.png" alt="Gold Card" onerror="this.style.border='1px dashed #ffa500'">
             </div>
             <div class="crystal-card bronze-spot" onclick="alert('VIP 50 CR: Wire Transfer Required.')">
-                <img src="bronze-card.png" alt="Bronze Card">
+                <img src="bronze-card.png" alt="Bronze Card" onerror="this.style.border='1px dashed #ff4500'">
             </div>
         </div>
 
@@ -111,7 +113,7 @@
 
         <!-- Live Confirmation Badge -->
         <div class="grid-counter-badge">
-            ⚡ ACTIVE GRID: <span id="gridCountDisplay">1,00,000</span> SQUARE CELLS
+            ⚡ 1,00,000 SQUARE CELLS
         </div>
 
     </div>
@@ -123,22 +125,18 @@
                 let width = canvas.width = window.innerWidth;
                 let height = canvas.height = window.innerHeight;
 
-                const radius = Math.min(width, height) * 0.32;
+                const radius = Math.min(width, height) * 0.30;
 
-                // 🌐 Exact 1 Lakh Grid Calculation (250 rows * 400 cols = 1,00,000 exact cells)
+                // 🌐 Exact 1 Lakh Grid Setup (250 rows * 400 cols = 1,00,000 cells)
                 const rows = 250;
                 const cols = 400;
-
-                console.log("=== MTB GLOBE VERIFICATION ===");
-                console.log("Total Rows:", rows);
-                console.log("Total Columns:", cols);
-                console.log("Total Exact Square Grid Cells:", rows * cols);
 
                 let angleY = 0.001;
                 let angleX = 0;
                 let zoomScale = 1;
                 let isDragging = false;
                 let previousMousePosition = { x: 0, y: 0 };
+                let initialPinchDistance = null;
 
                 function rotateAndProject(x, y, z) {
                     let cosY = Math.cos(angleY), sinY = Math.sin(angleY);
@@ -154,7 +152,7 @@
 
                     return {
                         x: width / 2 + x1 * scale,
-                        y: height / 2 + 50 + y2 * scale,
+                        y: height / 2 + 40 + y2 * scale,
                         z: z2,
                         scale: scale
                     };
@@ -163,7 +161,6 @@
                 // Generate Exact 1 Lakh Grid Lines
                 const gridLines = [];
 
-                // Horizontal Rings (Latitudes)
                 for (let r = 0; r <= rows; r++) {
                     const lat = -Math.PI / 2 + (r * Math.PI) / rows;
                     const ringPoints = [];
@@ -177,7 +174,6 @@
                     gridLines.push({ points: ringPoints });
                 }
 
-                // Vertical Arcs (Longitudes)
                 for (let c = 0; c <= cols; c++) {
                     const lon = -Math.PI + (c * 2 * Math.PI) / cols;
                     const arcPoints = [];
@@ -194,8 +190,8 @@
                 function drawLoop() {
                     ctx.clearRect(0, 0, width, height);
 
-                    // 💡 Center Backlight Glow (Transparent center light)
-                    const gradient = ctx.createRadialGradient(width / 2, height / 2 + 50, 0, width / 2, height / 2 + 50, radius * zoomScale * 1.1);
+                    // 💡 Center Backlight Glow
+                    const gradient = ctx.createRadialGradient(width / 2, height / 2 + 40, 0, width / 2, height / 2 + 40, radius * zoomScale * 1.1);
                     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
                     gradient.addColorStop(0.25, 'rgba(0, 168, 255, 0.35)');
                     gradient.addColorStop(0.7, 'rgba(6, 17, 41, 0.05)');
@@ -203,8 +199,8 @@
                     ctx.fillStyle = gradient;
                     ctx.fillRect(0, 0, width, height);
 
-                    ctx.lineWidth = 0.7;
-                    ctx.strokeStyle = 'rgba(0, 180, 255, 0.5)';
+                    ctx.lineWidth = 0.55;
+                    ctx.strokeStyle = 'rgba(0, 180, 255, 0.55)';
 
                     // Render Exact Square Grid Lines
                     for (let line of gridLines) {
@@ -214,7 +210,7 @@
                         for (let pt of line.points) {
                             const p = rotateAndProject(pt.x, pt.y, pt.z);
 
-                            if (p.z < 0) { // Front side visibility check
+                            if (p.z < 0) {
                                 if (!pathStarted) {
                                     ctx.moveTo(p.x, p.y);
                                     pathStarted = true;
@@ -228,26 +224,20 @@
                         ctx.stroke();
                     }
 
-                    if (!isDragging) {
+                    if (!isDragging && initialPinchDistance === null) {
                         angleY += 0.001;
                         angleX *= 0.95;
-                    } else {
-                        angleY = 0;
-                        angleX = 0;
                     }
 
                     requestAnimationFrame(drawLoop);
                 }
 
-                // 🖱️ Google Map Style Drag & Zoom
-                window.addEventListener('mousedown', () => { isDragging = true; });
+                // 🖱️ Mouse Drag & Zoom
+                window.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
                 window.addEventListener('mouseup', () => { isDragging = false; });
 
                 window.addEventListener('mousemove', (e) => {
-                    if (!isDragging) {
-                        previousMousePosition = { x: e.clientX, y: e.clientY };
-                        return;
-                    }
+                    if (!isDragging) return;
                     const deltaX = e.clientX - previousMousePosition.x;
                     const deltaY = e.clientY - previousMousePosition.y;
 
@@ -259,27 +249,49 @@
 
                 window.addEventListener('wheel', (e) => {
                     zoomScale -= e.deltaY * 0.001;
-                    zoomScale = Math.max(0.5, Math.min(3.0, zoomScale));
+                    zoomScale = Math.max(0.4, Math.min(3.5, zoomScale));
                 });
 
-                // 📱 Mobile Touch Support
+                // 📱 Mobile Touch Support (Pinch-to-Zoom & Drag Rotation)
                 window.addEventListener('touchstart', (e) => {
                     if (e.touches.length === 1) {
                         isDragging = true;
                         previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                        initialPinchDistance = null;
+                    } else if (e.touches.length === 2) {
+                        isDragging = false;
+                        initialPinchDistance = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
                     }
-                });
+                }, { passive: false });
+
                 window.addEventListener('touchmove', (e) => {
-                    if (!isDragging || e.touches.length !== 1) return;
-                    const deltaX = e.touches[0].clientX - previousMousePosition.x;
-                    const deltaY = e.touches[0].clientY - previousMousePosition.y;
+                    if (e.touches.length === 1 && isDragging) {
+                        const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                        const deltaY = e.touches[0].clientY - previousMousePosition.y;
 
-                    angleY += deltaX * 0.007;
-                    angleX += deltaY * 0.007;
+                        angleY += deltaX * 0.007;
+                        angleX += deltaY * 0.007;
 
-                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    } else if (e.touches.length === 2 && initialPinchDistance !== null) {
+                        const currentPinchDistance = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
+                        const zoomFactor = currentPinchDistance / initialPinchDistance;
+                        zoomScale *= zoomFactor;
+                        zoomScale = Math.max(0.4, Math.min(3.5, zoomScale));
+                        initialPinchDistance = currentPinchDistance;
+                    }
+                }, { passive: false });
+
+                window.addEventListener('touchend', (e) => {
+                    if (e.touches.length < 2) initialPinchDistance = null;
+                    if (e.touches.length === 0) isDragging = false;
                 });
-                window.addEventListener('touchend', () => { isDragging = false; });
 
                 window.addEventListener('resize', () => {
                     width = canvas.width = window.innerWidth;
