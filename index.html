@@ -2,91 +2,196 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTB Locked Search Engine - AI Oracle</title>
-    <!-- आलीशान शाई लुक की फ्रेश सीएसएस -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MTB Double-Lock Oracle - Ultimate 3D Edition</title>
+
+    <!-- 🌐 प्राथमिक 3D लाइब्रेरी लोड (Three.js) -->
+    <script src="https://cloudflare.com"></script>
+
+    <!-- 🎨 आपकी अलग CSS फ़ाइल का लिंक -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- 🌌 द रॉयल कॉस्मिक वॉइड (पूरी स्क्रीन का गहरा जादुई अंतरिक्ष बैकग्राउंड) -->
     <div class="shahi-void-container">
 
-        <!-- 🧭 TOP NAV BAR: हेडर लिंक्स -->
+        <!-- 🧭 TOP NAV BAR -->
         <nav class="top-nav-bar">
-            <div class="nav-links-wrapper">
-                <a href="#" class="nav-item active">Home</a>
-                <a href="#" class="nav-item">Plans</a>
-                <a href="#" class="nav-item">About</a>
+            <div class="shahi-hamburger-menu" onclick="togglePostPagePanel()">
+                <span class="bar-line"></span>
+                <span class="bar-line"></span>
+                <span class="bar-line"></span>
             </div>
         </nav>
 
-        <!-- 💎 MAIN CRYSTAL LAYER: ३ आलीशान असली ३डी हीरों की रो (Row) -->
+        <!-- 💎 MAIN CRYSTAL LAYER: ३ आलीशान डायमंड कार्ड्स -->
         <div class="crystal-container">
-
-            <!-- ७५ CR - सिल्वर हीरा (बाएं वाला - थोड़ा नीचे लटका) -->
-            <div class="crystal-card silver-spot" onclick="openEscrowForm('Elite Silver', '75 CR')">
+            <div class="crystal-card silver-spot" onclick="alert('VIP 75 CR: Wire Transfer Required.')">
                 <img src="silver-card.png" alt="Silver Card">
             </div>
-
-            <!-- १०० CR - गोल्ड हीरा (बीच वाला - सबसे ऊपर शीर्ष पर) -->
-            <div class="crystal-card gold-spot" onclick="openEscrowForm('Premium Gold', '100 CR')">
+            <div class="crystal-card gold-spot" onclick="alert('VIP 100 CR: Wire Transfer Required.')">
                 <img src="gold-card.png" alt="Gold Card">
             </div>
-
-            <!-- ५० CR - ब्रॉन्ज हीरा (दाएं वाला - थोड़ा नीचे लटका) -->
-            <div class="crystal-card bronze-spot" onclick="openEscrowForm('Bronze Empire', '50 CR')">
+            <div class="crystal-card bronze-spot" onclick="alert('VIP 50 CR: Wire Transfer Required.')">
                 <img src="bronze-card.png" alt="Bronze Card">
             </div>
-
         </div>
 
-        <!-- 🔒 PERFECT CENTER HUB: फ्यूचरिस्टिक ताले वाला सर्च इंजन और बटन -->
-        <div class="oracle-search-hub">
+        <!-- 🗺️ 3D ग्लोब व्यूपोर्ट (स्क्रीन के बिल्कुल पीछे सेंटर में रेंडर होगा) -->
+        <div id="mtb-3d-globe-viewport"></div>
 
-            <!-- शुरू में दिखने वाला गेटवे (ताले वाला लुक और बाय बटन) -->
-            <div id="mtbLockGate" class="cyber-lock-gate">
-
-                <!-- 🔐 द फ्यूचरिस्टिक शील्ड इनपुट (MTB Locked Search Engine) -->
-                <div class="futuristic-shield-bar">
-                    <span class="lock-shield-icon">🔒</span>
-                    <span class="shield-placeholder-text">MTB Locked Search Engine</span>
-                    <span class="search-lens-icon">🔍</span>
-                </div>
-
-                <!-- 🛒 द नियॉन पर्पल कैप्सूल बाय बटन -->
-                <button class="btn-buy-purple-capsule" onclick="processUnlockPayment()">
-                    Buy 1$ &nbsp;&rarr;
-                </button>
-            </div>
-
-            <!-- 🔓 अनलॉक होने के बाद का असली जादुई एआई सर्च बार (शुरू में छुपा रहेगा) -->
-            <div id="mtbActiveSearch" class="cyber-active-search-bar" style="display: none;">
-                <span class="unlocked-shield-icon">🔓</span>
-                <input type="text" id="brandSearchInput" placeholder="Enter Registered Brand Name (e.g. TATA, Nike)...">
-                <button id="btnAiSearch" onclick="triggerAiBrandSearch()">AI SEARCH</button>
-            </div>
-
-        </div>
-
-        <!-- 📊 BOTTOM LIVE COUNTER: लाइव ओनर्स संख्या -->
+        <!-- 📊 BOTTOM LIVE COUNTER BAR -->
         <div class="oracle-live-counter-bar">
             <div class="live-status-pill">
                 <span class="pulsing-live-dot"></span>
-                <span class="live-counter-text"><strong class="gold-glow-number">5,42,108</strong> OWNERS UNLOCKED THIS ORACLE</span>
+                <span class="live-counter-text"><strong class="gold-glow-number">5,42,108</strong> OWNERS UNLOCKED</span>
             </div>
         </div>
 
     </div>
 
-    <!-- =======================================================
-         📦 THE GLOBAL MODALS LAYER: जादुई ब्रांड कार्ड, वेरिफिकेशन, एस्क्रो फॉर्म
-         ======================================================= -->
-    <div id="globalModalOverlay" class="global-modal-overlay" style="display: none;">
-        <div id="dynamicModalContent"></div>
+    <!-- 📝 SIDE VIP SLIDER PANEL -->
+    <div id="sidePostPagePanel" class="shahi-side-panel">
+        <span class="close-panel-btn" onclick="togglePostPagePanel()">×</span>
+        <div class="side-panel-content">
+            <h3>Post Your Page</h3>
+            <p>Publish your business card live inside the deep 3D pixel grid void.</p>
+            <button class="btn-post-page-locked" onclick="alert('Connecting Gateway...')">
+                🔒 Unlock Post Page ($1)
+            </button>
+        </div>
     </div>
 
-    <!-- जावास्क्रिप्ट फाइल लिंक -->
-    <script src="script.js"></script>
+    <!-- ⚙️ हाई-चमक और कड़क विजुअल 3D इंजन स्क्रिप्ट -->
+    <script>
+                if (typeof THREE === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = "https://unpkg.com";
+                    document.head.appendChild(script);
+                    script.onload = () => { init3DGlobeEngine(); };
+                } else {
+                    window.addEventListener('DOMContentLoaded', () => { init3DGlobeEngine(); });
+                }
+
+                function init3DGlobeEngine() {
+                    const container = document.getElementById('mtb-3d-globe-viewport');
+                    if (!container) return;
+
+                    const scene = new THREE.Scene();
+                    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+                    // कैमरे की पोजीशन सेट ताकि ग्लोब कार्ड्स के नीचे एकदम साफ और बड़ा दिखे
+                    camera.position.set(0, -0.5, 12.5);
+
+                    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                    container.appendChild(renderer.domElement);
+
+                    // 🗺️ ग्लोब का साइज और ग्रिड सेगमेंट्स
+                    const radius = 3.7;
+                    const segments = 40;
+
+                    const globeGeometry = new THREE.SphereGeometry(radius, segments, segments);
+
+                    // 💡 यहाँ मटीरियल को 'LineBasicMaterial' में बदला है ताकि लाइन्स एकदम कड़क और साफ़ दिखें
+                    const globeMaterial = new THREE.LineBasicMaterial({
+                        color: 0x00a8ff, // सुपर ब्राइट इलेक्ट्रिक सियान/ब्लू जो काले बैकग्राउंड पर खिलेगा
+                        transparent: true,
+                        opacity: 0.95, // ओपेसिटी बढ़ाकर लाइन्स को एकदम गाढ़ा किया है
+                        linewidth: 2   // कुछ ब्राउज़र्स में मोटाई बढ़ाने के लिए
+                    });
+
+                    // ग्रिड लाइन्स को उभारने के लिए इसे 'LineSegments' के रूप में सीन में जोड़ा
+                    const wireframe = new THREE.EdgesGeometry(globeGeometry);
+                    const mainPixelGlobe = new THREE.LineSegments(wireframe, globeMaterial);
+                    scene.add(mainPixelGlobe);
+
+                    // 🔥 द कोर ग्लो लाइट (केंद्र की चमकता हुआ पावर सोर्स)
+                    const coreGeo = new THREE.SphereGeometry(radius * 0.15, 16, 16);
+                    const coreMat = new THREE.MeshBasicMaterial({
+                        color: 0xffffff, // शुद्ध सफेद तीव्र रोशनी
+                        transparent: true,
+                        opacity: 1.0,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const centerCoreGlow = new THREE.Mesh(coreGeo, coreMat);
+                    scene.add(centerCoreGlow);
+
+                    // बाहरी वातावरण की चमक के लिए एक अतिरिक्त एम्बिएंट लाइट
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+                    scene.add(ambientLight);
+
+                    // 🖱️ इंटरैक्शन: ड्रैग टू रोटेट और व्हील टू ज़ूम इन/आउट
+                    let isDragging = false;
+                    let previousMousePosition = { x: 0, y: 0 };
+
+                    container.addEventListener('mousedown', () => { isDragging = true; });
+                    window.addEventListener('mouseup', () => { isDragging = false; });
+
+                    container.addEventListener('mousemove', (e) => {
+                        const deltaMove = {
+                            x: e.clientX - previousMousePosition.x,
+                            y: e.clientY - previousMousePosition.y
+                        };
+
+                        if (isDragging) {
+                            mainPixelGlobe.rotation.y += deltaMove.x * 0.005;
+                            mainPixelGlobe.rotation.x += deltaMove.y * 0.005;
+                        }
+                        previousMousePosition = { x: e.clientX, y: e.clientY };
+                    });
+
+                    // माउस व्हील से गूगल मैप्स की तरह ज़ूम इन/आउट
+                    window.addEventListener('wheel', (e) => {
+                        if (e.target.tagName === 'CANVAS') {
+                            camera.position.z += e.deltaY * 0.012;
+                            camera.position.z = Math.max(6.0, Math.min(18.0, camera.position.z));
+                        }
+                    });
+
+                    // मोबाइल टच रिस्पॉन्सिवनेस
+                    container.addEventListener('touchstart', (e) => {
+                        if (e.touches.length === 1) {
+                            isDragging = true;
+                            previousMousePosition = { x: e.touches.clientX, y: e.touches.clientY };
+                        }
+                    });
+                    container.addEventListener('touchmove', (e) => {
+                        if (isDragging && e.touches.length === 1) {
+                            const deltaMove = {
+                                x: e.touches.clientX - previousMousePosition.x,
+                                y: e.touches.clientY - previousMousePosition.y
+                            };
+                            mainPixelGlobe.rotation.y += deltaMove.x * 0.005;
+                            mainPixelGlobe.rotation.x += deltaMove.y * 0.005;
+                            previousMousePosition = { x: e.touches.clientX, y: e.touches.clientY };
+                        }
+                    });
+                    container.addEventListener('touchend', () => { isDragging = false; });
+
+                    // 5. ऑटो-रोटेशन और रेंडर लूप
+                    function animate() {
+                        requestAnimationFrame(animate);
+                        if (!isDragging) {
+                            mainPixelGlobe.rotation.y += 0.0015; // स्मूथ घूमता हुआ ग्लोब
+                        }
+                        renderer.render(scene, camera);
+                    }
+                    animate();
+
+                    // रीसाइज सपोर्ट
+                    window.addEventListener('resize', () => {
+                        camera.aspect = window.innerWidth / window.innerHeight;
+                        camera.updateProjectionMatrix();
+                        renderer.setSize(window.innerWidth, window.innerHeight);
+                    });
+                }
+
+                function togglePostPagePanel() {
+                    const sidePanel = document.getElementById('sidePostPagePanel');
+                    if (sidePanel) sidePanel.classList.toggle('active');
+                }
+    </script>
 </body>
 </html>
