@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Sharp Golden Text VIP Cards Globe</title>
+    <title>Golden Dots Globe</title>
     <style>
         * {
             margin: 0;
@@ -57,8 +57,8 @@
 <body>
 
     <div id="ui-panel">
-        <div style="font-weight: bold; color: #fff; margin-bottom: 5px;">VIP CARDS GLOBE</div>
-        <div class="stat">Camera Distance: <span id="dist-val">0.0</span></div>
+        <div style="font-weight: bold; color: #fff; margin-bottom: 5px;">3D GLOBE</div>
+        <div class="stat">Camera Distance: <span id="dist-val">6.45</span></div>
         <div class="stat">Status: <span id="status-val">Active</span></div>
     </div>
 
@@ -68,11 +68,13 @@
             const container = document.getElementById('canvas-container');
             const scene = new THREE.Scene();
 
-            const INITIAL_CAM_POS = new THREE.Vector3(0, 0.5, 5.2);
-            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // Initial position set to 6.45
+            const INITIAL_CAM_POS = new THREE.Vector3(0, 0, 6.45);
+            // Near clipping plane ko 0.01 kiya gaya hai taaki close zoom par rendering glitches na aayein
+            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
             camera.position.copy(INITIAL_CAM_POS);
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
@@ -80,9 +82,16 @@
             const controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.minDistance = 1.2;
-            controls.maxDistance = 8;
-            controls.enablePan = false;
+
+            // Zoom limit fixed: minDistance = 1.35 safe spot hai jahan aakhri grid ekdam clean aur Bina Tooti Hui dikhegi
+            controls.enableZoom = true;
+            controls.zoomSpeed = 0.6;
+            controls.minDistance = 1.35;
+            controls.maxDistance = 15.0;
+
+            // Slow & Controlled Movement
+            controls.enablePan = true;
+            controls.screenSpacePanning = true;
 
             // Lights
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
@@ -91,7 +100,7 @@
             const GLOBE_RADIUS = 1.0;
 
             // Dark Core
-            const coreGeo = new THREE.SphereGeometry(GLOBE_RADIUS - 0.003, 64, 64);
+            const coreGeo = new THREE.SphereGeometry(GLOBE_RADIUS - 0.005, 64, 64);
             const coreMat = new THREE.MeshBasicMaterial({ color: 0x020714 });
             const coreMesh = new THREE.Mesh(coreGeo, coreMat);
             scene.add(coreMesh);
@@ -190,121 +199,14 @@
               return { group: gridGroup, lineMat: lineMaterial, pointMat: pointMaterial };
             }
 
+            // Har layer ke beech ka gap thoda badhaya hai taaki z-fighting na ho
             const layer1 = createAlignedGridWithGoldenDots(GLOBE_RADIUS, 24, 0x00f0ff, 0.95, 0.045, 1.0);
-            const layer2 = createAlignedGridWithGoldenDots(GLOBE_RADIUS + 0.001, 48, 0x00b4ff, 0.0, 0.035, 0.0);
-            const layer3 = createAlignedGridWithGoldenDots(GLOBE_RADIUS + 0.002, 96, 0x33eaff, 0.0, 0.025, 0.0);
+            const layer2 = createAlignedGridWithGoldenDots(GLOBE_RADIUS + 0.003, 48, 0x00b4ff, 0.0, 0.035, 0.0);
+            const layer3 = createAlignedGridWithGoldenDots(GLOBE_RADIUS + 0.006, 96, 0x33eaff, 0.0, 0.025, 0.0);
 
             globeGroup.add(layer1.group);
             globeGroup.add(layer2.group);
             globeGroup.add(layer3.group);
-
-            // --- ULTRA SHARP GLOWING GOLD TEXTURE GENERATOR ---
-            function createVIPCardTexture(textValue) {
-              const canvas = document.createElement('canvas');
-              canvas.width = 1024;
-              canvas.height = 1536;
-              const ctx = canvas.getContext('2d');
-
-              // Glassy Dark Blue Card Background
-              const bgGrad = ctx.createLinearGradient(0, 0, 1024, 1536);
-              bgGrad.addColorStop(0, 'rgba(2, 12, 24, 0.96)');
-              bgGrad.addColorStop(0.5, 'rgba(1, 6, 14, 0.98)');
-              bgGrad.addColorStop(1, 'rgba(2, 16, 32, 0.96)');
-              ctx.fillStyle = bgGrad;
-              ctx.fillRect(0, 0, 1024, 1536);
-
-              // Cyan Borders (Matching Globe Accent)
-              ctx.strokeStyle = '#00f0ff';
-              ctx.lineWidth = 22;
-              ctx.strokeRect(30, 30, 964, 1476);
-
-              ctx.strokeStyle = '#33eaff';
-              ctx.lineWidth = 8;
-              ctx.strokeRect(60, 60, 904, 1416);
-
-              ctx.textAlign = 'center';
-
-              // Top Title
-              ctx.font = '900 64px Arial';
-              ctx.fillStyle = '#00f0ff';
-              ctx.shadowColor = '#00f0ff';
-              ctx.shadowBlur = 25;
-              ctx.fillText('EXCLUSIVE ACCESS', 512, 250);
-
-              // --- HIGH GLOSS GOLD TEXT GRADIENT ---
-              const goldGrad = ctx.createLinearGradient(0, 650, 0, 850);
-              goldGrad.addColorStop(0.0, '#FFFFFF'); // Bright top shimmer
-              goldGrad.addColorStop(0.2, '#FFF2A3'); // Soft gold
-              goldGrad.addColorStop(0.5, '#FFD700'); // Pure Gold
-              goldGrad.addColorStop(0.8, '#D4AF37'); // Metallic Gold
-              goldGrad.addColorStop(1.0, '#996515'); // Deep Amber base
-
-              ctx.font = '900 110px Arial';
-
-              // Glow Aura
-              ctx.shadowColor = '#FFD700';
-              ctx.shadowBlur = 50;
-              ctx.fillStyle = goldGrad;
-              ctx.fillText(textValue, 512, 780);
-
-              // Crisp Foreground Text
-              ctx.shadowColor = '#FFA500';
-              ctx.shadowBlur = 10;
-              ctx.strokeStyle = '#221400';
-              ctx.lineWidth = 6;
-              ctx.strokeText(textValue, 512, 780);
-              ctx.fillText(textValue, 512, 780);
-
-              // Reset Glow for Bottom Badge
-              ctx.shadowBlur = 0;
-
-              // Bottom VIP Badge
-              ctx.font = '900 75px Arial';
-              ctx.fillStyle = '#00f0ff';
-              ctx.shadowColor = '#00f0ff';
-              ctx.shadowBlur = 20;
-              ctx.fillText('★ GOLDEN PASS ★', 512, 1300);
-
-              const texture = new THREE.CanvasTexture(canvas);
-              texture.anisotropy = 16;
-              return texture;
-            }
-
-            // --- 3D VIP CARDS CREATION ---
-            const cardsGroup = new THREE.Group();
-            scene.add(cardsGroup);
-
-            const cardGeo = new THREE.BoxGeometry(0.8, 1.2, 0.02);
-
-            function createVIPCardMesh(textValue, posX, posY, posZ) {
-              const texture = createVIPCardTexture(textValue);
-
-              const cardMat = new THREE.MeshBasicMaterial({
-                map: texture,
-                transparent: true,
-                opacity: 0.98,
-                side: THREE.DoubleSide
-              });
-
-              const cardMesh = new THREE.Mesh(cardGeo, cardMat);
-              cardMesh.position.set(posX, posY, posZ);
-
-              // Cyan Outer Wireframe Edges
-              const edgesGeo = new THREE.EdgesGeometry(cardGeo);
-              const edgesMat = new THREE.LineBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 1.0 });
-              const edgeLines = new THREE.LineSegments(edgesGeo, edgesMat);
-              cardMesh.add(edgeLines);
-
-              return cardMesh;
-            }
-
-            const card75cr  = createVIPCardMesh("75cr VIP CARD", -1.05, 1.8, 0);
-            const card100cr = createVIPCardMesh("100cr VIP CARD", 0.0,  1.95, 0.15);
-            const card50cr  = createVIPCardMesh("50cr VIP CARD",  1.05, 1.8, 0);
-
-            cardsGroup.add(card75cr);
-            cardsGroup.add(card100cr);
-            cardsGroup.add(card50cr);
 
             // --- INTERACTION & 5s RESET LOGIC ---
             let isUserInteracting = false;
@@ -337,23 +239,17 @@
 
             const distEl = document.getElementById('dist-val');
             const statusEl = document.getElementById('status-val');
-            let clock = new THREE.Clock();
 
             function animate() {
               requestAnimationFrame(animate);
-
-              const elapsedTime = clock.getElapsedTime();
 
               if (autoRotate && !isUserInteracting) {
                 globeGroup.rotation.y += 0.0008;
               }
 
-              card75cr.position.y  = 1.80 + Math.sin(elapsedTime * 1.5) * 0.03;
-              card100cr.position.y = 1.95 + Math.sin(elapsedTime * 1.5 + 0.8) * 0.04;
-              card50cr.position.y  = 1.80 + Math.sin(elapsedTime * 1.5 + 1.6) * 0.03;
-
               if (!isUserInteracting && statusEl.innerText === "Resetting Position...") {
                 camera.position.lerp(INITIAL_CAM_POS, 0.05);
+                controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.05);
                 globeGroup.rotation.x *= 0.95;
                 globeGroup.rotation.z *= 0.95;
 
@@ -363,13 +259,19 @@
                 }
               }
 
-              controls.update();
-
-              const distance = camera.position.distanceTo(globeGroup.position) - GLOBE_RADIUS;
+              const distance = camera.position.distanceTo(globeGroup.position);
               distEl.innerText = distance.toFixed(2);
 
-              if (distance < 2.2) {
-                const op = Math.min(0.9, (2.2 - distance) / 1.0);
+              // Controlled movement speed close zoom par
+              const speedScale = Math.max(0.02, (distance / 6.45));
+              controls.rotateSpeed = 0.25 * speedScale;
+              controls.panSpeed = 0.05 * speedScale;
+
+              controls.update();
+
+              // Smooth layer opacity handling
+              if (distance < 4.0) {
+                const op = Math.min(0.9, (4.0 - distance) / 2.0);
                 layer2.lineMat.opacity = op;
                 layer2.pointMat.opacity = op;
               } else {
@@ -377,8 +279,8 @@
                 layer2.pointMat.opacity = 0;
               }
 
-              if (distance < 1.0) {
-                const op = Math.min(0.85, (1.0 - distance) / 0.5);
+              if (distance < 2.5) {
+                const op = Math.min(0.85, (2.5 - distance) / 1.0);
                 layer3.lineMat.opacity = op;
                 layer3.pointMat.opacity = op;
               } else {
