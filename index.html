@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Clean Pixel-Aligned Grid Globe</title>
+    <title>Crown Layout 3D Globe</title>
     <style>
         * {
             margin: 0;
@@ -28,19 +28,20 @@
 
         #ui-panel {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 15px;
+            left: 15px;
             color: #00f0ff;
             background: rgba(2, 8, 20, 0.85);
-            padding: 10px 18px;
+            padding: 8px 14px;
             border-radius: 8px;
             border: 1px solid #00f0ff55;
             pointer-events: none;
             box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+            z-index: 10;
         }
 
         .stat {
-            font-size: 13px;
+            font-size: 12px;
             margin: 2px 0;
             color: #88ccff;
         }
@@ -49,6 +50,90 @@
                 font-weight: bold;
                 color: #00ffff;
             }
+
+        /* Crown Cards Overlay - Centered and Larger */
+        #crown-container {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 450px;
+            height: 340px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .card-img-direct {
+            position: absolute;
+            width: 150px; /* Bada size */
+            height: auto;
+            cursor: pointer;
+            pointer-events: auto;
+            user-select: none;
+            filter: drop-shadow(0px 8px 20px rgba(0, 0, 0, 0.8));
+            transition: transform 0.25s ease, filter 0.25s ease;
+        }
+
+            .card-img-direct:hover {
+                filter: drop-shadow(0px 12px 25px rgba(0, 240, 255, 0.6));
+            }
+
+        /* Crown Positions */
+        #gold-card {
+            top: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+        }
+
+            #gold-card:hover {
+                transform: translateX(-50%) scale(1.1);
+            }
+
+        #silver-card {
+            top: 45px;
+            left: 10px;
+            transform: rotate(-10deg);
+            z-index: 2;
+        }
+
+            #silver-card:hover {
+                transform: rotate(-10deg) scale(1.1);
+            }
+
+        #bronze-card {
+            top: 45px;
+            right: 10px;
+            transform: rotate(10deg);
+            z-index: 2;
+        }
+
+            #bronze-card:hover {
+                transform: rotate(10deg) scale(1.1);
+            }
+
+        /* Mobile Scaling */
+        @media (max-width: 600px) {
+            #crown-container {
+                top: 20px;
+                width: 330px;
+                height: 180px;
+            }
+
+            .card-img-direct {
+                width: 110px; /* Mobile me bhi bada size */
+            }
+
+            #silver-card {
+                top: 35px;
+                left: 5px;
+            }
+
+            #bronze-card {
+                top: 35px;
+                right: 5px;
+            }
+        }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -58,194 +143,224 @@
 
     <div id="ui-panel">
         <div style="font-weight: bold; color: #fff; margin-bottom: 2px;">3D GLOBE</div>
+        <div class="stat">Buyable Grids: <span id="grid-count">1,000 Grids</span></div>
         <div class="stat">Status: <span id="status-val">Active</span></div>
+        <div class="stat">Selected Card: <span id="selected-card-val">None</span></div>
+    </div>
+
+    <!-- Crown Cards Overlay Structure -->
+    <div id="crown-container">
+        <img id="silver-card" class="card-img-direct" src="silver-card.png" alt="Silver Card" onclick="selectCard('Silver')">
+        <img id="gold-card" class="card-img-direct" src="gold-card.png" alt="Gold Card" onclick="selectCard('Gold')">
+        <img id="bronze-card" class="card-img-direct" src="bronze-card.png" alt="Bronze Card" onclick="selectCard('Bronze')">
     </div>
 
     <div id="canvas-container"></div>
 
     <script>
-            const container = document.getElementById('canvas-container');
-            const scene = new THREE.Scene();
+        function selectCard(cardType) {
+            document.getElementById('selected-card-val').innerText = cardType + " Card";
+        }
 
-            const INITIAL_CAM_POS = new THREE.Vector3(0, 0, 6.45);
-            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.001, 1000);
-            camera.position.copy(INITIAL_CAM_POS);
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
+        const GLOBE_RADIUS = 1.35;
 
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
+        // Globe ko 3D space me neeche shift kiya gaya hai (y: -1.25)
+        const GLOBE_OFFSET_Y = -1.25;
+        const INITIAL_CAM_POS = new THREE.Vector3(0, GLOBE_OFFSET_Y, 4.6);
 
-            controls.enableZoom = true;
-            controls.zoomSpeed = 0.6;
-            controls.minDistance = 1.01;
-            controls.maxDistance = 15.0;
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.001, 1000);
+        camera.position.copy(INITIAL_CAM_POS);
 
-            controls.enablePan = true;
-            controls.screenSpacePanning = true;
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-            scene.add(ambientLight);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(0, GLOBE_OFFSET_Y, 0); // Rotation Center set to Globe Position
 
-            const GLOBE_RADIUS = 1.0;
+        controls.enableZoom = true;
+        controls.zoomSpeed = 0.6;
 
-            // Dark Inner Core
-            const coreGeo = new THREE.SphereGeometry(GLOBE_RADIUS - 0.001, 64, 64);
-            const coreMat = new THREE.MeshBasicMaterial({ color: 0x020714 });
-            const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-            scene.add(coreMesh);
+        controls.minDistance = 1.5;
+        controls.maxDistance = 4.6;
 
-            const globeGroup = new THREE.Group();
-            scene.add(globeGroup);
+        controls.enablePan = true;
+        controls.screenSpacePanning = true;
 
-            // Exact Multipliers for Binary Grid Sub-division (24 -> 48 -> 96 -> 192 -> 384)
-            const BASE_DIVISIONS = 24;
-            const MULTIPLIERS = [1, 2, 4, 8, 16];
-            const layers = [];
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(ambientLight);
 
-            MULTIPLIERS.forEach((mult) => {
-              const latDivs = BASE_DIVISIONS * mult;
-              const lonDivs = latDivs * 2;
-              const positions = [];
+        // Main Globe Group (Shifted Downwards)
+        const globeGroup = new THREE.Group();
+        globeGroup.position.y = GLOBE_OFFSET_Y;
+        scene.add(globeGroup);
 
-              // Latitude lines (Horizontal circles)
-              for (let i = 1; i < latDivs; i++) {
+        // Globe Core
+        const coreGeo = new THREE.SphereGeometry(GLOBE_RADIUS - 0.001, 64, 64);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0x01040d });
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        globeGroup.add(coreMesh);
+
+        // Grid Mesh
+        const BASE_LAT = 25;
+        const BASE_LON = 40;
+        const MULTIPLIERS = [1, 2, 4, 8, 16, 32];
+        const layers = [];
+
+        MULTIPLIERS.forEach((mult) => {
+            const latDivs = BASE_LAT * mult;
+            const lonDivs = BASE_LON * mult;
+            const positions = [];
+
+            const skipLines = Math.max(1, Math.floor(latDivs * (3 / 25)));
+
+            for (let i = skipLines; i <= latDivs - skipLines; i++) {
                 const phi = (i / latDivs) * Math.PI;
                 const r = GLOBE_RADIUS * Math.sin(phi);
                 const y = GLOBE_RADIUS * Math.cos(phi);
 
                 for (let j = 0; j < lonDivs; j++) {
-                  const theta1 = (j / lonDivs) * Math.PI * 2;
-                  const theta2 = ((j + 1) / lonDivs) * Math.PI * 2;
+                    const theta1 = (j / lonDivs) * Math.PI * 2;
+                    const theta2 = ((j + 1) / lonDivs) * Math.PI * 2;
 
-                  positions.push(
-                    r * Math.sin(theta1), y, r * Math.cos(theta1),
-                    r * Math.sin(theta2), y, r * Math.cos(theta2)
-                  );
+                    positions.push(
+                        r * Math.sin(theta1), y, r * Math.cos(theta1),
+                        r * Math.sin(theta2), y, r * Math.cos(theta2)
+                    );
                 }
-              }
+            }
 
-              // Longitude lines (Vertical meridian arcs)
-              for (let j = 0; j < lonDivs; j++) {
+            for (let j = 0; j < lonDivs; j++) {
                 const theta = (j / lonDivs) * Math.PI * 2;
-                for (let i = 0; i < latDivs; i++) {
-                  const phi1 = (i / latDivs) * Math.PI;
-                  const phi2 = ((i + 1) / latDivs) * Math.PI;
+                for (let i = skipLines; i < latDivs - skipLines; i++) {
+                    const phi1 = (i / latDivs) * Math.PI;
+                    const phi2 = ((i + 1) / latDivs) * Math.PI;
 
-                  positions.push(
-                    GLOBE_RADIUS * Math.sin(phi1) * Math.sin(theta), GLOBE_RADIUS * Math.cos(phi1), GLOBE_RADIUS * Math.sin(phi1) * Math.cos(theta),
-                    GLOBE_RADIUS * Math.sin(phi2) * Math.sin(theta), GLOBE_RADIUS * Math.cos(phi2), GLOBE_RADIUS * Math.sin(phi2) * Math.cos(theta)
-                  );
+                    positions.push(
+                        GLOBE_RADIUS * Math.sin(phi1) * Math.sin(theta), GLOBE_RADIUS * Math.cos(phi1), GLOBE_RADIUS * Math.sin(phi1) * Math.cos(theta),
+                        GLOBE_RADIUS * Math.sin(phi2) * Math.sin(theta), GLOBE_RADIUS * Math.cos(phi2), GLOBE_RADIUS * Math.sin(phi2) * Math.cos(theta)
+                    );
                 }
-              }
+            }
 
-              const lineGeometry = new THREE.BufferGeometry();
-              lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-              const lineMaterial = new THREE.LineBasicMaterial({
+            const lineGeometry = new THREE.BufferGeometry();
+            lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            const lineMaterial = new THREE.LineBasicMaterial({
                 color: 0x00f0ff,
                 transparent: true,
                 opacity: 0.0
-              });
-              const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
-
-              globeGroup.add(lines);
-              layers.push(lineMaterial);
             });
+            const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
 
-            let isUserInteracting = false;
-            let resetTimer = null;
-            let autoRotate = true;
+            globeGroup.add(lines);
+            layers.push(lineMaterial);
+        });
 
-            function onInteractionStart() {
-              isUserInteracting = true;
-              autoRotate = false;
-              document.getElementById('status-val').innerText = "Active";
-              if (resetTimer) clearTimeout(resetTimer);
-            }
+        let isUserInteracting = false;
+        let resetTimer = null;
+        let autoRotate = true;
 
-            function onInteractionEnd() {
-              isUserInteracting = false;
-              if (resetTimer) clearTimeout(resetTimer);
+        function onInteractionStart() {
+            isUserInteracting = true;
+            autoRotate = false;
+            document.getElementById('status-val').innerText = "Active";
+            if (resetTimer) clearTimeout(resetTimer);
+        }
 
-              resetTimer = setTimeout(() => {
+        function onInteractionEnd() {
+            isUserInteracting = false;
+            if (resetTimer) clearTimeout(resetTimer);
+
+            resetTimer = setTimeout(() => {
                 document.getElementById('status-val').innerText = "Resetting...";
-              }, 5000);
+            }, 5000);
+        }
+
+        controls.addEventListener('start', onInteractionStart);
+        controls.addEventListener('end', onInteractionEnd);
+
+        window.addEventListener('touchstart', onInteractionStart, { passive: true });
+        window.addEventListener('touchend', onInteractionEnd, { passive: true });
+        window.addEventListener('mousedown', onInteractionStart);
+        window.addEventListener('mouseup', onInteractionEnd);
+
+        const statusEl = document.getElementById('status-val');
+        const gridCountEl = document.getElementById('grid-count');
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (autoRotate && !isUserInteracting) {
+                globeGroup.rotation.y += 0.0008;
             }
 
-            controls.addEventListener('start', onInteractionStart);
-            controls.addEventListener('end', onInteractionEnd);
-
-            window.addEventListener('touchstart', onInteractionStart, { passive: true });
-            window.addEventListener('touchend', onInteractionEnd, { passive: true });
-            window.addEventListener('mousedown', onInteractionStart);
-            window.addEventListener('mouseup', onInteractionEnd);
-
-            const statusEl = document.getElementById('status-val');
-
-            function animate() {
-              requestAnimationFrame(animate);
-
-              if (autoRotate && !isUserInteracting) {
-                globeGroup.rotation.y += 0.0008;
-              }
-
-              if (!isUserInteracting && statusEl.innerText === "Resetting...") {
+            if (!isUserInteracting && statusEl.innerText === "Resetting...") {
                 camera.position.lerp(INITIAL_CAM_POS, 0.05);
-                controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.05);
+                controls.target.lerp(new THREE.Vector3(0, GLOBE_OFFSET_Y, 0), 0.05);
                 globeGroup.rotation.x *= 0.95;
                 globeGroup.rotation.z *= 0.95;
 
                 if (camera.position.distanceTo(INITIAL_CAM_POS) < 0.02) {
-                  autoRotate = true;
-                  statusEl.innerText = "Active (Auto-Rotating)";
+                    autoRotate = true;
+                    statusEl.innerText = "Active (Auto-Rotating)";
                 }
-              }
-
-              const distance = camera.position.distanceTo(globeGroup.position);
-
-              const speedScale = Math.max(0.015, (distance / 6.45));
-              controls.rotateSpeed = 0.25 * speedScale;
-              controls.panSpeed = 0.04 * speedScale;
-
-              controls.update();
-
-              // Sharp & Clean LOD Cross-Fading (No line overlapping)
-              if (distance >= 4.8) {
-                setOpacities([0.9, 0, 0, 0, 0]);
-              } else if (distance < 4.8 && distance >= 3.2) {
-                let t = (4.8 - distance) / 1.6;
-                setOpacities([0.9 * (1 - t), 0.9 * t, 0, 0, 0]);
-              } else if (distance < 3.2 && distance >= 2.0) {
-                let t = (3.2 - distance) / 1.2;
-                setOpacities([0, 0.9 * (1 - t), 0.9 * t, 0, 0]);
-              } else if (distance < 2.0 && distance >= 1.3) {
-                let t = (2.0 - distance) / 0.7;
-                setOpacities([0, 0, 0.9 * (1 - t), 0.9 * t, 0]);
-              } else {
-                let t = Math.min(1.0, (1.3 - distance) / 0.28);
-                setOpacities([0, 0, 0, 0.9 * (1 - t), 0.9 * t]);
-              }
-
-              renderer.render(scene, camera);
             }
 
-            function setOpacities(opArray) {
-              for (let i = 0; i < layers.length; i++) {
+            const distance = camera.position.distanceTo(globeGroup.position);
+
+            const speedScale = Math.max(0.015, (distance / 4.6));
+            controls.rotateSpeed = 0.25 * speedScale;
+            controls.panSpeed = 0.04 * speedScale;
+
+            controls.update();
+
+            if (distance >= 4.3) {
+                setOpacities([1.0, 0, 0, 0, 0, 0]);
+                gridCountEl.innerText = "1,000 Grids";
+            } else if (distance < 4.3 && distance >= 3.1) {
+                let t = (4.3 - distance) / 1.2;
+                setOpacities([1.0 * (1 - t), 1.0 * t, 0, 0, 0, 0]);
+                gridCountEl.innerText = "4,000 Grids";
+            } else if (distance < 3.1 && distance >= 2.3) {
+                let t = (3.1 - distance) / 0.8;
+                setOpacities([0, 1.0 * (1 - t), 1.0 * t, 0, 0, 0]);
+                gridCountEl.innerText = "16,000 Grids";
+            } else if (distance < 2.3 && distance >= 1.8) {
+                let t = (2.3 - distance) / 0.5;
+                setOpacities([0, 0, 1.0 * (1 - t), 1.0 * t, 0, 0]);
+                gridCountEl.innerText = "64,000 Grids";
+            } else if (distance < 1.8 && distance >= 1.55) {
+                let t = (1.8 - distance) / 0.25;
+                setOpacities([0, 0, 0, 1.0 * (1 - t), 1.0 * t, 0]);
+                gridCountEl.innerText = "256,000 Grids";
+            } else {
+                let t = Math.min(1.0, (1.55 - distance) / 0.2);
+                setOpacities([0, 0, 0, 0, 1.0 * (1 - t), 1.0 * t]);
+                gridCountEl.innerText = "1,000,000 Grids (Exact 10 Lakh)";
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function setOpacities(opArray) {
+            for (let i = 0; i < layers.length; i++) {
                 layers[i].opacity = opArray[i];
-              }
             }
+        }
 
-            window.addEventListener('resize', () => {
-              camera.aspect = window.innerWidth / window.innerHeight;
-              camera.updateProjectionMatrix();
-              renderer.setSize(window.innerWidth, window.innerHeight);
-            });
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
-            animate();
+        animate();
     </script>
 </body>
 </html>
