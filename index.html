@@ -10,7 +10,6 @@
 
     <header>
         <div class="logo">buysecond.in</div>
-        <!-- Terms & Conditions Clickable Link -->
         <a href="#" class="terms-link" id="openTerms">Terms & Conditions</a>
     </header>
 
@@ -41,11 +40,65 @@
         </div>
 
         <div class="slot-action-container">
-            <button class="slot-btn" onclick="alert('Buy Your Slot clicked!')">
+            <button class="slot-btn" id="openSlotModal">
                 Buy Your Slot →
             </button>
         </div>
 
+    </div>
+
+    <!-- Buy Slot Modal Form -->
+    <div id="slotModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeSlotModal">&times;</span>
+            <h2 class="modal-main-title">Book Your Advertising Slot</h2>
+
+            <form id="slotForm">
+                <!-- 1. Video/Image Upload -->
+                <div class="form-group">
+                    <label>1. विज्ञापन फाइल अपलोड करें (Video / Image File):</label>
+                    <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required>
+                    <small>सिर्फ .mp4, .jpg, या .png फाइल मान्य हैं।</small>
+                </div>
+
+                <!-- 2. Target URL -->
+                <div class="form-group">
+                    <label>2. डेस्टिनेशन लिंक (Target URL):</label>
+                    <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required>
+                </div>
+
+                <!-- 3. Date and Time Selection for Slot -->
+                <div class="form-group">
+                    <label>3. तारीख और समय चुनें (Slot Date & Time):</label>
+                    <input type="datetime-local" id="slotDateTime" required>
+                    <small>वह तारीख और समय चुनें जब आप अपना विज्ञापन लाइव दिखाना चाहते हैं।</small>
+                </div>
+
+                <!-- 4. Duration Selection (₹10/sec, no upper limit) -->
+                <div class="form-group">
+                    <label>4. टाइम स्लॉट की अवधि (Duration in Seconds - ₹10/sec):</label>
+                    <input type="number" id="durationInput" min="1" value="30" placeholder="Enter seconds (e.g. 1, 10, 1000...)" required>
+                    <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹300</span></div>
+                </div>
+
+                <!-- 5. Ad Title / Brand Name -->
+                <div class="form-group">
+                    <label>5. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
+                    <input type="text" id="adTitle" placeholder="जैसे: अपनी कंपनी या ब्रांड का नाम लिखें" required>
+                </div>
+
+                <!-- 6. Warning & No-Refund Checkbox -->
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="warningCheckbox" required>
+                    <label for="warningCheckbox">
+                        मैं जानता हूँ कि अगर एआई (AI) या ओनर ने अश्लीलता या नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट किया, तो मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
+                    </label>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="slot-btn pay-btn" id="payButton" disabled>Proceed to Secure Payment</button>
+            </form>
+        </div>
     </div>
 
     <!-- Terms & Conditions Modal Popup -->
@@ -53,7 +106,7 @@
         <div class="modal-content">
             <span class="close-btn" id="closeTerms">&times;</span>
 
-            <h2>Terms & Conditions for Advertisers</h2>
+            <h2 class="modal-main-title">Terms & Conditions for Advertisers</h2>
             <p><strong>Content Guidelines & AI Screening:</strong> Every video or image uploaded to buysecond.in will undergo an automatic AI security scan and final review by the Owner. We strictly prohibit any content containing nudity, adult material, violence, hate speech, political controversy, or illegal substances.</p>
             <p><strong>Strict No-Refund Policy:</strong> By checking the box and proceeding to payment, you fully agree that if your content violates our community guidelines and is rejected during the manual or AI review, YOUR AMOUNT WILL BE FORFEITED IMMEDIATELY AND NO REFUND WILL BE ISSUED. The amount is kept as a penalty for attempting to upload banned content.</p>
             <p><strong>Historical Record (Archive):</strong> Once your approved slot is broadcasted live, a copy of the screen containing your video, the website watermark, and the owner's branding will be saved in our "History/Archive" section forever. buysecond.in reserves the right to host and display this archive publicly.</p>
@@ -61,11 +114,11 @@
 
             <hr style="border: 0.5px solid #1f293d; margin: 20px 0;">
 
-            <h2>विज्ञापनदाताओं के लिए नियम एवं शर्तें</h2>
-            <p><strong>सामग्री दिशानिर्देश और एआई स्क्रीनिंग:</strong> buysecond.in पर अपलोड किया जाने वाला प्रत्येक वीडियो या इमेज पहले ऑटोमैटिक एआई (AI) सुरक्षा स्कैन और फिर ओनर के फाइनल रिव्यू से गुज़रेगा। हमारी वेबसाइट पर अश्लीलता (Nudity), हिंसा, नफरत फैलाने वाले भाषण (Hate Speech), राजनीतिक विवाद या किसी भी गैरकानूनी सामग्री को दिखाना सख्त मना है।</p>
-            <p><strong>सख्त नो-रिफंड पॉलिसी (कोई पैसा वापस नहीं होगा):</strong> पेमेंट बटन दबाने से पहले आप पूरी तरह इस बात से सहमत होते हैं कि यदि आपका वीडियो हमारे नियमों के खिलाफ पाया गया और रिव्यू में रिजेक्ट हो गया, तो आपका पैसा तुरंत जब्त कर लिया जाएगा और कोई भी रिफंड नहीं दिया जाएगा। यह राशि प्रतिबंधित कंटेंट अपलोड करने के प्रयास के जुर्माने के रूप में रख ली जाएगी।</p>
-            <p><strong>ऐतिहासिक रिकॉर्ड (आर्काइव):</strong> एक बार जब आपका स्वीकृत विज्ञापन लाइव चल जाएगा, तो आपकी वीडियो स्क्रीन, वेबसाइट के वॉटरमार्क और ओनर की ब्रांडिंग के साथ उस पल का रिकॉर्ड हमेशा के लिए हमारे "इतिहास (Archive)" सेक्शन में सुरक्षित कर दिया जाएगा। buysecond.in के पास इस रिकॉर्ड को सार्वजनिक रूप से दिखाने का पूरा अधिकार है।</p>
-            <p><strong>प्लेटफ़ॉर्म का अधिकार:</strong> यदि कोई विज्ञापन स्वीकृत होने के बाद भी सुरक्षा मानकों का उल्लंघन करता पाया जाता है, तो ओनर के पास उसे किसी भी समय हटाने या रोकने का पूरा अधिकार सुरक्षित है。</p>
+            <h2 class="modal-main-title">विज्ञापनदाताओं के लिए नियम एवं शर्तें</h2>
+            <p><strong>सामग्री दिशानिर्देश और एआई स्क्रीनिंग (Content Guidelines & AI Screening):</strong> buysecond.in पर अपलोड किया जाने वाला प्रत्येक वीडियो या इमेज पहले ऑटोमैटिक एआई (AI) सुरक्षा स्कैन और फिर ओनर के फाइनल रिव्यू से गुज़रेगा। हमारी वेबसाइट पर अश्लीलता (Nudity), हिंसा, नफरत फैलाने वाले भाषण (Hate Speech), राजनीतिक विवाद या किसी भी गैरकानूनी सामग्री को दिखाना सख्त मना है।</p>
+            <p><strong>सख्त नो-रिफंड पॉलिसी - कोई पैसा वापस नहीं होगा (Strict No-Refund Policy):</strong> पेमेंट बटन दबाने से पहले आप पूरी तरह इस बात से सहमत होते हैं कि यदि आपका वीडियो हमारे नियमों के खिलाफ पाया गया और रिव्यू में रिजेक्ट हो गया, तो आपका पैसा तुरंत जब्त कर लिया जाएगा और कोई भी रिफंड नहीं दिया जाएगा। यह राशि प्रतिबंधित कंटेंट अपलोड करने के प्रयास के जुर्माने के रूप में रख ली जाएगी।</p>
+            <p><strong>ऐतिहासिक रिकॉर्ड - आर्काइव (Historical Record / Archive):</strong> एक बार जब आपका स्वीकृत विज्ञापन लाइव चल जाएगा, तो आपकी वीडियो स्क्रीन, वेबसाइट के वॉटरमार्क और ओनर की ब्रांडिंग के साथ उस पल का रिकॉर्ड हमेशा के लिए हमारे "इतिहास (Archive)" सेक्शन में सुरक्षित कर दिया जाएगा। buysecond.in के पास इस रिकॉर्ड को सार्वजनिक रूप से दिखाने का पूरा अधिकार है।</p>
+            <p><strong>प्लेटफ़ॉर्म का अधिकार (Platform Right):</strong> यदि कोई विज्ञापन स्वीकृत होने के बाद भी सुरक्षा मानकों का उल्लंघन करता पाया जाता है, तो ओनर के पास उसे किसी भी समय हटाने या रोकने का पूरा अधिकार सुरक्षित है।</p>
         </div>
     </div>
 

@@ -69,6 +69,7 @@ header {
 
     .warning-banner span {
         color: #f59e0b;
+        font-weight: 700;
     }
 
 .billboard {
@@ -127,12 +128,14 @@ header {
     letter-spacing: 1px;
     color: #ffffff;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    font-weight: 700;
 }
 
 .billboard-content h2 {
     font-size: 28px;
     line-height: 1.3;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    font-weight: 700;
 }
 
 .billboard-content p {
@@ -155,6 +158,7 @@ header {
     margin-top: 5px;
     text-transform: uppercase;
     box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+    font-weight: 600;
 }
 
     .shop-btn:hover {
@@ -199,22 +203,33 @@ header {
     background: linear-gradient(135deg, #2563eb, #3b82f6);
     color: white;
     border: none;
-    padding: 10px 35px;
+    padding: 12px 35px;
     font-size: 18px;
     border-radius: 30px;
     cursor: pointer;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
     transition: all 0.3s ease;
     text-decoration: none;
+    font-weight: 600;
+    width: 100%;
 }
 
     .slot-btn:hover {
         background: linear-gradient(135deg, #1d4ed8, #2563eb);
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6);
+    }
+
+    .slot-btn:disabled {
+        background: #374151;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+        color: #9ca3af;
     }
 
 /* Modal Popup Styling */
@@ -237,26 +252,89 @@ header {
     padding: 30px;
     border: 1px solid #1f293d;
     width: 85%;
-    max-width: 800px;
+    max-width: 700px;
     border-radius: 12px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9);
     color: #d1d5db;
     position: relative;
-    max-height: 80vh;
+    max-height: 85vh;
     overflow-y: auto;
 }
 
-    .modal-content h2 {
-        color: #ffffff;
-        font-size: 20px;
-        margin-bottom: 15px;
-        font-weight: 600;
+.modal-main-title {
+    color: #ffffff;
+    font-size: 20px;
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.form-group {
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+    .form-group label {
+        font-size: 14px;
+        color: #e5e7eb;
+        font-weight: 500;
     }
 
-    .modal-content p {
+    .form-group input[type="text"],
+    .form-group input[type="url"],
+    .form-group input[type="number"],
+    .form-group input[type="datetime-local"],
+    .form-group input[type="file"],
+    .form-group select {
+        background-color: #121824;
+        border: 1px solid #1f293d;
+        padding: 10px 14px;
+        border-radius: 6px;
+        color: #ffffff;
         font-size: 14px;
-        line-height: 1.6;
-        margin-bottom: 12px;
+        outline: none;
+    }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: #3b82f6;
+        }
+
+    .form-group small {
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+.price-display {
+    font-size: 15px;
+    color: #34d399;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+.checkbox-group {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    background-color: #121824;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #1f293d;
+    margin-top: 10px;
+}
+
+    .checkbox-group input[type="checkbox"] {
+        margin-top: 3px;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+    .checkbox-group label {
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1.4;
+        color: #d1d5db;
     }
 
 .close-btn {
