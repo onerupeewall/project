@@ -1,366 +1,74 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Crown Layout 3D Globe</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #01040d;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none;
-        }
-
-        #canvas-container {
-            width: 100%;
-            height: 100%;
-            touch-action: none;
-        }
-
-        #ui-panel {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            color: #00f0ff;
-            background: rgba(2, 8, 20, 0.85);
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid #00f0ff55;
-            pointer-events: none;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
-            z-index: 10;
-        }
-
-        .stat {
-            font-size: 12px;
-            margin: 2px 0;
-            color: #88ccff;
-        }
-
-            .stat span {
-                font-weight: bold;
-                color: #00ffff;
-            }
-
-        /* Crown Cards Overlay - Centered and Larger */
-        #crown-container {
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 450px;
-            height: 340px;
-            z-index: 100;
-            pointer-events: none;
-        }
-
-        .card-img-direct {
-            position: absolute;
-            width: 150px; /* Bada size */
-            height: auto;
-            cursor: pointer;
-            pointer-events: auto;
-            user-select: none;
-            filter: drop-shadow(0px 8px 20px rgba(0, 0, 0, 0.8));
-            transition: transform 0.25s ease, filter 0.25s ease;
-        }
-
-            .card-img-direct:hover {
-                filter: drop-shadow(0px 12px 25px rgba(0, 240, 255, 0.6));
-            }
-
-        /* Crown Positions */
-        #gold-card {
-            top: 0px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 3;
-        }
-
-            #gold-card:hover {
-                transform: translateX(-50%) scale(1.1);
-            }
-
-        #silver-card {
-            top: 45px;
-            left: 10px;
-            transform: rotate(-10deg);
-            z-index: 2;
-        }
-
-            #silver-card:hover {
-                transform: rotate(-10deg) scale(1.1);
-            }
-
-        #bronze-card {
-            top: 45px;
-            right: 10px;
-            transform: rotate(10deg);
-            z-index: 2;
-        }
-
-            #bronze-card:hover {
-                transform: rotate(10deg) scale(1.1);
-            }
-
-        /* Mobile Scaling */
-        @media (max-width: 600px) {
-            #crown-container {
-                top: 20px;
-                width: 330px;
-                height: 180px;
-            }
-
-            .card-img-direct {
-                width: 110px; /* Mobile me bhi bada size */
-            }
-
-            #silver-card {
-                top: 35px;
-                left: 5px;
-            }
-
-            #bronze-card {
-                top: 35px;
-                right: 5px;
-            }
-        }
-    </style>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Second - buysecond.in</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="ui-panel">
-        <div style="font-weight: bold; color: #fff; margin-bottom: 2px;">3D GLOBE</div>
-        <div class="stat">Buyable Grids: <span id="grid-count">1,000 Grids</span></div>
-        <div class="stat">Status: <span id="status-val">Active</span></div>
-        <div class="stat">Selected Card: <span id="selected-card-val">None</span></div>
+    <header>
+        <div class="logo">buysecond.in</div>
+        <!-- Terms & Conditions Clickable Link -->
+        <a href="#" class="terms-link" id="openTerms">Terms & Conditions</a>
+    </header>
+
+    <div class="main-container">
+
+        <div class="warning-banner">
+            <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन (अशलील, हिंसा, खतरा फैलाना) का उल्लंघन करता है, तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड (Refund) नहीं होगा।
+        </div>
+
+        <div class="billboard">
+            <div class="billboard-content">
+                <div class="brand-title">boAt</div>
+                <h2>Bigger Sound.<br>Bolder You.</h2>
+                <p>
+                    <span>Powerful Bass</span>
+                    <span>Up to 42H Playtime</span>
+                    <span>IPX4 Water Resistant</span>
+                </p>
+                <button class="shop-btn" onclick="alert('Redirecting to shop...')">Shop Now →</button>
+            </div>
+        </div>
+
+        <div class="screen-footer">
+            <span id="timer-text">Next Video in: 15 Sec</span>
+            <button class="check-record-btn" onclick="alert('Opening Past Your Second Records...')">
+                Past Your Second (Check Record)
+            </button>
+        </div>
+
+        <div class="slot-action-container">
+            <button class="slot-btn" onclick="alert('Buy Your Slot clicked!')">
+                Buy Your Slot →
+            </button>
+        </div>
+
     </div>
 
-    <!-- Crown Cards Overlay Structure -->
-    <div id="crown-container">
-        <img id="silver-card" class="card-img-direct" src="silver-card.png" alt="Silver Card" onclick="selectCard('Silver')">
-        <img id="gold-card" class="card-img-direct" src="gold-card.png" alt="Gold Card" onclick="selectCard('Gold')">
-        <img id="bronze-card" class="card-img-direct" src="bronze-card.png" alt="Bronze Card" onclick="selectCard('Bronze')">
+    <!-- Terms & Conditions Modal Popup -->
+    <div id="termsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeTerms">&times;</span>
+
+            <h2>Terms & Conditions for Advertisers</h2>
+            <p><strong>Content Guidelines & AI Screening:</strong> Every video or image uploaded to buysecond.in will undergo an automatic AI security scan and final review by the Owner. We strictly prohibit any content containing nudity, adult material, violence, hate speech, political controversy, or illegal substances.</p>
+            <p><strong>Strict No-Refund Policy:</strong> By checking the box and proceeding to payment, you fully agree that if your content violates our community guidelines and is rejected during the manual or AI review, YOUR AMOUNT WILL BE FORFEITED IMMEDIATELY AND NO REFUND WILL BE ISSUED. The amount is kept as a penalty for attempting to upload banned content.</p>
+            <p><strong>Historical Record (Archive):</strong> Once your approved slot is broadcasted live, a copy of the screen containing your video, the website watermark, and the owner's branding will be saved in our "History/Archive" section forever. buysecond.in reserves the right to host and display this archive publicly.</p>
+            <p><strong>Platform Right:</strong> The owner reserves the absolute right to approve, reject, or pause any slot at any time if it is found to violate safety standards after approval.</p>
+
+            <hr style="border: 0.5px solid #1f293d; margin: 20px 0;">
+
+            <h2>विज्ञापनदाताओं के लिए नियम एवं शर्तें</h2>
+            <p><strong>सामग्री दिशानिर्देश और एआई स्क्रीनिंग:</strong> buysecond.in पर अपलोड किया जाने वाला प्रत्येक वीडियो या इमेज पहले ऑटोमैटिक एआई (AI) सुरक्षा स्कैन और फिर ओनर के फाइनल रिव्यू से गुज़रेगा। हमारी वेबसाइट पर अश्लीलता (Nudity), हिंसा, नफरत फैलाने वाले भाषण (Hate Speech), राजनीतिक विवाद या किसी भी गैरकानूनी सामग्री को दिखाना सख्त मना है।</p>
+            <p><strong>सख्त नो-रिफंड पॉलिसी (कोई पैसा वापस नहीं होगा):</strong> पेमेंट बटन दबाने से पहले आप पूरी तरह इस बात से सहमत होते हैं कि यदि आपका वीडियो हमारे नियमों के खिलाफ पाया गया और रिव्यू में रिजेक्ट हो गया, तो आपका पैसा तुरंत जब्त कर लिया जाएगा और कोई भी रिफंड नहीं दिया जाएगा। यह राशि प्रतिबंधित कंटेंट अपलोड करने के प्रयास के जुर्माने के रूप में रख ली जाएगी।</p>
+            <p><strong>ऐतिहासिक रिकॉर्ड (आर्काइव):</strong> एक बार जब आपका स्वीकृत विज्ञापन लाइव चल जाएगा, तो आपकी वीडियो स्क्रीन, वेबसाइट के वॉटरमार्क और ओनर की ब्रांडिंग के साथ उस पल का रिकॉर्ड हमेशा के लिए हमारे "इतिहास (Archive)" सेक्शन में सुरक्षित कर दिया जाएगा। buysecond.in के पास इस रिकॉर्ड को सार्वजनिक रूप से दिखाने का पूरा अधिकार है।</p>
+            <p><strong>प्लेटफ़ॉर्म का अधिकार:</strong> यदि कोई विज्ञापन स्वीकृत होने के बाद भी सुरक्षा मानकों का उल्लंघन करता पाया जाता है, तो ओनर के पास उसे किसी भी समय हटाने या रोकने का पूरा अधिकार सुरक्षित है。</p>
+        </div>
     </div>
 
-    <div id="canvas-container"></div>
-
-    <script>
-        function selectCard(cardType) {
-            document.getElementById('selected-card-val').innerText = cardType + " Card";
-        }
-
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-
-        const GLOBE_RADIUS = 1.35;
-
-        // Globe ko 3D space me neeche shift kiya gaya hai (y: -1.25)
-        const GLOBE_OFFSET_Y = -1.25;
-        const INITIAL_CAM_POS = new THREE.Vector3(0, GLOBE_OFFSET_Y, 4.6);
-
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.001, 1000);
-        camera.position.copy(INITIAL_CAM_POS);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        container.appendChild(renderer.domElement);
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.target.set(0, GLOBE_OFFSET_Y, 0); // Rotation Center set to Globe Position
-
-        controls.enableZoom = true;
-        controls.zoomSpeed = 0.6;
-
-        controls.minDistance = 1.5;
-        controls.maxDistance = 4.6;
-
-        controls.enablePan = true;
-        controls.screenSpacePanning = true;
-
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-        scene.add(ambientLight);
-
-        // Main Globe Group (Shifted Downwards)
-        const globeGroup = new THREE.Group();
-        globeGroup.position.y = GLOBE_OFFSET_Y;
-        scene.add(globeGroup);
-
-        // Globe Core
-        const coreGeo = new THREE.SphereGeometry(GLOBE_RADIUS - 0.001, 64, 64);
-        const coreMat = new THREE.MeshBasicMaterial({ color: 0x01040d });
-        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-        globeGroup.add(coreMesh);
-
-        // Grid Mesh
-        const BASE_LAT = 25;
-        const BASE_LON = 40;
-        const MULTIPLIERS = [1, 2, 4, 8, 16, 32];
-        const layers = [];
-
-        MULTIPLIERS.forEach((mult) => {
-            const latDivs = BASE_LAT * mult;
-            const lonDivs = BASE_LON * mult;
-            const positions = [];
-
-            const skipLines = Math.max(1, Math.floor(latDivs * (3 / 25)));
-
-            for (let i = skipLines; i <= latDivs - skipLines; i++) {
-                const phi = (i / latDivs) * Math.PI;
-                const r = GLOBE_RADIUS * Math.sin(phi);
-                const y = GLOBE_RADIUS * Math.cos(phi);
-
-                for (let j = 0; j < lonDivs; j++) {
-                    const theta1 = (j / lonDivs) * Math.PI * 2;
-                    const theta2 = ((j + 1) / lonDivs) * Math.PI * 2;
-
-                    positions.push(
-                        r * Math.sin(theta1), y, r * Math.cos(theta1),
-                        r * Math.sin(theta2), y, r * Math.cos(theta2)
-                    );
-                }
-            }
-
-            for (let j = 0; j < lonDivs; j++) {
-                const theta = (j / lonDivs) * Math.PI * 2;
-                for (let i = skipLines; i < latDivs - skipLines; i++) {
-                    const phi1 = (i / latDivs) * Math.PI;
-                    const phi2 = ((i + 1) / latDivs) * Math.PI;
-
-                    positions.push(
-                        GLOBE_RADIUS * Math.sin(phi1) * Math.sin(theta), GLOBE_RADIUS * Math.cos(phi1), GLOBE_RADIUS * Math.sin(phi1) * Math.cos(theta),
-                        GLOBE_RADIUS * Math.sin(phi2) * Math.sin(theta), GLOBE_RADIUS * Math.cos(phi2), GLOBE_RADIUS * Math.sin(phi2) * Math.cos(theta)
-                    );
-                }
-            }
-
-            const lineGeometry = new THREE.BufferGeometry();
-            lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            const lineMaterial = new THREE.LineBasicMaterial({
-                color: 0x00f0ff,
-                transparent: true,
-                opacity: 0.0
-            });
-            const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
-
-            globeGroup.add(lines);
-            layers.push(lineMaterial);
-        });
-
-        let isUserInteracting = false;
-        let resetTimer = null;
-        let autoRotate = true;
-
-        function onInteractionStart() {
-            isUserInteracting = true;
-            autoRotate = false;
-            document.getElementById('status-val').innerText = "Active";
-            if (resetTimer) clearTimeout(resetTimer);
-        }
-
-        function onInteractionEnd() {
-            isUserInteracting = false;
-            if (resetTimer) clearTimeout(resetTimer);
-
-            resetTimer = setTimeout(() => {
-                document.getElementById('status-val').innerText = "Resetting...";
-            }, 5000);
-        }
-
-        controls.addEventListener('start', onInteractionStart);
-        controls.addEventListener('end', onInteractionEnd);
-
-        window.addEventListener('touchstart', onInteractionStart, { passive: true });
-        window.addEventListener('touchend', onInteractionEnd, { passive: true });
-        window.addEventListener('mousedown', onInteractionStart);
-        window.addEventListener('mouseup', onInteractionEnd);
-
-        const statusEl = document.getElementById('status-val');
-        const gridCountEl = document.getElementById('grid-count');
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (autoRotate && !isUserInteracting) {
-                globeGroup.rotation.y += 0.0008;
-            }
-
-            if (!isUserInteracting && statusEl.innerText === "Resetting...") {
-                camera.position.lerp(INITIAL_CAM_POS, 0.05);
-                controls.target.lerp(new THREE.Vector3(0, GLOBE_OFFSET_Y, 0), 0.05);
-                globeGroup.rotation.x *= 0.95;
-                globeGroup.rotation.z *= 0.95;
-
-                if (camera.position.distanceTo(INITIAL_CAM_POS) < 0.02) {
-                    autoRotate = true;
-                    statusEl.innerText = "Active (Auto-Rotating)";
-                }
-            }
-
-            const distance = camera.position.distanceTo(globeGroup.position);
-
-            const speedScale = Math.max(0.015, (distance / 4.6));
-            controls.rotateSpeed = 0.25 * speedScale;
-            controls.panSpeed = 0.04 * speedScale;
-
-            controls.update();
-
-            if (distance >= 4.3) {
-                setOpacities([1.0, 0, 0, 0, 0, 0]);
-                gridCountEl.innerText = "1,000 Grids";
-            } else if (distance < 4.3 && distance >= 3.1) {
-                let t = (4.3 - distance) / 1.2;
-                setOpacities([1.0 * (1 - t), 1.0 * t, 0, 0, 0, 0]);
-                gridCountEl.innerText = "4,000 Grids";
-            } else if (distance < 3.1 && distance >= 2.3) {
-                let t = (3.1 - distance) / 0.8;
-                setOpacities([0, 1.0 * (1 - t), 1.0 * t, 0, 0, 0]);
-                gridCountEl.innerText = "16,000 Grids";
-            } else if (distance < 2.3 && distance >= 1.8) {
-                let t = (2.3 - distance) / 0.5;
-                setOpacities([0, 0, 1.0 * (1 - t), 1.0 * t, 0, 0]);
-                gridCountEl.innerText = "64,000 Grids";
-            } else if (distance < 1.8 && distance >= 1.55) {
-                let t = (1.8 - distance) / 0.25;
-                setOpacities([0, 0, 0, 1.0 * (1 - t), 1.0 * t, 0]);
-                gridCountEl.innerText = "256,000 Grids";
-            } else {
-                let t = Math.min(1.0, (1.55 - distance) / 0.2);
-                setOpacities([0, 0, 0, 0, 1.0 * (1 - t), 1.0 * t]);
-                gridCountEl.innerText = "1,000,000 Grids (Exact 10 Lakh)";
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        function setOpacities(opArray) {
-            for (let i = 0; i < layers.length; i++) {
-                layers[i].opacity = opArray[i];
-            }
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        animate();
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
