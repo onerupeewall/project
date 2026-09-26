@@ -1,149 +1,214 @@
-// Toggle Dropdown Function
-function toggleDropdown(listId, event) {
-    event.stopPropagation();
-    const list = document.getElementById(listId);
-    document.querySelectorAll('.custom-dropdown-list').forEach(l => {
-        if (l !== list) l.style.display = 'none';
+// --- SUPABASE CONFIGURATION ---
+const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co';     // Yahan apna Supabase URL dalein
+const SUPABASE_ANON_KEY = 'sb_publishable_W8ttckZLmLeYTq8CTxTkCg_F3cJ90n4'; // Yahan apni Supabase Anon Key dalein
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Modal Management
+const slotModal = document.getElementById('slotModal');
+const openSlotModal = document.getElementById('openSlotModal');
+const closeSlotModal = document.getElementById('closeSlotModal');
+
+if (openSlotModal && slotModal) {
+    openSlotModal.addEventListener('click', () => {
+        slotModal.style.display = 'block';
     });
-    list.style.display = list.style.display === 'block' ? 'none' : 'block';
 }
 
-function selectValue(inputId, val, listId) {
-    document.getElementById(inputId).value = val;
-    document.getElementById(listId).style.display = 'none';
+if (closeSlotModal && slotModal) {
+    closeSlotModal.addEventListener('click', () => {
+        slotModal.style.display = 'none';
+    });
 }
 
-window.addEventListener('click', () => {
-    document.querySelectorAll('.custom-dropdown-list').forEach(l => l.style.display = 'none');
-});
-
-// Checkbox enabling script fix
-const warningCheckbox = document.getElementById('warningCheckbox');
-const payButton = document.getElementById('payButton');
-
-warningCheckbox.addEventListener('change', function () {
-    if (this.checked) {
-        payButton.removeAttribute('disabled');
-        payButton.style.opacity = '1';
-        payButton.style.cursor = 'pointer';
-    } else {
-        payButton.setAttribute('disabled', 'true');
-        payButton.style.opacity = '0.6';
-        payButton.style.cursor = 'not-allowed';
-    }
-});
-
-payButton.style.opacity = '0.6';
-payButton.style.cursor = 'not-allowed';
-
-// Dynamic Price Calculation
-const durationInput = document.getElementById('durationInput');
-const totalAmount = document.getElementById('totalAmount');
-
-durationInput.addEventListener('input', function () {
-    let val = parseInt(this.value) || 0;
-    totalAmount.textContent = '₹' + (val * 10);
-});
-
-// Shuruat mein global users data bilkul khali (zero) rahega
-let globalUsersData = {};
-
-function renderGlobalUsers() {
-    const countryListEl = document.getElementById('countryList');
-    const totalGlobalCountEl = document.getElementById('totalGlobalCount');
-
-    countryListEl.innerHTML = '';
-    let totalUsers = 0;
-
-    let hasData = false;
-    for (let country in globalUsersData) {
-        hasData = true;
-        let data = globalUsersData[country];
-        totalUsers += data.count;
-
-        let item = document.createElement('div');
-        item.className = 'country-item';
-        // Number ke just pehle 'Users' likha hoga aur rang white hoga
-        item.innerHTML = `
-            <div class="country-name">
-                <span>${data.flag}</span> ${country}
-            </div>
-            <div class="country-count">Users ${data.count.toLocaleString()}</div>
-        `;
-        countryListEl.appendChild(item);
-    }
-
-    // Agar koi data nahi hai toh list mein message ya khali rakhein
-    if (!hasData) {
-        countryListEl.innerHTML = '<div style="color: #6b7280; font-size: 13px; text-align: center; padding: 6px;">No active country slots yet.</div>';
-    }
-
-    totalGlobalCountEl.textContent = totalUsers.toLocaleString();
-}
-
-// Initial render (0 total count ke saath)
-renderGlobalUsers();
-
-// Form Submission & Live Slot / Counter Update Logic
-let countdownInterval = null;
-const slotForm = document.getElementById('slotForm');
-const timerText = document.getElementById('timer-text');
-const modal = document.getElementById('slotModal');
-
-slotForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    let duration = parseInt(durationInput.value) || 10;
-    let selectedCountrySelect = document.getElementById('slotCountry');
-    let chosenCountry = selectedCountrySelect.value;
-    let chosenFlag = selectedCountrySelect.options[selectedCountrySelect.selectedIndex].getAttribute('data-flag');
-
-    // Country-wise count update ya add hoga
-    if (!globalUsersData[chosenCountry]) {
-        globalUsersData[chosenCountry] = { count: 1, flag: chosenFlag };
-    } else {
-        globalUsersData[chosenCountry].count += 1;
-    }
-
-    // Live update render
-    renderGlobalUsers();
-
-    // Close modal
-    modal.style.display = 'none';
-
-    if (countdownInterval) clearInterval(countdownInterval);
-
-    let timeLeft = duration;
-    timerText.textContent = `Next Video in: ${timeLeft} Sec`;
-
-    countdownInterval = setInterval(() => {
-        timeLeft--;
-        if (timeLeft >= 0) {
-            timerText.textContent = `Next Video in: ${timeLeft} Sec`;
-        } else {
-            clearInterval(countdownInterval);
-            timerText.textContent = `Next Video in: 0 Sec`;
-        }
-    }, 1000);
-
-    alert(`Slot booked successfully from ${chosenCountry}! Counter updated live.`);
-});
-
-// Modal triggers
-const openBtn = document.getElementById('openSlotModal');
-const closeBtn = document.getElementById('closeSlotModal');
-
-openBtn.onclick = () => modal.style.display = 'block';
-closeBtn.onclick = () => modal.style.display = 'none';
-
+// Terms Modal
 const termsModal = document.getElementById('termsModal');
 const openTerms = document.getElementById('openTerms');
 const closeTerms = document.getElementById('closeTerms');
 
-openTerms.onclick = (e) => { e.preventDefault(); termsModal.style.display = 'block'; };
-closeTerms.onclick = () => termsModal.style.display = 'none';
+if (openTerms && termsModal) {
+    openTerms.addEventListener('click', (e) => {
+        e.preventDefault();
+        termsModal.style.display = 'block';
+    });
+}
 
-window.onclick = (event) => {
-    if (event.target == modal) modal.style.display = 'none';
-    if (event.target == termsModal) termsModal.style.display = 'none';
-};
+if (closeTerms && termsModal) {
+    closeTerms.addEventListener('click', () => {
+        termsModal.style.display = 'none';
+    });
+}
+
+// Close modals on outside click
+window.addEventListener('click', (e) => {
+    if (e.target === slotModal) slotModal.style.display = 'none';
+    if (e.target === termsModal) termsModal.style.display = 'none';
+});
+
+// Country Dropdown Toggle
+function toggleDropdown(id, event) {
+    event.stopPropagation();
+    const list = document.getElementById(id);
+    if (list) {
+        list.style.display = list.style.display === 'block' ? 'none' : 'block';
+    }
+}
+
+function selectCountry(countryName, flag) {
+    document.getElementById('slotCountryDisplay').value = flag + ' ' + countryName;
+    document.getElementById('slotCountry').value = countryName;
+    document.getElementById('countryDropdownList').style.display = 'none';
+}
+
+// Duration & Total Amount Calculation
+const durationInput = document.getElementById('durationInput');
+const totalAmount = document.getElementById('totalAmount');
+if (durationInput && totalAmount) {
+    durationInput.addEventListener('input', () => {
+        let val = parseInt(durationInput.value) || 0;
+        totalAmount.innerText = '₹' + (val * 10);
+    });
+}
+
+// Second Dropdown Open/Close Toggle & Database Fetch Logic
+const secondDisplay = document.getElementById('slotSecondDisplay');
+const secondDropdown = document.getElementById('secondDropdownList');
+const hiddenSecondInput = document.getElementById('slotSecond');
+
+if (secondDisplay && secondDropdown) {
+    secondDisplay.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const date = document.getElementById('slotDate').value;
+        const hour = document.getElementById('slotHour').value;
+        const minute = document.getElementById('slotMinute').value;
+
+        if (!date || !hour || !minute) {
+            alert('कृपया पहले तारीख (Date), घंटा (Hour), और मिनट (Minute) भरें!');
+            return;
+        }
+
+        await populateSecondsDropdown(date, hour, minute);
+        secondDropdown.style.display = secondDropdown.style.display === 'block' ? 'none' : 'block';
+    });
+}
+
+// Hide dropdowns when clicking outside
+window.addEventListener('click', () => {
+    if (secondDropdown) secondDropdown.style.display = 'none';
+    const countryList = document.getElementById('countryDropdownList');
+    if (countryList) countryList.style.display = 'none';
+});
+
+async function populateSecondsDropdown(date, hour, minute) {
+    secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #9ca3af; font-size: 13px;">Loading booked seconds...</div>';
+
+    // Supabase table se booked slots fetch karna
+    const { data: bookedSlots, error } = await supabaseClient
+        .from('booked_slots')
+        .select('*')
+        .eq('slot_date', date)
+        .eq('slot_hour', hour)
+        .eq('slot_minute', minute);
+
+    if (error) {
+        console.error('Error fetching booked slots:', error);
+        secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #ef4444; font-size: 13px;">Error loading slots</div>';
+        return;
+    }
+
+    secondDropdown.innerHTML = '';
+    let bookedSecondsInThisMinute = [];
+
+    if (bookedSlots) {
+        bookedSlots.forEach(slot => {
+            for (let i = 0; i < slot.duration; i++) {
+                let sec = parseInt(slot.start_second) + i;
+                if (sec <= 59) bookedSecondsInThisMinute.push(sec);
+            }
+        });
+    }
+
+    for (let i = 0; i < 60; i++) {
+        let secStr = i < 10 ? '0' + i : '' + i;
+        let item = document.createElement('div');
+        item.innerText = secStr;
+        item.style.padding = '8px 10px';
+        item.style.fontSize = '13px';
+        item.style.cursor = 'pointer';
+
+        if (bookedSecondsInThisMinute.includes(i)) {
+            item.style.color = '#6b7280'; // Grey / Un-highlighted for booked seconds
+            item.style.backgroundColor = '#1e293b';
+            item.style.cursor = 'not-allowed';
+            item.title = 'This second is already booked!';
+        } else {
+            item.style.color = '#ffffff'; // Highlighted for available seconds
+            item.style.backgroundColor = 'transparent';
+
+            item.onmouseover = () => item.style.backgroundColor = '#334155';
+            item.onmouseout = () => item.style.backgroundColor = 'transparent';
+
+            item.onclick = () => {
+                secondDisplay.value = secStr;
+                hiddenSecondInput.value = secStr;
+                secondDropdown.style.display = 'none';
+            };
+        }
+
+        secondDropdown.appendChild(item);
+    }
+}
+
+// Form Submit & Saving to Supabase Database
+const slotForm = document.getElementById('slotForm');
+if (slotForm) {
+    slotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const date = document.getElementById('slotDate').value;
+        const hour = document.getElementById('slotHour').value;
+        const minute = document.getElementById('slotMinute').value;
+        const startSecond = hiddenSecondInput.value;
+        const duration = parseInt(durationInput.value) || 10;
+        const targetUrl = document.getElementById('targetUrl').value;
+        const adTitle = document.getElementById('adTitle').value;
+
+        if (!startSecond) {
+            alert('कृपया कोई उपलब्ध सेकंड (Second) चुनें!');
+            return;
+        }
+
+        // Supabase table mein data insert karna
+        const { data, error } = await supabaseClient
+            .from('booked_slots')
+            .insert([
+                {
+                    slot_date: date,
+                    slot_hour: hour,
+                    slot_minute: minute,
+                    start_second: startSecond,
+                    duration: duration,
+                    target_url: targetUrl,
+                    ad_title: adTitle
+                }
+            ]);
+
+        if (error) {
+            alert('Booking failed: ' + error.message);
+            console.error(error);
+        } else {
+            alert('Slot successfully booked and saved to database! Redirecting to payment...');
+            slotModal.style.display = 'none';
+            slotForm.reset();
+            secondDisplay.value = '';
+        }
+    });
+}
+
+// Enable/disable pay button based on warning checkbox
+const warningCheckbox = document.getElementById('warningCheckbox');
+const payButton = document.getElementById('payButton');
+if (warningCheckbox && payButton) {
+    warningCheckbox.addEventListener('change', () => {
+        payButton.disabled = !warningCheckbox.checked;
+    });
+}

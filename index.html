@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buy Second - buysecond.in</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -53,117 +55,85 @@
             <div class="global-header">
                 👥 TOTAL GLOBAL USERS: <span id="totalGlobalCount">0</span>
             </div>
-            <div class="country-list" id="countryList">
-                <!-- Shuruat mein yahan 0 / khali rahega -->
-            </div>
+            <div class="country-list" id="countryList"></div>
         </div>
 
     </div>
 
     <!-- Buy Slot Modal Form -->
-    <div id="slotModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" id="closeSlotModal">&times;</span>
-            <h2 class="modal-main-title">Book Your Advertising Slot</h2>
+    <div id="slotModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow-y: auto; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px);">
+        <div style="background-color: #0b0f17; margin: 40px auto; padding: 25px; border: 1px solid #1f293d; width: 90%; max-width: 650px; border-radius: 12px; color: #d1d5db; position: relative; display: flex; flex-direction: column; gap: 15px;">
+            <span id="closeSlotModal" style="color: #9ca3af; position: absolute; right: 20px; top: 15px; font-size: 28px; font-weight: bold; cursor: pointer; z-index: 10;">&times;</span>
+            <h2 style="color: #ffffff; font-size: 20px; margin-bottom: 5px; font-weight: 700;">Book Your Advertising Slot</h2>
 
-            <form id="slotForm">
-                <div class="form-group">
-                    <label>1. विज्ञापन फाइल अपलोड करें (Video / Image File):</label>
-                    <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required>
-                    <small>सिर्फ .mp4, .jpg, या .png फाइल मान्य हैं।</small>
+            <form id="slotForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                    <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">1. विज्ञापन फाइल अपलोड करें (Video / Image File):</label>
+                    <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%; outline: none;">
+                    <small style="font-size: 12px; color: #9ca3af;">सिर्फ .mp4, .jpg, या .png फाइल मान्य हैं।</small>
                 </div>
 
-                <div class="form-group">
-                    <label>2. डेस्टिनेशन लिंक (Target URL):</label>
-                    <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required>
+                <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                    <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">2. डेस्टिनेशन लिंक (Target URL):</label>
+                    <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%; outline: none;">
                 </div>
 
-                <div class="form-group">
-                    <label>3. अपना देश चुनें (Select Country):</label>
-                    <select id="slotCountry" required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%;">
-                        <option value="India" data-flag="🇮🇳">🇮🇳 India</option>
-                        <option value="America" data-flag="🇺🇸">🇺🇸 America (USA)</option>
-                        <option value="UK" data-flag="🇬🇧">🇬🇧 UK</option>
-                        <option value="Japan" data-flag="🇯🇵">🇯🇵 Japan</option>
-                        <option value="Canada" data-flag="🇨🇦">🇨🇦 Canada</option>
-                        <option value="Australia" data-flag="🇦🇺">🇦🇺 Australia</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>4. तारीख, घंटा, मिनट और सेकंड चुनें (Slot Date, Hour, Min & Sec):</label>
-                    <div class="datetime-group" style="margin-top: 5px;">
-                        <input type="date" id="slotDate" style="flex: 2.2;" required>
-
-                        <div class="custom-input-wrap" style="flex: 1;">
-                            <input type="text" id="slotHour" placeholder="HH" maxlength="2" autocomplete="off" required>
-                            <span class="dropdown-arrow" onclick="toggleDropdown('hourList', event)">▼</span>
-                            <div class="custom-dropdown-list" id="hourList">
-                                <script>
-                                                                        for(let i=1; i<=12; i++) {
-                                                                            let val = i < 10 ? '0' + i : i;
-                                                                            document.write(`<div class="custom-dropdown-item" onclick="selectValue('slotHour', '${val}', 'hourList')">${val}</div>`);
-                                                                        }
-                                </script>
-                            </div>
-                        </div>
-
-                        <div class="custom-input-wrap" style="flex: 1;">
-                            <input type="text" id="slotMinute" placeholder="MM" maxlength="2" autocomplete="off" required>
-                            <span class="dropdown-arrow" onclick="toggleDropdown('minList', event)">▼</span>
-                            <div class="custom-dropdown-list" id="minList">
-                                <script>
-                                                                        for(let i=0; i<60; i++) {
-                                                                            let val = i < 10 ? '0' + i : i;
-                                                                            document.write(`<div class="custom-dropdown-item" onclick="selectValue('slotMinute', '${val}', 'minList')">${val}</div>`);
-                                                                        }
-                                </script>
-                            </div>
-                        </div>
-
-                        <div class="custom-input-wrap" style="flex: 1;">
-                            <input type="text" id="slotSecond" placeholder="SS" maxlength="2" autocomplete="off" required>
-                            <span class="dropdown-arrow" onclick="toggleDropdown('secList', event)">▼</span>
-                            <div class="custom-dropdown-list" id="secList">
-                                <script>
-                                                                        for(let i=0; i<60; i++) {
-                                                                            let val = i < 10 ? '0' + i : i;
-                                                                            document.write(`<div class="custom-dropdown-item" onclick="selectValue('slotSecond', '${val}', 'secList')">${val}</div>`);
-                                                                        }
-                                </script>
-                            </div>
-                        </div>
-
-                        <div class="custom-input-wrap" style="flex: 0.8;">
-                            <input type="text" id="slotAmPm" value="PM" maxlength="2" autocomplete="off" required>
-                            <span class="dropdown-arrow" onclick="toggleDropdown('ampmList', event)">▼</span>
-                            <div class="custom-dropdown-list" id="ampmList">
-                                <div class="custom-dropdown-item" onclick="selectValue('slotAmPm', 'AM', 'ampmList')">AM</div>
-                                <div class="custom-dropdown-item" onclick="selectValue('slotAmPm', 'PM', 'ampmList')">PM</div>
-                            </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; width: 100%; position: relative;">
+                    <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">3. अपना देश चुनें (Type or Select Country):</label>
+                    <div style="position: relative; width: 100%;">
+                        <input type="text" id="slotCountryDisplay" placeholder="Type your country name (e.g. Japan, France...)" autocomplete="off" required style="width: 100%; background: #0f172a; border: 1px solid #334155; color: #ffffff; padding: 10px 30px 10px 10px; border-radius: 6px; font-size: 14px; outline: none;">
+                        <input type="hidden" id="slotCountry" value="India">
+                        <span onclick="toggleDropdown('countryDropdownList', event)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; font-size: 12px;">▼</span>
+                        <div class="custom-dropdown-list" id="countryDropdownList" style="position: absolute; top: 100%; left: 0; width: 100%; overflow-y: auto; background: #0f172a; border: 1px solid #334155; border-radius: 6px; z-index: 1000; display: none; max-height: 150px;">
+                            <div class="custom-dropdown-item" onclick="selectCountry('India', '🇮🇳')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇮🇳 India</div>
+                            <div class="custom-dropdown-item" onclick="selectCountry('America (USA)', '🇺🇸')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇺🇸 America (USA)</div>
+                            <div class="custom-dropdown-item" onclick="selectCountry('UK', '🇬🇧')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇬🇧 UK</div>
+                            <div class="custom-dropdown-item" onclick="selectCountry('Canada', '🇨🇦')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇨🇦 Canada</div>
+                            <div class="custom-dropdown-item" onclick="selectCountry('Australia', '🇦🇺')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇦🇺 Australia</div>
+                            <div class="custom-dropdown-item" onclick="selectCountry('Japan', '🇯🇵')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇯🇵 Japan</div>
+                            <div class="custom-dropdown-item" onclick="selectCountry('Germany', '🇩🇪')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇩🇪 Germany</div>
+                            <div class="custom-dropdown-item" onclick="selectCountry('France', '🇫🇷')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇫🇷 France</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>5. टाइम स्लॉट की अवधि (Duration & Price - ₹10/sec):</label>
-                    <input type="number" id="durationInput" min="1" value="10" placeholder="Enter duration in seconds..." required>
-                    <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹100</span></div>
+                <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                    <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">4. तारीख, घंटा, मिनट और सेकंड चुनें:</label>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%;">
+                        <input type="date" id="slotDate" style="flex: 2.2; background: #0f172a; border: 1px solid #334155; color: #ffffff; padding: 8px 10px; border-radius: 6px; font-size: 13px;" required>
+                        <input type="text" id="slotHour" placeholder="HH" maxlength="2" style="flex: 1; background: #0f172a; border: 1px solid #334155; color: #ffffff; padding: 8px; border-radius: 6px; font-size: 13px; text-align: center;" required>
+                        <input type="text" id="slotMinute" placeholder="MM" maxlength="2" style="flex: 1; background: #0f172a; border: 1px solid #334155; color: #ffffff; padding: 8px; border-radius: 6px; font-size: 13px; text-align: center;" required>
+
+                        <!-- Second Custom Dropdown Field -->
+                        <div style="flex: 1; position: relative;">
+                            <input type="text" id="slotSecondDisplay" placeholder="SS" readonly style="width: 100%; background: #0f172a; border: 1px solid #334155; color: #ffffff; padding: 8px; border-radius: 6px; font-size: 13px; text-align: center; cursor: pointer;" required>
+                            <input type="hidden" id="slotSecond" value="">
+                            <div id="secondDropdownList" style="position: absolute; top: 100%; left: 0; width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 6px; z-index: 1000; display: none; max-height: 150px; overflow-y: auto;"></div>
+                        </div>
+
+                        <input type="text" id="slotAmPm" value="PM" maxlength="2" style="flex: 0.8; background: #0f172a; border: 1px solid #334155; color: #ffffff; padding: 8px; border-radius: 6px; font-size: 13px; text-align: center;" required>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>6. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
-                    <input type="text" id="adTitle" placeholder="जैसे: अपनी कंपनी या ब्रांड का नाम लिखें" required>
+                <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                    <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">5. टाइम स्लॉट की अवधि (Duration & Price - ₹10/sec):</label>
+                    <input type="number" id="durationInput" min="1" value="10" placeholder="Enter duration in seconds..." required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%; outline: none;">
+                    <div style="font-size: 15px; color: #34d399; font-weight: 600; margin-top: 3px;">कुल रकम (Total Amount): <span id="totalAmount">₹100</span></div>
                 </div>
 
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="warningCheckbox" required>
-                    <label for="warningCheckbox">
-                        मैं जानता हूँ कि अगर एआई (AI) या ओनर ने अश्लीलता या नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट किया, तो मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
+                <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                    <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">6. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
+                    <input type="text" id="adTitle" placeholder="जैसे: अपनी कंपनी या ब्रांड का नाम लिखें" required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%; outline: none;">
+                </div>
+
+                <div style="display: flex; align-items: flex-start; gap: 10px; background-color: #121824; padding: 12px; border-radius: 6px; border: 1px solid #1f293d; margin-top: 5px;">
+                    <input type="checkbox" id="warningCheckbox" style="margin-top: 3px; width: 16px; height: 16px; cursor: pointer;" required>
+                    <label for="warningCheckbox" style="cursor: pointer; font-size: 13px; line-height: 1.4; color: #d1d5db;">
+                        मैं जानता हूँ कि अगर एआई (AI) या ओनर ने नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट किया, तो मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
                     </label>
                 </div>
 
-                <button type="submit" class="slot-btn pay-btn" id="payButton" disabled>Proceed to Secure Payment</button>
+                <button type="submit" class="slot-btn pay-btn" id="payButton" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border: none; padding: 12px 35px; font-size: 18px; border-radius: 30px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 5px;" disabled>Proceed to Secure Payment</button>
             </form>
         </div>
     </div>
@@ -174,37 +144,31 @@
             <span class="close-btn" id="closeTerms">&times;</span>
             <h2 class="modal-main-title">Terms & Conditions for Advertisers</h2>
             <div style="display: flex; flex-direction: column; gap: 16px; font-size: 14px; line-height: 1.6; color: #d1d5db;">
-
                 <p>
                     <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">1. Content Guidelines & Standards:</strong>
                     Every video or image uploaded to buysecond.in must comply with safety and quality standards.<br>
                     <span style="color: #9ca3af; font-size: 13px;">— buysecond.in पर अपलोड की जाने वाली हर वीडियो या इमेज को सुरक्षा और गुणवत्ता मानकों का पालन करना अनिवार्य है।</span>
                 </p>
-
                 <p>
                     <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">2. Automated AI Security Screening:</strong>
                     Every uploaded media file will undergo an automated AI security scan to instantly detect inappropriate content.<br>
                     <span style="color: #9ca3af; font-size: 13px;">— अपलोड की गई हर मीडिया फाइल पर आपत्तिजनक सामग्री का तुरंत पता लगाने के लिए एक स्वचालित AI सुरक्षा स्कैन किया जाएगा।</span>
                 </p>
-
                 <p>
                     <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">3. Final Review & Owner Approval:</strong>
                     After AI screening, a final manual review will be done by the website owner before going live on the billboard.<br>
                     <span style="color: #9ca3af; font-size: 13px;">— AI स्कैनिंग के बाद, बिलबोर्ड पर लाइव होने से पहले वेबसाइट ओनर द्वारा अंतिम समीक्षा (Review) की जाएगी।</span>
                 </p>
-
                 <p>
                     <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">4. Strict Zero Refund Policy:</strong>
                     If any content is rejected due to nudity, violence, or rule violations, the ad will be canceled and no money will be refunded.<br>
                     <span style="color: #9ca3af; font-size: 13px;">— यदि कोई सामग्री अशुद्धता, हिंसा या नियमों के उल्लंघन के कारण अस्वीकार की जाती है, तो विज्ञापन रद्द कर दिया जाएगा और कोई पैसा रिफंड नहीं होगा।</span>
                 </p>
-
                 <p>
                     <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">5. Advertiser Responsibility:</strong>
                     The advertiser is solely responsible for the target URL and brand name provided; the platform holds no liability.<br>
                     <span style="color: #9ca3af; font-size: 13px;">— प्रदान किए गए टारगेट यूआरएल और ब्रांड नाम के लिए विज्ञापनदाता पूरी तरह जिम्मेदार होगा, प्लेटफॉर्म की कोई जिम्मेदारी नहीं है।</span>
                 </p>
-
             </div>
         </div>
     </div>

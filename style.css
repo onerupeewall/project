@@ -160,7 +160,7 @@ header {
 }
 
 .global-header {
-    font-size: 25px;
+    font-size: 15px;
     font-weight: 700;
     color: #ffffff;
     margin-bottom: 12px;
@@ -181,7 +181,13 @@ header {
     gap: 8px;
     max-height: 180px;
     overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+
+    .country-list::-webkit-scrollbar {
+        display: none;
+    }
 
 .country-item {
     display: flex;
@@ -190,7 +196,7 @@ header {
     background-color: #121824;
     padding: 8px 12px;
     border-radius: 6px;
-    font-size: 18px;
+    font-size: 14px;
     border: 1px solid #1a2234;
 }
 
@@ -203,7 +209,7 @@ header {
 
 .country-count {
     font-weight: 600;
-    color: #ffffff; /* Safed rang (white) */
+    color: #ffffff;
 }
 
 /* Modal Popup Styling */
@@ -218,34 +224,50 @@ header {
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(5px);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+
+    .modal::-webkit-scrollbar {
+        display: none;
+    }
 
 .modal-content {
     background-color: #0b0f17;
-    margin: 5% auto;
-    padding: 30px;
+    margin: 3% auto;
+    padding: 25px;
     border: 1px solid #1f293d;
-    width: 85%;
-    max-width: 700px;
+    width: 90%;
+    max-width: 650px;
     border-radius: 12px;
     color: #d1d5db;
     position: relative;
-    max-height: 85vh;
+    max-height: 90vh;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+
+    .modal-content::-webkit-scrollbar {
+        display: none;
+    }
 
 .modal-main-title {
     color: #ffffff;
     font-size: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 5px;
     font-weight: 700;
 }
 
 .form-group {
-    margin-bottom: 18px;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    width: 100%;
+    position: relative;
 }
 
     .form-group label {
@@ -265,6 +287,7 @@ header {
         color: #ffffff;
         font-size: 14px;
         outline: none;
+        width: 100%;
     }
 
     .form-group small {
@@ -287,7 +310,7 @@ header {
     padding: 12px;
     border-radius: 6px;
     border: 1px solid #1f293d;
-    margin-top: 10px;
+    margin-top: 5px;
 }
 
     .checkbox-group input[type="checkbox"] {
@@ -312,6 +335,7 @@ header {
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    z-index: 10;
 }
 
     .close-btn:hover {
@@ -322,6 +346,7 @@ header {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
+    width: 100%;
 }
 
     .datetime-group input[type="date"] {
@@ -336,6 +361,7 @@ header {
 .custom-input-wrap {
     position: relative;
     flex: 1;
+    width: 100%;
 }
 
     .custom-input-wrap input {
@@ -364,18 +390,25 @@ header {
     top: 100%;
     left: 0;
     width: 100%;
-    max-height: 110px;
     overflow-y: auto;
     background: #0f172a;
     border: 1px solid #334155;
     border-radius: 6px;
     z-index: 1000;
     display: none;
+    max-height: 150px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+
+    .custom-dropdown-list::-webkit-scrollbar {
+        display: none;
+    }
 
 .custom-dropdown-item {
     padding: 8px;
-    text-align: center;
+    text-align: left;
+    padding-left: 10px;
     color: #fff;
     cursor: pointer;
     font-size: 13px;
