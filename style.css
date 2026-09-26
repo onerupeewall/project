@@ -15,7 +15,8 @@ body {
     min-height: 100vh;
     padding: 20px;
     font-size: 16px;
-    min-width: 980px;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 header {
@@ -84,6 +85,7 @@ header {
     position: relative;
     cursor: pointer;
     border-radius: 10px;
+    width: 100%;
 }
 
     .billboard .billboard-content {
@@ -358,3 +360,14 @@ header {
         background: #1e293b;
         color: #38bdf8;
     }
+
+/* Responsive adjustments for mobile screens to fit nicely */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .billboard {
+        height: 220px;
+    }
+}
