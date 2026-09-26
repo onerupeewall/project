@@ -8,6 +8,20 @@
 </head>
 <body>
 
+    <!-- Google Translate Hidden Element & Script for Auto-Language Detection -->
+    <div id="google_translate_element" style="display:none;"></div>
+    <script type="text/javascript">
+                function googleTranslateElementInit() {
+                    new google.translate.TranslateElement({
+                        pageLanguage: 'en',
+                        includedLanguages: 'hi,en,es,fr,de,ja,zh-CN,ar,ru,pt,it,ko,id,tr,vi',
+                        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                        autoDisplay: true
+                    }, 'google_translate_element');
+                }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
     <header>
         <div class="logo">Buy Second</div>
         <a href="#" class="terms-link" id="openTerms">Terms & Conditions</a>
@@ -40,7 +54,7 @@
                 👥 TOTAL GLOBAL USERS: <span id="totalGlobalCount">0</span>
             </div>
             <div class="country-list" id="countryList">
-                <!-- Shuruat mein yahan kuch nahi rahega, buy hone par live aayega -->
+                <!-- Shuruat mein yahan 0 / khali rahega -->
             </div>
         </div>
 
@@ -159,12 +173,52 @@
         <div class="modal-content">
             <span class="close-btn" id="closeTerms">&times;</span>
             <h2 class="modal-main-title">Terms & Conditions for Advertisers</h2>
-            <p>
-                <strong>CONTENT GUIDELINES & AI SCREENING</strong><br>
-                — Every video or image uploaded to buysecond.in will undergo an automatic AI security scan and final review by the Owner.
-            </p>
+            <div style="display: flex; flex-direction: column; gap: 16px; font-size: 14px; line-height: 1.6; color: #d1d5db;">
+
+                <p>
+                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">1. Content Guidelines & Standards:</strong>
+                    Every video or image uploaded to buysecond.in must comply with safety and quality standards.<br>
+                    <span style="color: #9ca3af; font-size: 13px;">— buysecond.in पर अपलोड की जाने वाली हर वीडियो या इमेज को सुरक्षा और गुणवत्ता मानकों का पालन करना अनिवार्य है।</span>
+                </p>
+
+                <p>
+                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">2. Automated AI Security Screening:</strong>
+                    Every uploaded media file will undergo an automated AI security scan to instantly detect inappropriate content.<br>
+                    <span style="color: #9ca3af; font-size: 13px;">— अपलोड की गई हर मीडिया फाइल पर आपत्तिजनक सामग्री का तुरंत पता लगाने के लिए एक स्वचालित AI सुरक्षा स्कैन किया जाएगा।</span>
+                </p>
+
+                <p>
+                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">3. Final Review & Owner Approval:</strong>
+                    After AI screening, a final manual review will be done by the website owner before going live on the billboard.<br>
+                    <span style="color: #9ca3af; font-size: 13px;">— AI स्कैनिंग के बाद, बिलबोर्ड पर लाइव होने से पहले वेबसाइट ओनर द्वारा अंतिम समीक्षा (Review) की जाएगी।</span>
+                </p>
+
+                <p>
+                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">4. Strict Zero Refund Policy:</strong>
+                    If any content is rejected due to nudity, violence, or rule violations, the ad will be canceled and no money will be refunded.<br>
+                    <span style="color: #9ca3af; font-size: 13px;">— यदि कोई सामग्री अशुद्धता, हिंसा या नियमों के उल्लंघन के कारण अस्वीकार की जाती है, तो विज्ञापन रद्द कर दिया जाएगा और कोई पैसा रिफंड नहीं होगा।</span>
+                </p>
+
+                <p>
+                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">5. Advertiser Responsibility:</strong>
+                    The advertiser is solely responsible for the target URL and brand name provided; the platform holds no liability.<br>
+                    <span style="color: #9ca3af; font-size: 13px;">— प्रदान किए गए टारगेट यूआरएल और ब्रांड नाम के लिए विज्ञापनदाता पूरी तरह जिम्मेदार होगा, प्लेटफॉर्म की कोई जिम्मेदारी नहीं है।</span>
+                </p>
+
+            </div>
         </div>
     </div>
+
+    <!-- Google Translate Banner Fix -->
+    <style>
+        .goog-te-banner-frame {
+            display: none !important;
+        }
+
+        body {
+            top: 0px !important;
+        }
+    </style>
 
     <script src="script.js"></script>
 </body>
