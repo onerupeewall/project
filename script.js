@@ -8,13 +8,11 @@ function toggleDropdown(listId, event) {
     list.style.display = list.style.display === 'block' ? 'none' : 'block';
 }
 
-// Select value from list into input
 function selectValue(inputId, val, listId) {
     document.getElementById(inputId).value = val;
     document.getElementById(listId).style.display = 'none';
 }
 
-// Close dropdowns on outside click
 window.addEventListener('click', () => {
     document.querySelectorAll('.custom-dropdown-list').forEach(l => l.style.display = 'none');
 });
@@ -38,7 +36,7 @@ warningCheckbox.addEventListener('change', function () {
 payButton.style.opacity = '0.6';
 payButton.style.cursor = 'not-allowed';
 
-// Dynamic Price Calculation based on duration
+// Dynamic Price Calculation
 const durationInput = document.getElementById('durationInput');
 const totalAmount = document.getElementById('totalAmount');
 
@@ -47,7 +45,46 @@ durationInput.addEventListener('input', function () {
     totalAmount.textContent = '₹' + (val * 10);
 });
 
-// Form Submission & Live Dynamic Countdown Timer Logic
+// Shuruat mein global users data bilkul khali (zero) rahega
+let globalUsersData = {};
+
+function renderGlobalUsers() {
+    const countryListEl = document.getElementById('countryList');
+    const totalGlobalCountEl = document.getElementById('totalGlobalCount');
+
+    countryListEl.innerHTML = '';
+    let totalUsers = 0;
+
+    let hasData = false;
+    for (let country in globalUsersData) {
+        hasData = true;
+        let data = globalUsersData[country];
+        totalUsers += data.count;
+
+        let item = document.createElement('div');
+        item.className = 'country-item';
+        // Number ke just pehle 'Users' likha hoga aur rang white hoga
+        item.innerHTML = `
+            <div class="country-name">
+                <span>${data.flag}</span> ${country}
+            </div>
+            <div class="country-count">Users ${data.count.toLocaleString()}</div>
+        `;
+        countryListEl.appendChild(item);
+    }
+
+    // Agar koi data nahi hai toh list mein message ya khali rakhein
+    if (!hasData) {
+        countryListEl.innerHTML = '<div style="color: #6b7280; font-size: 13px; text-align: center; padding: 6px;">No active country slots yet.</div>';
+    }
+
+    totalGlobalCountEl.textContent = totalUsers.toLocaleString();
+}
+
+// Initial render (0 total count ke saath)
+renderGlobalUsers();
+
+// Form Submission & Live Slot / Counter Update Logic
 let countdownInterval = null;
 const slotForm = document.getElementById('slotForm');
 const timerText = document.getElementById('timer-text');
@@ -56,16 +93,26 @@ const modal = document.getElementById('slotModal');
 slotForm.addEventListener('submit', function (e) {
     e.preventDefault();
 
-    // Get user selected duration in seconds
     let duration = parseInt(durationInput.value) || 10;
+    let selectedCountrySelect = document.getElementById('slotCountry');
+    let chosenCountry = selectedCountrySelect.value;
+    let chosenFlag = selectedCountrySelect.options[selectedCountrySelect.selectedIndex].getAttribute('data-flag');
+
+    // Country-wise count update ya add hoga
+    if (!globalUsersData[chosenCountry]) {
+        globalUsersData[chosenCountry] = { count: 1, flag: chosenFlag };
+    } else {
+        globalUsersData[chosenCountry].count += 1;
+    }
+
+    // Live update render
+    renderGlobalUsers();
 
     // Close modal
     modal.style.display = 'none';
 
-    // Clear any existing timer
     if (countdownInterval) clearInterval(countdownInterval);
 
-    // Start live countdown based on user selection
     let timeLeft = duration;
     timerText.textContent = `Next Video in: ${timeLeft} Sec`;
 
@@ -79,7 +126,7 @@ slotForm.addEventListener('submit', function (e) {
         }
     }, 1000);
 
-    alert('Slot booked successfully! Live countdown has started based on your selected duration.');
+    alert(`Slot booked successfully from ${chosenCountry}! Counter updated live.`);
 });
 
 // Modal triggers

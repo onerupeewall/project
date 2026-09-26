@@ -80,17 +80,12 @@ header {
     background-size: 100% 100% !important;
     border: 2px solid #d4af37 !important;
     box-shadow: 0 10px 35px rgba(212, 175, 55, 0.2);
-    padding: 0 !important;
     height: 380px;
     position: relative;
     cursor: pointer;
     border-radius: 10px;
     width: 100%;
 }
-
-    .billboard .billboard-content {
-        display: none;
-    }
 
 .screen-footer {
     display: flex;
@@ -113,11 +108,6 @@ header {
     align-items: center;
     gap: 6px;
 }
-
-    .check-record-btn:hover {
-        color: #60a5fa;
-        text-decoration: underline;
-    }
 
 .slot-action-container {
     display: flex;
@@ -145,23 +135,76 @@ header {
     text-decoration: none;
     font-weight: 600;
     width: 100%;
-    position: relative;
-    z-index: 51;
 }
 
     .slot-btn:hover {
         background: linear-gradient(135deg, #1d4ed8, #2563eb);
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6);
     }
 
     .slot-btn:disabled {
         background: #374151;
         cursor: not-allowed;
         box-shadow: none;
-        transform: none;
         color: #9ca3af;
     }
+
+/* Global Users Section Styling */
+.global-users-container {
+    background-color: #0b0f17;
+    border: 1px solid #1f293d;
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 10px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+}
+
+.global-header {
+    font-size: 25px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #1f293d;
+    padding-bottom: 8px;
+}
+
+    .global-header span {
+        color: #38bdf8;
+    }
+
+.country-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.country-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #121824;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 18px;
+    border: 1px solid #1a2234;
+}
+
+.country-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e5e7eb;
+}
+
+.country-count {
+    font-weight: 600;
+    color: #ffffff; /* Safed rang (white) */
+}
 
 /* Modal Popup Styling */
 .modal {
@@ -185,7 +228,6 @@ header {
     width: 85%;
     max-width: 700px;
     border-radius: 12px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9);
     color: #d1d5db;
     position: relative;
     max-height: 85vh;
@@ -215,8 +257,7 @@ header {
     .form-group input[type="text"],
     .form-group input[type="url"],
     .form-group input[type="number"],
-    .form-group input[type="file"],
-    .form-group select {
+    .form-group input[type="file"] {
         background-color: #121824;
         border: 1px solid #1f293d;
         padding: 10px 14px;
@@ -225,10 +266,6 @@ header {
         font-size: 14px;
         outline: none;
     }
-
-        .form-group input:focus, .form-group select:focus {
-            border-color: #3b82f6;
-        }
 
     .form-group small {
         font-size: 12px;
@@ -309,13 +346,8 @@ header {
         padding: 8px 25px 8px 8px;
         border-radius: 6px;
         font-size: 13px;
-        box-sizing: border-box;
         outline: none;
     }
-
-        .custom-input-wrap input:focus {
-            border-color: #38bdf8;
-        }
 
 .dropdown-arrow {
     position: absolute;
@@ -325,7 +357,6 @@ header {
     cursor: pointer;
     color: #94a3b8;
     font-size: 10px;
-    user-select: none;
 }
 
 .custom-dropdown-list {
@@ -340,13 +371,7 @@ header {
     border-radius: 6px;
     z-index: 1000;
     display: none;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
 }
-
-    .custom-dropdown-list::-webkit-scrollbar {
-        display: none;
-    }
 
 .custom-dropdown-item {
     padding: 8px;
@@ -361,7 +386,6 @@ header {
         color: #38bdf8;
     }
 
-/* Responsive adjustments for mobile screens to fit nicely */
 @media screen and (max-width: 768px) {
     body {
         padding: 10px;
