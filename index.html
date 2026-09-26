@@ -2,34 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1000, initial-scale=1.0">
+    <meta name="viewport" content="width=1000, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Buy Second - buysecond.in</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Custom styling for Buy Second website name and perfectly fitted image billboard */
-        .logo {
-            font-size: 26px;
-            font-weight: 700;
-            text-transform: capitalize;
-            letter-spacing: 0.5px;
-        }
-
-        .billboard {
-            background: url('buysecond.png') no-repeat center center !important;
-            background-size: 100% 100% !important; /* Image ko bina kate poori screen par fit karega */
-            border: 2px solid #d4af37 !important;
-            shadow: 0 10px 35px rgba(212, 175, 55, 0.2);
-
-            padding: 0 !important;
-            height: 400px; /* Screen height fix */
-            position: relative;
-            cursor: pointer;
-        }
-            /* Hide old text content inside billboard since image already has text */
-            .billboard .billboard-content {
-                display: none;
-            }
-    </style>
 </head>
 <body>
 
@@ -44,11 +19,10 @@
             <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन (अशलील, हिंसा, खतरा फैलाना) का उल्लंघन करता है, तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड (Refund) नहीं होगा।
         </div>
 
-        <!-- Billboard with your buysecond.png image -->
         <div class="billboard" onclick="document.getElementById('openSlotModal').click()"></div>
 
         <div class="screen-footer">
-            <span id="timer-text">Next Video in: 15 Sec</span>
+            <span id="timer-text">Next Video in: 0 Sec</span>
             <button class="check-record-btn" onclick="alert('Opening Past Your Second Records...')">
                 Past Your Second (Check Record)
             </button>
@@ -82,18 +56,72 @@
                     <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required>
                 </div>
 
-                <!-- 3. Date and Time Selection for Slot -->
+                <!-- 3. Precise Date, Editable Hour, Min, Sec & AM/PM Selection -->
                 <div class="form-group">
-                    <label>3. तारीख और समय चुनें (Slot Date & Time):</label>
-                    <input type="datetime-local" id="slotDateTime" required>
-                    <small>वह तारीख और समय चुनें जब आप अपना विज्ञापन लाइव दिखाना चाहते हैं।</small>
+                    <label>3. तारीख, घंटा, मिनट और सेकंड चुनें (Slot Date, Hour, Min & Sec):</label>
+                    <div class="datetime-group" style="margin-top: 5px;">
+                        <input type="date" id="slotDate" style="flex: 2.2;" required>
+
+                        <!-- Hour Input & Dropdown -->
+                        <div class="custom-input-wrap" style="flex: 1;">
+                            <input type="text" id="slotHour" placeholder="HH" maxlength="2" autocomplete="off" required>
+                            <span class="dropdown-arrow" onclick="toggleDropdown('hourList', event)">▼</span>
+                            <div class="custom-dropdown-list" id="hourList">
+                                <script>
+                                                                        for(let i=1; i<=12; i++) {
+                                                                            let val = i < 10 ? '0' + i : i;
+                                                                            document.write(`<div class="custom-dropdown-item" onclick="selectValue('slotHour', '${val}', 'hourList')">${val}</div>`);
+                                                                        }
+                                </script>
+                            </div>
+                        </div>
+
+                        <!-- Minute Input & Dropdown (00 to 59) -->
+                        <div class="custom-input-wrap" style="flex: 1;">
+                            <input type="text" id="slotMinute" placeholder="MM" maxlength="2" autocomplete="off" required>
+                            <span class="dropdown-arrow" onclick="toggleDropdown('minList', event)">▼</span>
+                            <div class="custom-dropdown-list" id="minList">
+                                <script>
+                                                                        for(let i=0; i<60; i++) {
+                                                                            let val = i < 10 ? '0' + i : i;
+                                                                            document.write(`<div class="custom-dropdown-item" onclick="selectValue('slotMinute', '${val}', 'minList')">${val}</div>`);
+                                                                        }
+                                </script>
+                            </div>
+                        </div>
+
+                        <!-- Second Input & Dropdown (00 to 59) -->
+                        <div class="custom-input-wrap" style="flex: 1;">
+                            <input type="text" id="slotSecond" placeholder="SS" maxlength="2" autocomplete="off" required>
+                            <span class="dropdown-arrow" onclick="toggleDropdown('secList', event)">▼</span>
+                            <div class="custom-dropdown-list" id="secList">
+                                <script>
+                                                                        for(let i=0; i<60; i++) {
+                                                                            let val = i < 10 ? '0' + i : i;
+                                                                            document.write(`<div class="custom-dropdown-item" onclick="selectValue('slotSecond', '${val}', 'secList')">${val}</div>`);
+                                                                        }
+                                </script>
+                            </div>
+                        </div>
+
+                        <!-- AM/PM Input & Dropdown -->
+                        <div class="custom-input-wrap" style="flex: 0.8;">
+                            <input type="text" id="slotAmPm" value="PM" maxlength="2" autocomplete="off" required>
+                            <span class="dropdown-arrow" onclick="toggleDropdown('ampmList', event)">▼</span>
+                            <div class="custom-dropdown-list" id="ampmList">
+                                <div class="custom-dropdown-item" onclick="selectValue('slotAmPm', 'AM', 'ampmList')">AM</div>
+                                <div class="custom-dropdown-item" onclick="selectValue('slotAmPm', 'PM', 'ampmList')">PM</div>
+                            </div>
+                        </div>
+                    </div>
+                    <small>आप सीधे टाइप कर सकते हैं या तीर (▼) पर क्लिक करके चुन सकते हैं।</small>
                 </div>
 
-                <!-- 4. Duration Selection (₹10/sec, no upper limit) -->
+                <!-- 4. Duration & Price Calculation -->
                 <div class="form-group">
-                    <label>4. टाइम स्लॉट की अवधि (Duration in Seconds - ₹10/sec):</label>
-                    <input type="number" id="durationInput" min="1" value="30" placeholder="Enter seconds (e.g. 1, 10, 1000...)" required>
-                    <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹300</span></div>
+                    <label>4. टाइम स्लॉट की अवधि (Duration & Price - ₹10/sec):</label>
+                    <input type="number" id="durationInput" min="1" value="10" placeholder="Enter duration in seconds..." required>
+                    <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹100</span></div>
                 </div>
 
                 <!-- 5. Ad Title / Brand Name -->
@@ -102,7 +130,7 @@
                     <input type="text" id="adTitle" placeholder="जैसे: अपनी कंपनी या ब्रांड का नाम लिखें" required>
                 </div>
 
-                /* 6. Warning & No-Refund Checkbox */
+                <!-- 6. Warning & No-Refund Checkbox -->
                 <div class="form-group checkbox-group">
                     <input type="checkbox" id="warningCheckbox" required>
                     <label for="warningCheckbox">
@@ -120,63 +148,29 @@
     <div id="termsModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="closeTerms">&times;</span>
-
             <h2 class="modal-main-title">Terms & Conditions for Advertisers</h2>
-
             <p>
                 <strong>CONTENT GUIDELINES & AI SCREENING</strong><br>
                 — Every video or image uploaded to buysecond.in will undergo an automatic AI security scan and final review by the Owner. We strictly prohibit any content containing nudity, adult material, violence, hate speech, political controversy, or illegal substances.
             </p>
-
             <br>
-
             <p>
                 <strong>STRICT NO-REFUND POLICY</strong><br>
-                — By checking the box and proceeding to payment, you fully agree that if your content violates our community guidelines and is rejected during the manual or AI review, YOUR AMOUNT WILL BE FORFEITED IMMEDIATELY AND NO REFUND WILL BE ISSUED. The amount is kept as a penalty for attempting to upload banned content.
+                — By checking the box and proceeding to payment, you fully agree that if your content violates our community guidelines and is rejected during the manual or AI review, YOUR AMOUNT WILL BE FORFEITED IMMEDIATELY AND NO REFUND WILL BE ISSUED.
             </p>
 
             <br>
-
-            <p>
-                <strong>HISTORICAL RECORD (ARCHIVE)</strong><br>
-                — Once your approved slot is broadcasted live, a copy of the screen containing your video, the website watermark, and the owner's branding will be saved in our "History/Archive" section forever. buysecond.in reserves the right to host and display this archive publicly.
-            </p>
-
-            <br>
-
-            <p>
-                <strong>PLATFORM RIGHT</strong><br>
-                — The owner reserves the absolute right to approve, reject, or pause any slot at any time if it is found to violate safety standards after approval.
-            </p>
-
             <hr style="border: 0.5px solid #1f293d; margin: 25px 0;">
 
             <h2 class="modal-main-title">विज्ञापनदाताओं के लिए नियम एवं शर्तें</h2>
-
             <p>
-                <strong>सामग्री दिशानिर्देश और एआई स्क्रीनिंग (CONTENT GUIDELINES & AI SCREENING)</strong><br>
-                — buysecond.in पर अपलोड किया जाने वाला प्रत्येक वीडियो या इमेज पहले ऑटोमैटिक एआई (AI) सुरक्षा स्कैन और फिर ओनर के फाइनल रिव्यू से गुज़रेगा। हमारी वेबसाइट पर अश्लीलता (Nudity), हिंसा, नफरत फैलाने वाले भाषण (Hate Speech), राजनीतिक विवाद या किसी भी गैरकानूनी सामग्री को दिखाना सख्त मना है।
+                <strong>सामग्री दिशानिर्देश और एआई स्क्रीनिंग</strong><br>
+                — buysecond.in पर अपलोड किया जाने वाला प्रत्येक वीडियो या इमेज एआई सुरक्षा स्कैन और ओनर के रिव्यू से गुज़रेगा। अश्लीलता या हिंसा सख्त मना है।
             </p>
-
             <br>
-
             <p>
-                <strong>सख्त नो-रिफंड पॉलिसी - कोई पैसा वापस नहीं होगा (STRICT NO-REFUND POLICY)</strong><br>
-                — पेमेंट बटन दबाने से पहले आप पूरी तरह इस बात से सहमत होते हैं कि यदि आपका वीडियो हमारे नियमों के खिलाफ पाया गया और रिव्यू में रिजेक्ट हो गया, तो आपका पैसा तुरंत जब्त कर लिया जाएगा और कोई भी रिफंड नहीं दिया जाएगा। यह राशि प्रतिबंधित कंटेंट अपलोड करने के प्रयास के जुर्माने के रूप में रख ली जाएगी।
-            </p>
-
-            <br>
-
-            <p>
-                <strong>ऐतिहासिक रिकॉर्ड - आर्काइव (HISTORICAL RECORD / ARCHIVE)</strong><br>
-                — एक बार जब आपका स्वीकृत विज्ञापन लाइव चल जाएगा, तो आपकी वीडियो स्क्रीन, वेबसाइट के वॉटरमार्क और ओनर की ब्रांडिंग के साथ उस पल का रिकॉर्ड हमेशा के लिए हमारे "इतिहास (Archive)" सेक्शन में सुरक्षित कर दिया जाएगा। buysecond.in के पास इस रिकॉर्ड को सार्वजनिक रूप से दिखाने का पूरा अधिकार है।
-            </p>
-
-            <br>
-
-            <p>
-                <strong>प्लेटफ़ॉर्म का अधिकार (PLATFORM RIGHT)</strong><br>
-                — यदि कोई विज्ञापन स्वीकृत होने के बाद भी सुरक्षा मानकों का उल्लंघन करता पाया जाता है, तो ओनर के पास उसे किसी भी समय हटाने या रोकने का पूरा अधिकार सुरक्षित है।
+                <strong>सख्त नो-रिफंड पॉलिसी</strong><br>
+                — यदि आपका वीडियो नियमों के खिलाफ पाया जाता है, तो आपका पैसा जब्त कर लिया जाएगा और कोई रिफंड नहीं मिलेगा।
             </p>
         </div>
     </div>
