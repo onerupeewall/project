@@ -5,11 +5,36 @@
     <meta name="viewport" content="width=1000, initial-scale=1.0">
     <title>Buy Second - buysecond.in</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Custom styling for Buy Second website name and perfectly fitted image billboard */
+        .logo {
+            font-size: 26px;
+            font-weight: 700;
+            text-transform: capitalize;
+            letter-spacing: 0.5px;
+        }
+
+        .billboard {
+            background: url('buysecond.png') no-repeat center center !important;
+            background-size: 100% 100% !important; /* Image ko bina kate poori screen par fit karega */
+            border: 2px solid #d4af37 !important;
+            shadow: 0 10px 35px rgba(212, 175, 55, 0.2);
+
+            padding: 0 !important;
+            height: 400px; /* Screen height fix */
+            position: relative;
+            cursor: pointer;
+        }
+            /* Hide old text content inside billboard since image already has text */
+            .billboard .billboard-content {
+                display: none;
+            }
+    </style>
 </head>
 <body>
 
     <header>
-        <div class="logo">buysecond.in</div>
+        <div class="logo">Buy Second</div>
         <a href="#" class="terms-link" id="openTerms">Terms & Conditions</a>
     </header>
 
@@ -19,18 +44,8 @@
             <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन (अशलील, हिंसा, खतरा फैलाना) का उल्लंघन करता है, तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड (Refund) नहीं होगा।
         </div>
 
-        <div class="billboard">
-            <div class="billboard-content">
-                <div class="brand-title">boAt</div>
-                <h2>Bigger Sound.<br>Bolder You.</h2>
-                <p>
-                    <span>Powerful Bass</span>
-                    <span>Up to 42H Playtime</span>
-                    <span>IPX4 Water Resistant</span>
-                </p>
-                <button class="shop-btn" onclick="alert('Redirecting to shop...')">Shop Now →</button>
-            </div>
-        </div>
+        <!-- Billboard with your buysecond.png image -->
+        <div class="billboard" onclick="document.getElementById('openSlotModal').click()"></div>
 
         <div class="screen-footer">
             <span id="timer-text">Next Video in: 15 Sec</span>
@@ -53,68 +68,51 @@
             <span class="close-btn" id="closeSlotModal">&times;</span>
             <h2 class="modal-main-title">Book Your Advertising Slot</h2>
 
-            <div id="formContainer">
-                <form id="slotForm">
-                    <div class="form-group" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; background: #121824; padding: 10px 14px; border-radius: 6px; border: 1px solid #1f293d;">
-                        <span style="font-size: 13px; color: #d1d5db;">Detected Currency Region:</span>
-                        <span id="currencyIndicator" style="font-size: 13px; color: #34d399; font-weight: 600;">INR (₹)</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label>1. विज्ञापन फाइल अपलोड करें (Video / Image File):</label>
-                        <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required>
-                        <small>सिर्फ .mp4, .jpg, या .png फाइल मान्य हैं।</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>2. डेस्टिनेशन लिंक (Target URL):</label>
-                        <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>3. तारीख और समय चुनें (Slot Date & Time):</label>
-                        <input type="datetime-local" id="slotDateTime" required>
-                        <small>वह तारीख और समय चुनें जब आप अपना विज्ञापन लाइव दिखाना चाहते हैं।</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>4. टाइम स्लॉट की अवधि (Duration in Seconds - <span id="rateLabel">₹10/sec</span>):</label>
-                        <input type="number" id="durationInput" min="1" value="30" placeholder="Enter seconds..." required>
-                        <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹300</span></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>5. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
-                        <input type="text" id="adTitle" placeholder="जैसे: अपनी कंपनी या ब्रांड का नाम लिखें" required>
-                    </div>
-
-                    <div class="form-group checkbox-group">
-                        <input type="checkbox" id="warningCheckbox" required>
-                        <label for="warningCheckbox">
-                            मैं जानता हूँ कि अगर एआई (AI) या ओनर ने अश्लीलता या नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट किया, तो मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
-                        </label>
-                    </div>
-
-                    <button type="submit" class="slot-btn pay-btn" id="payButton" disabled>Proceed to Secure Payment</button>
-                </form>
-            </div>
-
-            <!-- Interactive Payment Gateway Screen (Appears after form submit) -->
-            <div id="paymentGatewaySection" style="display: none; text-align: center; padding: 20px 0;">
-                <h3 style="color: #34d399; margin-bottom: 10px;">🔒 Secure Checkout Gateway</h3>
-                <p style="font-size: 14px; color: #9ca3af; margin-bottom: 20px;">Total Payable Amount: <strong id="finalPayAmount" style="color: #ffffff; font-size: 18px;">₹300</strong></p>
-
-                <div style="background: #121824; padding: 20px; border-radius: 8px; border: 1px solid #1f293d; margin-bottom: 20px; text-align: left;">
-                    <p style="font-size: 14px; color: #e5e7eb; margin-bottom: 10px;">Select Payment Method:</p>
-                    <div id="paymentOptionsContainer">
-                        <!-- Dynamically filled based on region -->
-                    </div>
+            <form id="slotForm">
+                <!-- 1. Video/Image Upload -->
+                <div class="form-group">
+                    <label>1. विज्ञापन फाइल अपलोड करें (Video / Image File):</label>
+                    <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required>
+                    <small>सिर्फ .mp4, .jpg, या .png फाइल मान्य हैं।</small>
                 </div>
 
-                <button id="completePaymentBtn" class="slot-btn" style="width: 100%; justify-content: center;">Pay Now & Book Slot</button>
-                <button id="backToFormBtn" style="background: none; border: none; color: #9ca3af; margin-top: 15px; cursor: pointer; font-size: 14px;">← Back to Form</button>
-            </div>
+                <!-- 2. Target URL -->
+                <div class="form-group">
+                    <label>2. डेस्टिनेशन लिंक (Target URL):</label>
+                    <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required>
+                </div>
 
+                <!-- 3. Date and Time Selection for Slot -->
+                <div class="form-group">
+                    <label>3. तारीख और समय चुनें (Slot Date & Time):</label>
+                    <input type="datetime-local" id="slotDateTime" required>
+                    <small>वह तारीख और समय चुनें जब आप अपना विज्ञापन लाइव दिखाना चाहते हैं।</small>
+                </div>
+
+                <!-- 4. Duration Selection (₹10/sec, no upper limit) -->
+                <div class="form-group">
+                    <label>4. टाइम स्लॉट की अवधि (Duration in Seconds - ₹10/sec):</label>
+                    <input type="number" id="durationInput" min="1" value="30" placeholder="Enter seconds (e.g. 1, 10, 1000...)" required>
+                    <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹300</span></div>
+                </div>
+
+                <!-- 5. Ad Title / Brand Name -->
+                <div class="form-group">
+                    <label>5. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
+                    <input type="text" id="adTitle" placeholder="जैसे: अपनी कंपनी या ब्रांड का नाम लिखें" required>
+                </div>
+
+                /* 6. Warning & No-Refund Checkbox */
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="warningCheckbox" required>
+                    <label for="warningCheckbox">
+                        मैं जानता हूँ कि अगर एआई (AI) या ओनर ने अश्लीलता या नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट किया, तो मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
+                    </label>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="slot-btn pay-btn" id="payButton" disabled>Proceed to Secure Payment</button>
+            </form>
         </div>
     </div>
 
@@ -129,17 +127,23 @@
                 <strong>CONTENT GUIDELINES & AI SCREENING</strong><br>
                 — Every video or image uploaded to buysecond.in will undergo an automatic AI security scan and final review by the Owner. We strictly prohibit any content containing nudity, adult material, violence, hate speech, political controversy, or illegal substances.
             </p>
+
             <br>
+
             <p>
                 <strong>STRICT NO-REFUND POLICY</strong><br>
                 — By checking the box and proceeding to payment, you fully agree that if your content violates our community guidelines and is rejected during the manual or AI review, YOUR AMOUNT WILL BE FORFEITED IMMEDIATELY AND NO REFUND WILL BE ISSUED. The amount is kept as a penalty for attempting to upload banned content.
             </p>
+
             <br>
+
             <p>
                 <strong>HISTORICAL RECORD (ARCHIVE)</strong><br>
                 — Once your approved slot is broadcasted live, a copy of the screen containing your video, the website watermark, and the owner's branding will be saved in our "History/Archive" section forever. buysecond.in reserves the right to host and display this archive publicly.
             </p>
+
             <br>
+
             <p>
                 <strong>PLATFORM RIGHT</strong><br>
                 — The owner reserves the absolute right to approve, reject, or pause any slot at any time if it is found to violate safety standards after approval.
@@ -153,17 +157,23 @@
                 <strong>सामग्री दिशानिर्देश और एआई स्क्रीनिंग (CONTENT GUIDELINES & AI SCREENING)</strong><br>
                 — buysecond.in पर अपलोड किया जाने वाला प्रत्येक वीडियो या इमेज पहले ऑटोमैटिक एआई (AI) सुरक्षा स्कैन और फिर ओनर के फाइनल रिव्यू से गुज़रेगा। हमारी वेबसाइट पर अश्लीलता (Nudity), हिंसा, नफरत फैलाने वाले भाषण (Hate Speech), राजनीतिक विवाद या किसी भी गैरकानूनी सामग्री को दिखाना सख्त मना है।
             </p>
+
             <br>
+
             <p>
                 <strong>सख्त नो-रिफंड पॉलिसी - कोई पैसा वापस नहीं होगा (STRICT NO-REFUND POLICY)</strong><br>
                 — पेमेंट बटन दबाने से पहले आप पूरी तरह इस बात से सहमत होते हैं कि यदि आपका वीडियो हमारे नियमों के खिलाफ पाया गया और रिव्यू में रिजेक्ट हो गया, तो आपका पैसा तुरंत जब्त कर लिया जाएगा और कोई भी रिफंड नहीं दिया जाएगा। यह राशि प्रतिबंधित कंटेंट अपलोड करने के प्रयास के जुर्माने के रूप में रख ली जाएगी।
             </p>
+
             <br>
+
             <p>
                 <strong>ऐतिहासिक रिकॉर्ड - आर्काइव (HISTORICAL RECORD / ARCHIVE)</strong><br>
                 — एक बार जब आपका स्वीकृत विज्ञापन लाइव चल जाएगा, तो आपकी वीडियो स्क्रीन, वेबसाइट के वॉटरमार्क और ओनर की ब्रांडिंग के साथ उस पल का रिकॉर्ड हमेशा के लिए हमारे "इतिहास (Archive)" सेक्शन में सुरक्षित कर दिया जाएगा। buysecond.in के पास इस रिकॉर्ड को सार्वजनिक रूप से दिखाने का पूरा अधिकार है।
             </p>
+
             <br>
+
             <p>
                 <strong>प्लेटफ़ॉर्म का अधिकार (PLATFORM RIGHT)</strong><br>
                 — यदि कोई विज्ञापन स्वीकृत होने के बाद भी सुरक्षा मानकों का उल्लंघन करता पाया जाता है, तो ओनर के पास उसे किसी भी समय हटाने या रोकने का पूरा अधिकार सुरक्षित है।
@@ -172,103 +182,5 @@
     </div>
 
     <script src="script.js"></script>
-    <!-- 🚀 सुपाबेस का नया बुलेट-प्रूफ कोड -->
-    <script>
-            // 1. ब्राउज़र को पहले इंजन लोड करने के लिए मजबूर करना
-            const script = document.createElement('script');
-            script.src = "https://jsdelivr.net";
-            script.onload = () => {
-                console.log("Supabase Engine Loaded Successfully!");
-                initSupabase(); // इंजन लोड होते ही कनेक्शन चालू करें
-            };
-            document.head.appendChild(script);
-
-            let supabase;
-
-            // 2. सुपाबेस कनेक्शन चालू करने का फंक्शन
-            function initSupabase() {
-                // 🔑 अपनी असली चाबियाँ यहाँ नीचे उद्धरण चिह्नों "" के बीच डालें
-                const SUPABASE_URL = "यहाँ_अपना_PROJECT_URL_पेस्ट_करें";
-                const SUPABASE_ANON_KEY = "यहाँ_अपना_ANON_PUBLIC_KEY_पेस्ट_करें";
-
-                supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            }
-
-            // 3. फॉर्म सबमिट होने का लॉजिक
-            document.addEventListener('DOMContentLoaded', () => {
-                const form = document.getElementById('ad-upload-form');
-                if (!form) return;
-
-                form.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-
-                    if (!supabase) {
-                        alert("डेटाबेस अभी लोड हो रहा है, कृपया 2 सेकंड बाद दोबारा कोशिश करें।");
-                        return;
-                    }
-
-                    const termsCheck = document.getElementById('terms-check');
-                    if (!termsCheck || !termsCheck.checked) {
-                        alert("कृपया आगे बढ़ने से पहले नो-रिफंड पॉलिसी को स्वीकार करें।");
-                        return;
-                    }
-
-                    // इनपुट्स से डेटा उठाना
-                    const brandName = document.getElementById('brand-name')?.value || "Test Brand";
-                    const targetUrl = document.getElementById('target-url')?.value || "https://google.com";
-                    const slotTime = document.getElementById('slot-time')?.value || new Date().toISOString();
-                    const duration = document.getElementById('duration')?.value || "10";
-
-                    const fileInput = document.getElementById('video-file');
-                    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-                        alert("कृपया एक वीडियो या इमेज फाइल ज़रूर अपलोड करें।");
-                        return;
-                    }
-
-                    const videoFile = fileInput.files[0]; // पहली फ़ाइल उठाना
-
-                    alert("कृपया इंतज़ार करें, आपका वीडियो तिजोरी में अपलोड हो रहा है...");
-
-                    try {
-                        // A. वीडियो को सुपाबेस 'ad-videos' तिजोरी में अपलोड करना
-                        const fileName = Date.now() + "_" + videoFile.name;
-                        const { data: storageData, error: storageError } = await supabase.storage
-                            .from('ad-videos')
-                            .upload(fileName, videoFile);
-
-                        if (storageError) throw storageError;
-
-                        // वीडियो का पब्लिक लिंक हासिल करना
-                        const { data: publicUrlData } = supabase.storage
-                            .from('ad-videos')
-                            .getPublicUrl(fileName);
-
-                        const videoUrl = publicUrlData.publicUrl;
-
-                        // B. वीडियो लिंक और बाकी डेटा को डिजिटल रजिस्टर (Table) में लिखना
-                        const { error: tableError } = await supabase
-                            .from('buysecond_records')
-                            .insert([
-                                {
-                                    brand_name: brandName,
-                                    target_url: targetUrl,
-                                    video_url: videoUrl,
-                                    slot_time: slotTime,
-                                    duration_seconds: parseInt(duration),
-                                    status: 'pending'
-                                }
-                            ]);
-
-                        if (tableError) throw tableError;
-
-                        alert("🎉 बधाई हो करण भाई! डेटा और वीडियो सफलतापूर्वक सुपाबेस में सेव हो गए हैं।");
-
-                    } catch (error) {
-                        console.error("Error:", error);
-                        alert("गड़बड़ी हुई: " + error.message);
-                    }
-                });
-            });
-    </script>
 </body>
 </html>
