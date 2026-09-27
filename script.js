@@ -1,18 +1,17 @@
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co'; // Aapka URL
-const SUPABASE_KEY = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';'; // ⚠️ यहाँ अपनी असली लंबी Anon Key पेस्ट करें
+const SUPABASE_URL = 'https://supabase.co'; // Aapka URL
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';'; // ⚠️ यहाँ अपनी असली Anon Key पेस्ट करें
 
-// 🔒 इसे बिना किसी स्पेस के एकदम पक्का फिक्स कर दिया गया है
-const { data: bookedSlots, error } = await supabaseClient
-    .from('buysecond_records') // पक्का करें कि यहाँ कोई स्पेस न हो
-    .select('*');
-// Modal Management
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Modal Management (Slot Modal)
 const slotModal = document.getElementById('slotModal');
 const openSlotModal = document.getElementById('openSlotModal');
 const closeSlotModal = document.getElementById('closeSlotModal');
 
 if (openSlotModal && slotModal) {
-    openSlotModal.addEventListener('click', () => {
+    openSlotModal.addEventListener('click', (e) => {
+        e.preventDefault();
         slotModal.style.display = 'block';
     });
 }
@@ -104,37 +103,36 @@ window.addEventListener('click', () => {
 async function populateSecondsDropdown(date, hour, minute) {
     secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #9ca3af; font-size: 13px;">Loading booked seconds...</div>';
 
-    // 🔒 100% सटीक टेबल नाम के साथ डेटा मंगवाना (स्पेस की समस्या ख़त्म)
-    const { data: bookedSlots, error } = await supabaseClient
-        .from('buysecond_records')
-        .select('*');
+    let bookedSecondsInThisMinute = [];
+    const searchTarget = `${date} ${hour}:${minute}`;
 
-    if (error) {
-        console.error('Error fetching booked slots:', error);
-        secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #ef4444; font-size: 13px;">Error loading slots</div>';
-        return;
+    // 🛡️ सुरक्षा कवच (Try-Catch): ताकि डेटाबेस एरर बटनों को क्रैश न कर सके
+    try {
+        const { data: bookedSlots, error } = await supabaseClient
+            .from('buysecond_records')
+            .select('*');
+
+        if (error) throw error;
+
+        if (bookedSlots) {
+            bookedSlots.forEach(slot => {
+                if (slot.slot_time && slot.slot_time.includes(searchTarget)) {
+                    let parts = slot.slot_time.split(':');
+                    let startSec = parseInt(parts[2]) || 0;
+                    let dur = parseInt(slot.duration_seconds) || 10;
+                    for (let i = 0; i < dur; i++) {
+                        let sec = startSec + i;
+                        if (sec <= 59) bookedSecondsInThisMinute.push(sec);
+                    }
+                }
+            });
+        }
+    } catch (err) {
+        console.error('Database Connection Ignored for safety:', err);
+        // एरर होने पर भी कोड आगे बढ़ेगा और बटन्स काम करते रहेंगे
     }
 
     secondDropdown.innerHTML = '';
-    let bookedSecondsInThisMinute = [];
-
-    // यूजर द्वारा चुनी गई तारीख और मिनट का सटीक स्ट्रिंग बनाना (उदाहरण: "2026-09-27 10:30")
-    const searchTarget = `${date} ${hour}:${minute}`;
-
-    if (bookedSlots) {
-        bookedSlots.forEach(slot => {
-            if (slot.slot_time && slot.slot_time.includes(searchTarget)) {
-                let parts = slot.slot_time.split(':');
-                let startSec = parseInt(parts[2]) || 0;
-                let dur = parseInt(slot.duration_seconds) || 10;
-                for (let i = 0; i < dur; i++) {
-                    let sec = startSec + i;
-                    if (sec <= 59) bookedSecondsInThisMinute.push(sec);
-                }
-            }
-        });
-    }
-
     for (let i = 0; i < 60; i++) {
         let secStr = i < 10 ? '0' + i : '' + i;
         let item = document.createElement('div');
@@ -143,7 +141,6 @@ async function populateSecondsDropdown(date, hour, minute) {
         item.style.fontSize = '13px';
         item.style.cursor = 'pointer';
 
-        // 🚫 अगर सेकंड पहले से बुक है, तो उसे अन-हाईलाइट (Disable) करना
         if (bookedSecondsInThisMinute.includes(i)) {
             item.style.color = '#6b7280';
             item.style.backgroundColor = '#1e293b';
@@ -162,7 +159,6 @@ async function populateSecondsDropdown(date, hour, minute) {
                 secondDropdown.style.display = 'none';
             };
         }
-
         secondDropdown.appendChild(item);
     }
 }
@@ -187,27 +183,28 @@ if (slotForm) {
 
         const formattedSlotTime = `${date} ${hour}:${minute}:${startSecond}`;
 
-        // 🔒 डेटाबेस टेबल में नया स्लॉट रिकॉर्ड इंसर्ट करना
-        const { data, error } = await supabaseClient
-            .from('buysecond_records') // पक्का करें कि यहाँ भी कोई स्पेस या गड़बड़ी न हो
-            .insert([
-                {
-                    slot_time: formattedSlotTime,
-                    duration_seconds: duration,
-                    target_url: targetUrl,
-                    brand_name: adTitle,
-                    status: 'pending'
-                }
-            ]);
+        try {
+            const { data, error } = await supabaseClient
+                .from('buysecond_records')
+                .insert([
+                    {
+                        slot_time: formattedSlotTime,
+                        duration_seconds: duration,
+                        target_url: targetUrl,
+                        brand_name: adTitle,
+                        status: 'pending'
+                    }
+                ]);
 
-        if (error) {
-            alert('Booking failed: ' + error.message);
-            console.error(error);
-        } else {
+            if (error) throw error;
+
             alert('🎉 स्लॉट सफलतापूर्वक बुक हो गया और डेटाबेस में सेव हो गया है!');
             slotModal.style.display = 'none';
             slotForm.reset();
             secondDisplay.value = '';
+        } catch (error) {
+            alert('Booking failed: ' + error.message);
+            console.error(error);
         }
     });
 }
