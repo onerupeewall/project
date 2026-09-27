@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buy Second - buysecond.in</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Supabase CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -22,7 +20,7 @@
                     }, 'google_translate_element');
                 }
     </script>
-    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <script type="text/javascript" src="//://google.com"></script>
 
     <header>
         <div class="logo">Buy Second</div>
@@ -32,7 +30,7 @@
     <div class="main-container">
 
         <div class="warning-banner">
-            <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन (अशलील, हिंसा, खतरा फैलाना) का उल्लंघन करता है, तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड (Refund) नहीं होगा।
+            <span>सावधान (Warning):</span> अगर आपका video हमारी कंटेंट गाइडलाइन (अशलील, हिंसा, खतरा फैलाना) का उल्लंघन करता है, तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड (Refund) नहीं होगा।
         </div>
 
         <div class="billboard" onclick="document.getElementById('openSlotModal').click()"></div>
@@ -118,62 +116,41 @@
                 <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
                     <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">5. टाइम स्लॉट की अवधि (Duration & Price - ₹10/sec):</label>
                     <input type="number" id="durationInput" min="1" value="10" placeholder="Enter duration in seconds..." required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%; outline: none;">
-                    <div style="font-size: 15px; color: #34d399; font-weight: 600; margin-top: 3px;">कुल रकम (Total Amount): <span id="totalAmount">₹100</span></div>
-                </div>
 
-                <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
-                    <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">6. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
-                    <input type="text" id="adTitle" placeholder="जैसे: अपनी कंपनी या ब्रांड का नाम लिखें" required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%; outline: none;">
-                </div>
+                    कुल रकम (Total Amount): ₹100
 
-                <div style="display: flex; align-items: flex-start; gap: 10px; background-color: #121824; padding: 12px; border-radius: 6px; border: 1px solid #1f293d; margin-top: 5px;">
-                    <input type="checkbox" id="warningCheckbox" style="margin-top: 3px; width: 16px; height: 16px; cursor: pointer;" required>
-                    <label for="warningCheckbox" style="cursor: pointer; font-size: 13px; line-height: 1.4; color: #d1d5db;">
-                        मैं जानता हूँ कि अगर एआई (AI) या ओनर ने नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट किया, तो मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
-                    </label>
-                </div>
+                    विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):
 
-                <button type="submit" class="slot-btn pay-btn" id="payButton" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border: none; padding: 12px 35px; font-size: 18px; border-radius: 30px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 5px;" disabled>Proceed to Secure Payment</button>
+                    मैं जानता हूँ कि अगर एआई (AI) या ओनर ने नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट किया, तो मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
+
+                    Proceed to Secure Payment
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Terms & Conditions Modal Popup -->
-    <div id="termsModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" id="closeTerms">&times;</span>
-            <h2 class="modal-main-title">Terms & Conditions for Advertisers</h2>
-            <div style="display: flex; flex-direction: column; gap: 16px; font-size: 14px; line-height: 1.6; color: #d1d5db;">
-                <p>
-                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">1. Content Guidelines & Standards:</strong>
-                    Every video or image uploaded to buysecond.in must comply with safety and quality standards.<br>
-                    <span style="color: #9ca3af; font-size: 13px;">— buysecond.in पर अपलोड की जाने वाली हर वीडियो या इमेज को सुरक्षा और गुणवत्ता मानकों का पालन करना अनिवार्य है।</span>
-                </p>
-                <p>
-                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">2. Automated AI Security Screening:</strong>
-                    Every uploaded media file will undergo an automated AI security scan to instantly detect inappropriate content.<br>
-                    <span style="color: #9ca3af; font-size: 13px;">— अपलोड की गई हर मीडिया फाइल पर आपत्तिजनक सामग्री का तुरंत पता लगाने के लिए एक स्वचालित AI सुरक्षा स्कैन किया जाएगा।</span>
-                </p>
-                <p>
-                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">3. Final Review & Owner Approval:</strong>
-                    After AI screening, a final manual review will be done by the website owner before going live on the billboard.<br>
-                    <span style="color: #9ca3af; font-size: 13px;">— AI स्कैनिंग के बाद, बिलबोर्ड पर लाइव होने से पहले वेबसाइट ओनर द्वारा अंतिम समीक्षा (Review) की जाएगी।</span>
-                </p>
-                <p>
-                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">4. Strict Zero Refund Policy:</strong>
-                    If any content is rejected due to nudity, violence, or rule violations, the ad will be canceled and no money will be refunded.<br>
-                    <span style="color: #9ca3af; font-size: 13px;">— यदि कोई सामग्री अशुद्धता, हिंसा या नियमों के उल्लंघन के कारण अस्वीकार की जाती है, तो विज्ञापन रद्द कर दिया जाएगा और कोई पैसा रिफंड नहीं होगा।</span>
-                </p>
-                <p>
-                    <strong style="font-size: 15px; color: #ffffff; display: block; margin-bottom: 3px;">5. Advertiser Responsibility:</strong>
-                    The advertiser is solely responsible for the target URL and brand name provided; the platform holds no liability.<br>
-                    <span style="color: #9ca3af; font-size: 13px;">— प्रदान किए गए टारगेट यूआरएल और ब्रांड नाम के लिए विज्ञापनदाता पूरी तरह जिम्मेदार होगा, प्लेटफॉर्म की कोई जिम्मेदारी नहीं है।</span>
-                </p>
-            </div>
-        </div>
-    </div>
+    ×Terms & Conditions for Advertisers
 
-    <!-- Google Translate Banner Fix -->
+    1. Content Guidelines & Standards:
+    Every video or image uploaded to buysecond.in must comply with safety and quality standards.
+    — buysecond.in पर अपलोड की जाने वाली हर वीडियो या इमेज को सुरक्षा और गुणवत्ता मानकों का पालन करना अनिवार्य है।
+
+    2. Automated AI Security Screening:
+    Every uploaded media file will undergo an automated AI security scan to instantly detect inappropriate content.
+    — हर मीडिया फाइल पर आपत्तिजनक सामग्री का तुरंत पता लगाने के लिए एक स्वचालित AI सुरक्षा स्कैन किया जाएगा।
+
+    3. Final Review & Owner Approval:
+    After AI screening, a final manual review will be done by the website owner before going live on the billboard.
+    — AI स्कैनिंग के बाद, बिलबोर्ड पर लाइव होने से पहले वेबसाइट ओनर द्वारा अंतिम समीक्षा (Review) की जाएगी।
+
+    4. Strict Zero Refund Policy:
+    If any content is rejected due to nudity, violence, or rule violations, the ad will be canceled and no money will be refunded.
+    — यदि कोई सामग्री अशुद्धता, हिंसा या नियमों के उल्लंघन के कारण अस्वीकार की जाती है, तो विज्ञापन रद्द कर दिया जाएगा और कोई पैसा रिफंड नहीं होगा।
+
+    5. Advertiser Responsibility:
+    The advertiser is solely responsible for the target URL and brand name provided; the platform holds no liability.
+    — प्रदान किए गए टारगेट यूआरएल और ब्रांड नाम के लिए विज्ञापनदाता पूरी तरह जिम्मेदार होगा, प्लेटफॉर्म की कोई जिम्मेदारी नहीं है।
+
     <style>
         .goog-te-banner-frame {
             display: none !important;
@@ -184,7 +161,5 @@
         }
     </style>
 
-    <!-- Cache-busting version added here -->
-    <script src="script.js?v=3.0"></script>
 </body>
 </html>
