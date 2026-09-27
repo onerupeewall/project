@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co'; // Aapki project URL
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o'; // Yahan apni asli Supabase Anon Key daalein
+const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co'; // Aapka URL
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o'; // Aapki Key
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -102,13 +102,10 @@ window.addEventListener('click', () => {
 async function populateSecondsDropdown(date, hour, minute) {
     secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #9ca3af; font-size: 13px;">Loading booked seconds...</div>';
 
-    // Supabase table se booked slots fetch karna (Updated table name: buysecond_records)
+    // Fetching records from Supabase using exact table and columns
     const { data: bookedSlots, error } = await supabaseClient
         .from('buysecond_records')
-        .select('*')
-        .eq('slot_date', date)
-        .eq('slot_hour', hour)
-        .eq('slot_minute', minute);
+        .select('*');
 
     if (error) {
         console.error('Error fetching booked slots:', error);
@@ -121,9 +118,15 @@ async function populateSecondsDropdown(date, hour, minute) {
 
     if (bookedSlots) {
         bookedSlots.forEach(slot => {
-            for (let i = 0; i < slot.duration; i++) {
-                let sec = parseInt(slot.start_second) + i;
-                if (sec <= 59) bookedSecondsInThisMinute.push(sec);
+            // slot_time format matching logic if needed
+            if (slot.slot_time && slot.slot_time.includes(`${date} ${hour}:${minute}`)) {
+                let parts = slot.slot_time.split(':');
+                let startSec = parseInt(parts[2]) || 0;
+                let dur = parseInt(slot.duration_seconds) || 10;
+                for (let i = 0; i < dur; i++) {
+                    let sec = startSec + i;
+                    if (sec <= 59) bookedSecondsInThisMinute.push(sec);
+                }
             }
         });
     }
@@ -177,18 +180,18 @@ if (slotForm) {
             return;
         }
 
-        // Supabase table mein data insert karna (Updated table name: buysecond_records)
+        // Combining date/time into slot_time and mapping to exact table columns
+        const formattedSlotTime = `${date} ${hour}:${minute}:${startSecond}`;
+
         const { data, error } = await supabaseClient
             .from('buysecond_records')
             .insert([
                 {
-                    slot_date: date,
-                    slot_hour: hour,
-                    slot_minute: minute,
-                    start_second: startSecond,
-                    duration: duration,
+                    slot_time: formattedSlotTime,
+                    duration_seconds: duration,
                     target_url: targetUrl,
-                    ad_title: adTitle
+                    brand_name: adTitle,
+                    status: 'pending'
                 }
             ]);
 
