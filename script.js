@@ -1,8 +1,8 @@
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co';     // Yahan apna Supabase URL dalein
-const SUPABASE_ANON_KEY = 'sb_publishable_W8ttckZLmLeYTq8CTxTkCg_F3cJ90n4'; // Yahan apni Supabase Anon Key dalein
+const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co'; // Aapki project URL
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Yahan apni asli Supabase Anon Key daalein
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Modal Management
 const slotModal = document.getElementById('slotModal');
@@ -102,7 +102,7 @@ window.addEventListener('click', () => {
 async function populateSecondsDropdown(date, hour, minute) {
     secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #9ca3af; font-size: 13px;">Loading booked seconds...</div>';
 
-    // Supabase table se booked slots fetch karna
+    // Supabase table se booked slots fetch karna (Updated table name: buysecond_records)
     const { data: bookedSlots, error } = await supabaseClient
         .from('buysecond_records')
         .select('*')
@@ -137,12 +137,12 @@ async function populateSecondsDropdown(date, hour, minute) {
         item.style.cursor = 'pointer';
 
         if (bookedSecondsInThisMinute.includes(i)) {
-            item.style.color = '#6b7280'; // Grey / Un-highlighted for booked seconds
+            item.style.color = '#6b7280';
             item.style.backgroundColor = '#1e293b';
             item.style.cursor = 'not-allowed';
             item.title = 'This second is already booked!';
         } else {
-            item.style.color = '#ffffff'; // Highlighted for available seconds
+            item.style.color = '#ffffff';
             item.style.backgroundColor = 'transparent';
 
             item.onmouseover = () => item.style.backgroundColor = '#334155';
@@ -177,9 +177,9 @@ if (slotForm) {
             return;
         }
 
-        // Supabase table mein data insert karna
+        // Supabase table mein data insert karna (Updated table name: buysecond_records)
         const { data, error } = await supabaseClient
-            .from('booked_slots')
+            .from('buysecond_records')
             .insert([
                 {
                     slot_date: date,
