@@ -2,8 +2,10 @@
 const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co'; // Aapka URL
 const SUPABASE_KEY = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';'; // ⚠️ यहाँ अपनी असली लंबी Anon Key पेस्ट करें
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+// 🔒 इसे बिना किसी स्पेस के एकदम पक्का फिक्स कर दिया गया है
+const { data: bookedSlots, error } = await supabaseClient
+    .from('buysecond_records') // पक्का करें कि यहाँ कोई स्पेस न हो
+    .select('*');
 // Modal Management
 const slotModal = document.getElementById('slotModal');
 const openSlotModal = document.getElementById('openSlotModal');
@@ -187,7 +189,7 @@ if (slotForm) {
 
         // 🔒 डेटाबेस टेबल में नया स्लॉट रिकॉर्ड इंसर्ट करना
         const { data, error } = await supabaseClient
-            .from('buysecond_records')
+            .from('buysecond_records') // पक्का करें कि यहाँ भी कोई स्पेस या गड़बड़ी न हो
             .insert([
                 {
                     slot_time: formattedSlotTime,
