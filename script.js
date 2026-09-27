@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co'; // Aapka URL
-const SUPABASE_KEY = 'sb_publishable_W8ttckZLmLeYTq8CTxTkCg_F3cJ90n4'; // Aapki Key
+const SUPABASE_KEY = ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';'; // ⚠️ यहाँ अपनी असली लंबी Anon Key पेस्ट करें
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -102,7 +102,7 @@ window.addEventListener('click', () => {
 async function populateSecondsDropdown(date, hour, minute) {
     secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #9ca3af; font-size: 13px;">Loading booked seconds...</div>';
 
-    // Fetching records from Supabase using exact table and columns
+    // 🔒 100% सटीक टेबल नाम के साथ डेटा मंगवाना (स्पेस की समस्या ख़त्म)
     const { data: bookedSlots, error } = await supabaseClient
         .from('buysecond_records')
         .select('*');
@@ -116,10 +116,12 @@ async function populateSecondsDropdown(date, hour, minute) {
     secondDropdown.innerHTML = '';
     let bookedSecondsInThisMinute = [];
 
+    // यूजर द्वारा चुनी गई तारीख और मिनट का सटीक स्ट्रिंग बनाना (उदाहरण: "2026-09-27 10:30")
+    const searchTarget = `${date} ${hour}:${minute}`;
+
     if (bookedSlots) {
         bookedSlots.forEach(slot => {
-            // slot_time format matching logic if needed
-            if (slot.slot_time && slot.slot_time.includes(`${date} ${hour}:${minute}`)) {
+            if (slot.slot_time && slot.slot_time.includes(searchTarget)) {
                 let parts = slot.slot_time.split(':');
                 let startSec = parseInt(parts[2]) || 0;
                 let dur = parseInt(slot.duration_seconds) || 10;
@@ -139,6 +141,7 @@ async function populateSecondsDropdown(date, hour, minute) {
         item.style.fontSize = '13px';
         item.style.cursor = 'pointer';
 
+        // 🚫 अगर सेकंड पहले से बुक है, तो उसे अन-हाईलाइट (Disable) करना
         if (bookedSecondsInThisMinute.includes(i)) {
             item.style.color = '#6b7280';
             item.style.backgroundColor = '#1e293b';
@@ -180,9 +183,9 @@ if (slotForm) {
             return;
         }
 
-        // Combining date/time into slot_time and mapping to exact table columns
         const formattedSlotTime = `${date} ${hour}:${minute}:${startSecond}`;
 
+        // 🔒 डेटाबेस टेबल में नया स्लॉट रिकॉर्ड इंसर्ट करना
         const { data, error } = await supabaseClient
             .from('buysecond_records')
             .insert([
@@ -199,7 +202,7 @@ if (slotForm) {
             alert('Booking failed: ' + error.message);
             console.error(error);
         } else {
-            alert('Slot successfully booked and saved to database! Redirecting to payment...');
+            alert('🎉 स्लॉट सफलतापूर्वक बुक हो गया और डेटाबेस में सेव हो गया है!');
             slotModal.style.display = 'none';
             slotForm.reset();
             secondDisplay.value = '';
