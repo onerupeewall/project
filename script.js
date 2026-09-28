@@ -122,7 +122,7 @@ async function populateSecondsDropdown(date, hour, minute) {
 
     // Supabase table se booked slots fetch karna
     const { data: bookedSlots, error } = await supabaseClient
-        .from('booked_slots')
+        .from('booked slots')
         .select('*')
         .eq('slot_date', date)
         .eq('slot_hour', hour)
