@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co';     // आपका सुपाबेस यूआरएल
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o'; // आपकी सुपाबेस कुंजी
+const SUPABASE_ANON_KEY = 'sb_publishable_W8ttckZLmLeYTq8CTxTkCg_F3cJ90n4'; // आपकी सुपाबेस कुंजी
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -122,7 +122,7 @@ async function populateSecondsDropdown(date, hour, minute) {
 
     // Supabase table se booked slots fetch karna
     const { data: bookedSlots, error } = await supabaseClient
-        .from('booked_slots')
+        .from('booked-slots')
         .select('*')
         .eq('slot_date', date)
         .eq('slot_hour', hour)
