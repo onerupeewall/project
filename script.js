@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';     // Yahan apna Supabase URL dalein
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Yahan apni Supabase Anon Key dalein
+const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co';     // आपका सुपाबेस यूआरएल
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o'; // आपकी सुपाबेस कुंजी
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -21,13 +21,13 @@ if (closeSlotModal && slotModal) {
     });
 }
 
-// Terms Modal
+// Terms Modal (Fixed with correct ID matching HTML)
 const termsModal = document.getElementById('termsModal');
-const openTerms = document.getElementById('openTerms');
+const openTermsBtn = document.getElementById('openTermsBtn');
 const closeTerms = document.getElementById('closeTerms');
 
-if (openTerms && termsModal) {
-    openTerms.addEventListener('click', (e) => {
+if (openTermsBtn && termsModal) {
+    openTermsBtn.addEventListener('click', (e) => {
         e.preventDefault();
         termsModal.style.display = 'block';
     });
@@ -45,19 +45,38 @@ window.addEventListener('click', (e) => {
     if (e.target === termsModal) termsModal.style.display = 'none';
 });
 
-// Country Dropdown Toggle
-function toggleDropdown(id, event) {
-    event.stopPropagation();
-    const list = document.getElementById(id);
-    if (list) {
-        list.style.display = list.style.display === 'block' ? 'none' : 'block';
-    }
+// Country Dropdown Toggle & Selection
+const countryDropdownToggle = document.getElementById('countryDropdownToggle');
+const countryDropdownList = document.getElementById('countryDropdownList');
+const slotCountryDisplay = document.getElementById('slotCountryDisplay');
+const slotCountry = document.getElementById('slotCountry');
+
+if (countryDropdownToggle && countryDropdownList) {
+    countryDropdownToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        countryDropdownList.style.display = countryDropdownList.style.display === 'block' ? 'none' : 'block';
+    });
 }
 
-function selectCountry(countryName, flag) {
-    document.getElementById('slotCountryDisplay').value = flag + ' ' + countryName;
-    document.getElementById('slotCountry').value = countryName;
-    document.getElementById('countryDropdownList').style.display = 'none';
+if (slotCountryDisplay && countryDropdownList) {
+    slotCountryDisplay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        countryDropdownList.style.display = countryDropdownList.style.display === 'block' ? 'none' : 'block';
+    });
+}
+
+// Handle country items selection using event delegation
+if (countryDropdownList) {
+    countryDropdownList.addEventListener('click', (e) => {
+        const item = e.target.closest('.custom-dropdown-item');
+        if (item) {
+            const countryName = item.getAttribute('data-country');
+            const flag = item.getAttribute('data-flag');
+            slotCountryDisplay.value = flag + ' ' + countryName;
+            slotCountry.value = countryName;
+            countryDropdownList.style.display = 'none';
+        }
+    });
 }
 
 // Duration & Total Amount Calculation
@@ -95,8 +114,7 @@ if (secondDisplay && secondDropdown) {
 // Hide dropdowns when clicking outside
 window.addEventListener('click', () => {
     if (secondDropdown) secondDropdown.style.display = 'none';
-    const countryList = document.getElementById('countryDropdownList');
-    if (countryList) countryList.style.display = 'none';
+    if (countryDropdownList) countryDropdownList.style.display = 'none';
 });
 
 async function populateSecondsDropdown(date, hour, minute) {
@@ -137,12 +155,12 @@ async function populateSecondsDropdown(date, hour, minute) {
         item.style.cursor = 'pointer';
 
         if (bookedSecondsInThisMinute.includes(i)) {
-            item.style.color = '#6b7280'; // Grey / Un-highlighted for booked seconds
+            item.style.color = '#6b7280'; // Grey for booked seconds
             item.style.backgroundColor = '#1e293b';
             item.style.cursor = 'not-allowed';
             item.title = 'This second is already booked!';
         } else {
-            item.style.color = '#ffffff'; // Highlighted for available seconds
+            item.style.color = '#ffffff'; // White for available seconds
             item.style.backgroundColor = 'transparent';
 
             item.onmouseover = () => item.style.backgroundColor = '#334155';
@@ -200,6 +218,7 @@ if (slotForm) {
             slotModal.style.display = 'none';
             slotForm.reset();
             secondDisplay.value = '';
+            if (payButton) payButton.disabled = true;
         }
     });
 }
@@ -207,7 +226,11 @@ if (slotForm) {
 // Enable/disable pay button based on warning checkbox
 const warningCheckbox = document.getElementById('warningCheckbox');
 const payButton = document.getElementById('payButton');
+
 if (warningCheckbox && payButton) {
+    // Shuruat mein button disable rahega jab tak checkbox par tick na ho
+    payButton.disabled = !warningCheckbox.checked;
+
     warningCheckbox.addEventListener('change', () => {
         payButton.disabled = !warningCheckbox.checked;
     });

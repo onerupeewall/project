@@ -26,7 +26,8 @@
 
     <header>
         <div class="logo">Buy Second</div>
-        <a href="#" class="terms-link" id="openTerms">Terms & Conditions</a>
+        <!-- Terms & Conditions Button Fixed (ID added) -->
+        <a href="#" class="terms-link" id="openTermsBtn">Terms & Conditions</a>
     </header>
 
     <div class="main-container">
@@ -83,16 +84,16 @@
                     <div style="position: relative; width: 100%;">
                         <input type="text" id="slotCountryDisplay" placeholder="Type your country name (e.g. Japan, France...)" autocomplete="off" required style="width: 100%; background: #0f172a; border: 1px solid #334155; color: #ffffff; padding: 10px 30px 10px 10px; border-radius: 6px; font-size: 14px; outline: none;">
                         <input type="hidden" id="slotCountry" value="India">
-                        <span onclick="toggleDropdown('countryDropdownList', event)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; font-size: 12px;">▼</span>
+                        <span id="countryDropdownToggle" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; font-size: 12px;">▼</span>
                         <div class="custom-dropdown-list" id="countryDropdownList" style="position: absolute; top: 100%; left: 0; width: 100%; overflow-y: auto; background: #0f172a; border: 1px solid #334155; border-radius: 6px; z-index: 1000; display: none; max-height: 150px;">
-                            <div class="custom-dropdown-item" onclick="selectCountry('India', '🇮🇳')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇮🇳 India</div>
-                            <div class="custom-dropdown-item" onclick="selectCountry('America (USA)', '🇺🇸')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇺🇸 America (USA)</div>
-                            <div class="custom-dropdown-item" onclick="selectCountry('UK', '🇬🇧')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇬🇧 UK</div>
-                            <div class="custom-dropdown-item" onclick="selectCountry('Canada', '🇨🇦')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇨🇦 Canada</div>
-                            <div class="custom-dropdown-item" onclick="selectCountry('Australia', '🇦🇺')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇦🇺 Australia</div>
-                            <div class="custom-dropdown-item" onclick="selectCountry('Japan', '🇯🇵')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇯🇵 Japan</div>
-                            <div class="custom-dropdown-item" onclick="selectCountry('Germany', '🇩🇪')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇩🇪 Germany</div>
-                            <div class="custom-dropdown-item" onclick="selectCountry('France', '🇫🇷')" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇫🇷 France</div>
+                            <div class="custom-dropdown-item" data-country="India" data-flag="🇮🇳" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇮🇳 India</div>
+                            <div class="custom-dropdown-item" data-country="America (USA)" data-flag="🇺🇸" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇺🇸 America (USA)</div>
+                            <div class="custom-dropdown-item" data-country="UK" data-flag="🇬🇧" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇬🇧 UK</div>
+                            <div class="custom-dropdown-item" data-country="Canada" data-flag="🇨🇦" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇨🇦 Canada</div>
+                            <div class="custom-dropdown-item" data-country="Australia" data-flag="🇦🇺" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇦🇺 Australia</div>
+                            <div class="custom-dropdown-item" data-country="Japan" data-flag="🇯🇵" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇯🇵 Japan</div>
+                            <div class="custom-dropdown-item" data-country="Germany" data-flag="🇩🇪" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇩🇪 Germany</div>
+                            <div class="custom-dropdown-item" data-country="France" data-flag="🇫🇷" style="padding: 8px 10px; color: #fff; cursor: pointer; font-size: 13px;">🇫🇷 France</div>
                         </div>
                     </div>
                 </div>
@@ -133,7 +134,8 @@
                     </label>
                 </div>
 
-                <button type="submit" class="slot-btn pay-btn" id="payButton" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border: none; padding: 12px 35px; font-size: 18px; border-radius: 30px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 5px;" disabled>Proceed to Secure Payment</button>
+                <!-- Payment/Buy Button Fixed (ID added & enabled logic ready) -->
+                <button type="submit" class="slot-btn pay-btn" id="payButton" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border: none; padding: 12px 35px; font-size: 18px; border-radius: 30px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 5px;">Proceed to Secure Payment</button>
             </form>
         </div>
     </div>
@@ -185,6 +187,6 @@
     </style>
 
     <!-- Cache-busting version added here -->
-    <script src="script.js?v=2.0"></script>
+    <script src="script.js?v=2.1"></script>
 </body>
 </html>
