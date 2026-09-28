@@ -1,8 +1,8 @@
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co'; // Aapka URL
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Aapki Key
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';     // Yahan apna Supabase URL dalein
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Yahan apni Supabase Anon Key dalein
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Modal Management
 const slotModal = document.getElementById('slotModal');
@@ -102,10 +102,13 @@ window.addEventListener('click', () => {
 async function populateSecondsDropdown(date, hour, minute) {
     secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #9ca3af; font-size: 13px;">Loading booked seconds...</div>';
 
-    // Fetching records from Supabase using exact table and columns
+    // Supabase table se booked slots fetch karna
     const { data: bookedSlots, error } = await supabaseClient
-        .from('buysecond_records')
-        .select('*');
+        .from('booked_slots')
+        .select('*')
+        .eq('slot_date', date)
+        .eq('slot_hour', hour)
+        .eq('slot_minute', minute);
 
     if (error) {
         console.error('Error fetching booked slots:', error);
@@ -118,15 +121,9 @@ async function populateSecondsDropdown(date, hour, minute) {
 
     if (bookedSlots) {
         bookedSlots.forEach(slot => {
-            // slot_time format matching logic if needed
-            if (slot.slot_time && slot.slot_time.includes(`${date} ${hour}:${minute}`)) {
-                let parts = slot.slot_time.split(':');
-                let startSec = parseInt(parts[2]) || 0;
-                let dur = parseInt(slot.duration_seconds) || 10;
-                for (let i = 0; i < dur; i++) {
-                    let sec = startSec + i;
-                    if (sec <= 59) bookedSecondsInThisMinute.push(sec);
-                }
+            for (let i = 0; i < slot.duration; i++) {
+                let sec = parseInt(slot.start_second) + i;
+                if (sec <= 59) bookedSecondsInThisMinute.push(sec);
             }
         });
     }
@@ -140,12 +137,12 @@ async function populateSecondsDropdown(date, hour, minute) {
         item.style.cursor = 'pointer';
 
         if (bookedSecondsInThisMinute.includes(i)) {
-            item.style.color = '#6b7280';
+            item.style.color = '#6b7280'; // Grey / Un-highlighted for booked seconds
             item.style.backgroundColor = '#1e293b';
             item.style.cursor = 'not-allowed';
             item.title = 'This second is already booked!';
         } else {
-            item.style.color = '#ffffff';
+            item.style.color = '#ffffff'; // Highlighted for available seconds
             item.style.backgroundColor = 'transparent';
 
             item.onmouseover = () => item.style.backgroundColor = '#334155';
@@ -180,18 +177,18 @@ if (slotForm) {
             return;
         }
 
-        // Combining date/time into slot_time and mapping to exact table columns
-        const formattedSlotTime = `${date} ${hour}:${minute}:${startSecond}`;
-
+        // Supabase table mein data insert karna
         const { data, error } = await supabaseClient
-            .from('buysecond_records')
+            .from('booked_slots')
             .insert([
                 {
-                    slot_time: formattedSlotTime,
-                    duration_seconds: duration,
+                    slot_date: date,
+                    slot_hour: hour,
+                    slot_minute: minute,
+                    start_second: startSecond,
+                    duration: duration,
                     target_url: targetUrl,
-                    brand_name: adTitle,
-                    status: 'pending'
+                    ad_title: adTitle
                 }
             ]);
 
