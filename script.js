@@ -122,14 +122,14 @@ async function populateSecondsDropdown(date, hour, minute) {
 
     // Supabase table se booked slots fetch karna
     const { data: bookedSlots, error } = await supabaseClient
-        .from('booked slots')
+        .from('booked_slots')
         .select('*')
         .eq('slot_date', date)
         .eq('slot_hour', hour)
         .eq('slot_minute', minute);
 
     if (error) {
-        console.error('Error fetching booked slots:', error);
+        console.error('Error fetching booked_slots:', error);
         secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #ef4444; font-size: 13px;">Error loading slots</div>';
         return;
     }
