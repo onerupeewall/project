@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co';     // आपका सुपाबेस यूआरएल
-const SUPABASE_ANON_KEY = 'sb_publishable_W8ttckZLmLeYTq8CTxTkCg_F3cJ90n4'; // आपकी सुपाबेस कुंजी
+const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_W8ttckZLmLeYtQ8CTxTKcg_F3cJ90n4';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -21,7 +21,7 @@ if (closeSlotModal && slotModal) {
     });
 }
 
-// Terms Modal (Fixed with correct ID matching HTML)
+// Terms Modal
 const termsModal = document.getElementById('termsModal');
 const openTermsBtn = document.getElementById('openTermsBtn');
 const closeTerms = document.getElementById('closeTerms');
@@ -65,7 +65,6 @@ if (slotCountryDisplay && countryDropdownList) {
     });
 }
 
-// Handle country items selection using event delegation
 if (countryDropdownList) {
     countryDropdownList.addEventListener('click', (e) => {
         const item = e.target.closest('.custom-dropdown-item');
@@ -120,16 +119,16 @@ window.addEventListener('click', () => {
 async function populateSecondsDropdown(date, hour, minute) {
     secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #9ca3af; font-size: 13px;">Loading booked seconds...</div>';
 
-    // Supabase table se booked slots fetch karna
+    // Supabase table se booked slots fetch karna (Updated with buysecond_records)
     const { data: bookedSlots, error } = await supabaseClient
-        .from('booked_slots')
+        .from('buysecond_records')
         .select('*')
         .eq('slot_date', date)
         .eq('slot_hour', hour)
         .eq('slot_minute', minute);
 
     if (error) {
-        console.error('Error fetching booked_slots:', error);
+        console.error('Error fetching booked slots:', error);
         secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #ef4444; font-size: 13px;">Error loading slots</div>';
         return;
     }
@@ -155,12 +154,12 @@ async function populateSecondsDropdown(date, hour, minute) {
         item.style.cursor = 'pointer';
 
         if (bookedSecondsInThisMinute.includes(i)) {
-            item.style.color = '#6b7280'; // Grey for booked seconds
+            item.style.color = '#6b7280';
             item.style.backgroundColor = '#1e293b';
             item.style.cursor = 'not-allowed';
             item.title = 'This second is already booked!';
         } else {
-            item.style.color = '#ffffff'; // White for available seconds
+            item.style.color = '#ffffff';
             item.style.backgroundColor = 'transparent';
 
             item.onmouseover = () => item.style.backgroundColor = '#334155';
@@ -195,9 +194,9 @@ if (slotForm) {
             return;
         }
 
-        // Supabase table mein data insert karna
+        // Supabase table mein data insert karna (Updated with buysecond_records)
         const { data, error } = await supabaseClient
-            .from('booked_slots')
+            .from('buysecond_records')
             .insert([
                 {
                     slot_date: date,
@@ -228,7 +227,6 @@ const warningCheckbox = document.getElementById('warningCheckbox');
 const payButton = document.getElementById('payButton');
 
 if (warningCheckbox && payButton) {
-    // Shuruat mein button disable rahega jab tak checkbox par tick na ho
     payButton.disabled = !warningCheckbox.checked;
 
     warningCheckbox.addEventListener('change', () => {
