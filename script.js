@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_W8ttckZLmLeYtQ8CTxTKcg_F3cJ90n4';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Modal Management
+// Modal Management for Slot Form
 const slotModal = document.getElementById('slotModal');
 const openSlotModal = document.getElementById('openSlotModal');
 const closeSlotModal = document.getElementById('closeSlotModal');
@@ -21,10 +21,10 @@ if (closeSlotModal && slotModal) {
     });
 }
 
-// Terms Modal
+// Terms Modal Management
 const termsModal = document.getElementById('termsModal');
 const openTermsBtn = document.getElementById('openTermsBtn');
-const closeTerms = document.getElementById('closeTerms');
+const closeTermsModal = document.getElementById('closeTermsModal');
 
 if (openTermsBtn && termsModal) {
     openTermsBtn.addEventListener('click', (e) => {
@@ -33,8 +33,8 @@ if (openTermsBtn && termsModal) {
     });
 }
 
-if (closeTerms && termsModal) {
-    closeTerms.addEventListener('click', () => {
+if (closeTermsModal && termsModal) {
+    closeTermsModal.addEventListener('click', () => {
         termsModal.style.display = 'none';
     });
 }
@@ -78,7 +78,12 @@ if (countryDropdownList) {
     });
 }
 
-// Duration & Total Amount Calculation
+// Hide dropdown when clicking outside
+window.addEventListener('click', () => {
+    if (countryDropdownList) countryDropdownList.style.display = 'none';
+});
+
+// Duration & Total Amount Calculation (₹10/sec)
 const durationInput = document.getElementById('durationInput');
 const totalAmount = document.getElementById('totalAmount');
 if (durationInput && totalAmount) {
@@ -88,148 +93,151 @@ if (durationInput && totalAmount) {
     });
 }
 
-// Second Dropdown Open/Close Toggle & Database Fetch Logic
-const secondDisplay = document.getElementById('slotSecondDisplay');
-const secondDropdown = document.getElementById('secondDropdownList');
-const hiddenSecondInput = document.getElementById('slotSecond');
+// --- LIVE VISITOR COUNTER LOGIC ---
+async function initVisitorCounter() {
+    let visitorEl = document.getElementById('totalGlobalCount');
+    if (!visitorEl) return;
 
-if (secondDisplay && secondDropdown) {
-    secondDisplay.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const date = document.getElementById('slotDate').value;
-        const hour = document.getElementById('slotHour').value;
-        const minute = document.getElementById('slotMinute').value;
+    // LocalStorage se check karo kya user pehle visit kar chuka hai is session mein
+    let hasVisited = sessionStorage.getItem('buysecond_visited');
 
-        if (!date || !hour || !minute) {
-            alert('कृपया पहले तारीख (Date), घंटा (Hour), और मिनट (Minute) भरें!');
-            return;
-        }
+    // Supabase se current total count fetch karo ya initialize karo
+    let { data, error } = await supabaseClient
+        .from('site_visitors')
+        .select('count')
+        .eq('id', 1)
+        .single();
 
-        await populateSecondsDropdown(date, hour, minute);
-        secondDropdown.style.display = secondDropdown.style.display === 'block' ? 'none' : 'block';
-    });
+    let currentCount = data ? data.count : 120; // Default base agar table na ho
+
+    if (!hasVisited) {
+        currentCount += 1;
+        sessionStorage.setItem('buysecond_visited', 'true');
+
+        // Supabase mein count update karo (agar table bani ho)
+        await supabaseClient
+            .from('site_visitors')
+            .upsert({ id: 1, count: currentCount });
+    }
+
+    // Screen par count dikhao jo sirf badhega
+    visitorEl.innerText = currentCount;
 }
 
-// Hide dropdowns when clicking outside
-window.addEventListener('click', () => {
-    if (secondDropdown) secondDropdown.style.display = 'none';
-    if (countryDropdownList) countryDropdownList.style.display = 'none';
-});
+// --- QUEUE & TOKEN SCHEDULING LOGIC (8 AM to 10 PM Window, Starts Tomorrow) ---
+async function calculateNextQueueSlot(durationSeconds) {
+    // Booking hamesha kal (Tomorrow) se shuru hogi
+    let targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 1);
+    let dateStr = targetDate.toISOString().split('T')[0];
 
-async function populateSecondsDropdown(date, hour, minute) {
-    secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #9ca3af; font-size: 13px;">Loading booked seconds...</div>';
+    // Slot window: Morning 8:00 AM (08:00:00) to Night 10:00 PM (22:00:00)
+    let dayStartHour = 8;
+    let dayEndHour = 22;
 
-    // Supabase table se booked slots fetch karna (Updated with buysecond_records)
-    const { data: bookedSlots, error } = await supabaseClient
+    // Database se check karo ki kal ke din ab tak kitne slots book ho chuke hain
+    let { data: existingSlots, error } = await supabaseClient
         .from('buysecond_records')
         .select('*')
-        .eq('slot_date', date)
-        .eq('slot_hour', hour)
-        .eq('slot_minute', minute);
+        .eq('slot_date', dateStr)
+        .order('queue_number', { ascending: false });
 
-    if (error) {
-        console.error('Error fetching booked slots:', error);
-        secondDropdown.innerHTML = '<div style="padding: 8px 10px; color: #ef4444; font-size: 13px;">Error loading slots</div>';
-        return;
-    }
+    let nextQueueNo = 1;
+    let allocatedTimeObj = new Date(targetDate);
+    allocatedTimeObj.setHours(dayStartHour, 0, 0, 0);
 
-    secondDropdown.innerHTML = '';
-    let bookedSecondsInThisMinute = [];
-
-    if (bookedSlots) {
-        bookedSlots.forEach(slot => {
-            for (let i = 0; i < slot.duration; i++) {
-                let sec = parseInt(slot.start_second) + i;
-                if (sec <= 59) bookedSecondsInThisMinute.push(sec);
+    if (existingSlots && existingSlots.length > 0) {
+        nextQueueNo = existingSlots.length + 1;
+        // Pichhle slot ka end time nikal kar uske aage ka time set karenge
+        let lastSlot = existingSlots[0];
+        if (lastSlot.end_timestamp) {
+            let lastEnd = new Date(lastSlot.end_timestamp);
+            if (lastEnd > allocatedTimeObj) {
+                allocatedTimeObj = lastEnd;
             }
-        });
-    }
-
-    for (let i = 0; i < 60; i++) {
-        let secStr = i < 10 ? '0' + i : '' + i;
-        let item = document.createElement('div');
-        item.innerText = secStr;
-        item.style.padding = '8px 10px';
-        item.style.fontSize = '13px';
-        item.style.cursor = 'pointer';
-
-        if (bookedSecondsInThisMinute.includes(i)) {
-            item.style.color = '#6b7280';
-            item.style.backgroundColor = '#1e293b';
-            item.style.cursor = 'not-allowed';
-            item.title = 'This second is already booked!';
-        } else {
-            item.style.color = '#ffffff';
-            item.style.backgroundColor = 'transparent';
-
-            item.onmouseover = () => item.style.backgroundColor = '#334155';
-            item.onmouseout = () => item.style.backgroundColor = 'transparent';
-
-            item.onclick = () => {
-                secondDisplay.value = secStr;
-                hiddenSecondInput.value = secStr;
-                secondDropdown.style.display = 'none';
-            };
         }
-
-        secondDropdown.appendChild(item);
     }
+
+    let startTime = new Date(allocatedTimeObj);
+    let endTime = new Date(startTime.getTime() + durationSeconds * 1000);
+
+    // Check karo ki kya raat 10 baje (22:00) cross ho gaya? Agar haan, toh agle din shift karo
+    if (endTime.getHours() >= dayEndHour) {
+        targetDate.setDate(targetDate.getDate() + 1);
+        dateStr = targetDate.toISOString().split('T')[0];
+        allocatedTimeObj = new Date(targetDate);
+        allocatedTimeObj.setHours(dayStartHour, 0, 0, 0);
+
+        startTime = new Date(allocatedTimeObj);
+        endTime = new Date(startTime.getTime() + durationSeconds * 1000);
+    }
+
+    return {
+        queue_number: nextQueueNo,
+        slot_date: dateStr,
+        start_timestamp: startTime.toISOString(),
+        end_timestamp: endTime.toISOString(),
+        formatted_time: `${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()}`
+    };
 }
 
-// Form Submit & Saving to Supabase Database
+// --- FORM SUBMISSION & TOKEN GENERATION ---
 const slotForm = document.getElementById('slotForm');
 if (slotForm) {
     slotForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const date = document.getElementById('slotDate').value;
-        const hour = document.getElementById('slotHour').value;
-        const minute = document.getElementById('slotMinute').value;
-        const startSecond = hiddenSecondInput.value;
         const duration = parseInt(durationInput.value) || 10;
         const targetUrl = document.getElementById('targetUrl').value;
         const adTitle = document.getElementById('adTitle').value;
+        const country = slotCountry.value;
 
-        if (!startSecond) {
-            alert('कृपया कोई उपलब्ध सेकंड (Second) चुनें!');
-            return;
-        }
+        // Button disable karke loading dikhao
+        const submitBtn = slotForm.querySelector('button[type="submit"]');
+        let originalText = submitBtn.innerText;
+        submitBtn.innerText = 'Processing Queue & Token...';
+        submitBtn.disabled = true;
 
-        // Supabase table mein data insert karna (Updated with buysecond_records)
-        const { data, error } = await supabaseClient
-            .from('buysecond_records')
-            .insert([
-                {
-                    slot_date: date,
-                    slot_hour: hour,
-                    slot_minute: minute,
-                    start_second: startSecond,
-                    duration: duration,
-                    target_url: targetUrl,
-                    ad_title: adTitle
-                }
-            ]);
+        try {
+            // Queue aur Token calculate karo
+            let slotInfo = await calculateNextQueueSlot(duration);
 
-        if (error) {
-            alert('Booking failed: ' + error.message);
-            console.error(error);
-        } else {
-            alert('Slot successfully booked and saved to database! Redirecting to payment...');
+            // Supabase database mein save karo (`buysecond_records` table)
+            const { data, error } = await supabaseClient
+                .from('buysecond_records')
+                .insert([
+                    {
+                        brand_name: adTitle,
+                        target_url: targetUrl,
+                        duration_seconds: duration,
+                        queue_number: slotInfo.queue_number,
+                        slot_date: slotInfo.slot_date,
+                        scheduled_time: slotInfo.formatted_time,
+                        status: 'pending'
+                    }
+                ]);
+
+            if (error) {
+                throw error;
+            }
+
+            // Success Token Display
+            alert(`🎉 बधाई ہو! आपकी बुकिंग सफल हो गई है।\n\n🎟️ आपका टोकन नंबर: #${slotInfo.queue_number}\n🕒 आपकी विज्ञापन चलने का समय: ${slotInfo.formatted_time}\n\nअब आपको पेमेंट गेटवे पर redirect किया जा रहा है...`);
+
             slotModal.style.display = 'none';
             slotForm.reset();
-            secondDisplay.value = '';
-            if (payButton) payButton.disabled = true;
+            totalAmount.innerText = '₹100';
+
+        } catch (err) {
+            alert('Booking failed: ' + (err.message || err));
+            console.error(err);
+        } finally {
+            submitBtn.innerText = originalText;
+            submitBtn.disabled = false;
         }
     });
 }
 
-// Enable/disable pay button based on warning checkbox
-const warningCheckbox = document.getElementById('warningCheckbox');
-const payButton = document.getElementById('payButton');
-
-if (warningCheckbox && payButton) {
-    payButton.disabled = !warningCheckbox.checked;
-
-    warningCheckbox.addEventListener('change', () => {
-        payButton.disabled = !warningCheckbox.checked;
-    });
-}
+// Page load par visitor counter initialize karein
+window.addEventListener('DOMContentLoaded', () => {
+    initVisitorCounter();
+});
