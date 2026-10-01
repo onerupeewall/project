@@ -32,32 +32,11 @@
 
     <div class="main-container">
 
-        <!-- Screen Time Header Notice -->
-        <div style="color: #EF4444; font-weight: bold; text-align: center; margin-bottom: 6px; font-size: 15px; letter-spacing: 0.5px;">
-            🔴 Screen Time: 8 AM to 10 PM
-        </div>
-
         <div class="warning-banner">
-            <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन (अशलील, हिंसा, खतरा फैलाना) का उल्लंघन करता है, तो वेबसाइट ओनर द्वारा आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड (Refund) नहीं होगा।
+            <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन (अशलील, हिंसा, खतरा फैलाना) का उल्लंघन करता है, तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड (Refund) नहीं होगा।
         </div>
 
-        <div class="billboard" id="billboardBox">
-            <!-- Permanent Default Banner Jab Tak Koi Ad Na Ho -->
-            <div style="background: #121824; border: 2px solid #f59e0b; padding: 30px; text-align: center; border-radius: 8px; color: #fff;">
-                <h2 style="color: #f59e0b; margin-bottom: 10px;">Buy Seconds - Every Second Counts</h2>
-                <p style="color: #9ca3af; font-size: 14px;">Own Your Movement. Book your time slot now!</p>
-            </div>
-        </div>
-
-        <!-- Dynamic Total Available Seconds & User Token Tracker Container -->
-        <div id="dynamicStatusContainer" style="background: #0b0f17; border: 1px solid #1f293d; padding: 12px; border-radius: 8px; text-align: center; margin: 10px 0;">
-            <div id="totalSecondsDisplay" style="font-size: 15px; font-weight: bold; color: #38bdf8; margin-bottom: 4px;">
-                ⏳ Total Available Seconds (8 AM - 10 PM): <span id="remainingSecondsCount">50400</span> Sec
-            </div>
-            <div id="userTokenDisplay" style="font-size: 14px; color: #10b981; display: none; margin-top: 6px; border-top: 1px dashed #1f293d; padding-top: 6px;">
-                <!-- User ka token aur time yahan aayega jab booking hogi -->
-            </div>
-        </div>
+        <div class="billboard" id="billboardBox"></div>
 
         <div class="screen-footer">
             <span id="timer-text">Next Video in: 0 Sec</span>
@@ -90,6 +69,7 @@
         <div style="background-color: #0b0f17; margin: 40px auto; padding: 25px; border: 1px solid #1f293d; width: 90%; max-width: 650px; border-radius: 12px; color: #d1d5db; position: relative; display: flex; flex-direction: column; gap: 15px;">
             <span id="closeSlotModal" style="color: #9ca3af; position: absolute; right: 20px; top: 15px; font-size: 28px; font-weight: bold; cursor: pointer; z-index: 10;">&times;</span>
             <h2 style="color: #ffffff; font-size: 20px; margin-bottom: 5px; font-weight: 700;">Book Your Advertising Slot (Starting From Tomorrow)</h2>
+
 
             <form id="slotForm" style="display: flex; flex-direction: column; gap: 15px;">
                 <!-- 1. फाइल अपलोड -->
@@ -125,7 +105,7 @@
                     </div>
                 </div>
 
-                <!-- 4. विज्ञापन की अवधि -->
+                <!-- 4. विज्ञापन की अवधि (टोकन सिस्टम के लिए) -->
                 <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
                     <label style="font-size: 14px; color: #e5e7eb; font-weight: 500;">4. विज्ञापन की अवधि (Duration & Price - ₹10/sec):</label>
                     <input type="number" id="durationInput" min="1" value="10" placeholder="Enter duration in seconds..." required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%; outline: none;">
@@ -138,11 +118,11 @@
                     <input type="text" id="adTitle" placeholder="जैसे: अपनी company या ब्रांड का नाम लिखें" required style="background-color: #121824; border: 1px solid #1f293d; padding: 10px 14px; border-radius: 6px; color: #ffffff; font-size: 14px; width: 100%; outline: none;">
                 </div>
 
-                <!-- 6. चेतावनी और चेकबॉक्स (Owner Dwara) -->
+                <!-- 6. चेतावनी और चेकबॉक्स -->
                 <div style="display: flex; align-items: flex-start; gap: 10px; background-color: #121824; padding: 12px; border-radius: 6px; border: 1px solid #1f293d; margin-top: 5px;">
                     <input type="checkbox" id="warningCheckbox" style="margin-top: 3px; width: 16px; height: 16px; cursor: pointer;" required>
                     <label for="warningCheckbox" style="cursor: pointer; font-size: 13px; line-height: 1.4; color: #d1d5db;">
-                        मैं जानता हूँ कि वेबसाइट ओनर द्वारा नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट होने पर मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
+                        मैं जानता हूँ कि अगर नियमों के उल्लंघन की वजह से मेरा वीडियो रिजेक्ट हुआ, तो मेरा पैसा जब्त हो जाएगा और कोई रिफंड नहीं मिलेगा।
                     </label>
                 </div>
 
@@ -153,15 +133,15 @@
         </div>
     </div>
 
-    <!-- Terms & Conditions Modal (Owner Dwara) -->
+    <!-- Terms & Conditions Modal -->
     <div id="termsModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow-y: auto; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px);">
         <div style="background-color: #0b0f17; margin: 40px auto; padding: 25px; border: 1px solid #1f293d; width: 90%; max-width: 650px; border-radius: 12px; color: #d1d5db; position: relative; display: flex; flex-direction: column; gap: 15px;">
             <span id="closeTermsModal" style="color: #9ca3af; position: absolute; right: 20px; top: 15px; font-size: 28px; font-weight: bold; cursor: pointer; z-index: 10;">&times;</span>
             <h2 style="color: #ffffff; font-size: 20px; margin-bottom: 5px; font-weight: 700;">Terms & Conditions for Advertisers</h2>
             <div style="font-size: 13px; line-height: 1.6; display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
                 <p><b>1. Content Guidelines & Standards:</b> Every video or image uploaded to buysecond.in must comply with safety and quality standards (No nudity, no violence).</p>
-                <p><b>2. Owner Review & Manual Screening:</b> Every uploaded media file will undergo manual security screening and approval by the website owner.</p>
-                <p><b>3. Final Review & Owner Approval:</b> Final review and manual approval will be done strictly by the website owner before going live on the billboard.</p>
+                <p><b>2. Automated AI Security Screening:</b> Every uploaded media file will undergo an automated AI security scan to instantly detect inappropriate content.</p>
+                <p><b>3. Final Review & Owner Approval:</b> After AI screening, a final manual review will be done by the website owner before going live on the billboard.</p>
                 <p><b>4. Strict Zero Refund Policy:</b> If any content is rejected due to violations, the ad will be canceled and no money will be refunded.</p>
                 <p><b>5. Advertiser Responsibility:</b> The advertiser is solely responsible for the target URL and brand name provided; the platform holds no liability.</p>
             </div>
