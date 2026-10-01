@@ -1,7 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co';
+const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_W8ttckZLmLeYtQ8CTxTKcg_F3cJ90n4';
-
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Modal Management for Slot Form
