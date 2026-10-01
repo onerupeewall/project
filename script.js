@@ -1,6 +1,7 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_W8ttckZLmLeYtQ8CTxTKcg_F3cJ90n4';
+
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Modal Management for Slot Form
@@ -92,30 +93,29 @@ if (durationInput && totalAmount) {
     });
 }
 
-// --- LIVE VISITOR COUNTER LOGIC ---
+// --- LIVE VISITOR COUNTER LOGIC (Using site_analytics table) ---
 async function initVisitorCounter() {
     let visitorEl = document.getElementById('totalGlobalCount');
     if (!visitorEl) return;
 
-    // LocalStorage se check karo kya user pehle visit kar chuka hai is session mein
     let hasVisited = sessionStorage.getItem('buysecond_visited');
 
-    // Supabase se current total count fetch karo ya initialize karo
+    // Supabase se current total count fetch karo (`site_analytics` table)
     let { data, error } = await supabaseClient
-        .from('site_visitors')
+        .from('site_analytics')
         .select('count')
         .eq('id', 1)
         .single();
 
-    let currentCount = data ? data.count : 120; // Default base agar table na ho
+    let currentCount = data ? data.count : 120; // Default base count
 
     if (!hasVisited) {
         currentCount += 1;
         sessionStorage.setItem('buysecond_visited', 'true');
 
-        // Supabase mein count update karo (agar table bani ho)
+        // Supabase mein count update karo
         await supabaseClient
-            .from('site_visitors')
+            .from('site_analytics')
             .upsert({ id: 1, count: currentCount });
     }
 
@@ -125,16 +125,13 @@ async function initVisitorCounter() {
 
 // --- QUEUE & TOKEN SCHEDULING LOGIC (8 AM to 10 PM Window, Starts Tomorrow) ---
 async function calculateNextQueueSlot(durationSeconds) {
-    // Booking hamesha kal (Tomorrow) se shuru hogi
     let targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 1);
     let dateStr = targetDate.toISOString().split('T')[0];
 
-    // Slot window: Morning 8:00 AM (08:00:00) to Night 10:00 PM (22:00:00)
     let dayStartHour = 8;
     let dayEndHour = 22;
 
-    // Database se check karo ki kal ke din ab tak kitne slots book ho chuke hain
     let { data: existingSlots, error } = await supabaseClient
         .from('buysecond_records')
         .select('*')
@@ -147,7 +144,6 @@ async function calculateNextQueueSlot(durationSeconds) {
 
     if (existingSlots && existingSlots.length > 0) {
         nextQueueNo = existingSlots.length + 1;
-        // Pichhle slot ka end time nikal kar uske aage ka time set karenge
         let lastSlot = existingSlots[0];
         if (lastSlot.end_timestamp) {
             let lastEnd = new Date(lastSlot.end_timestamp);
@@ -160,7 +156,6 @@ async function calculateNextQueueSlot(durationSeconds) {
     let startTime = new Date(allocatedTimeObj);
     let endTime = new Date(startTime.getTime() + durationSeconds * 1000);
 
-    // Check karo ki kya raat 10 baje (22:00) cross ho gaya? Agar haan, toh agle din shift karo
     if (endTime.getHours() >= dayEndHour) {
         targetDate.setDate(targetDate.getDate() + 1);
         dateStr = targetDate.toISOString().split('T')[0];
@@ -190,17 +185,15 @@ if (slotForm) {
         const adTitle = document.getElementById('adTitle').value;
         const country = slotCountry.value;
 
-        // Button disable karke loading dikhao
         const submitBtn = slotForm.querySelector('button[type="submit"]');
         let originalText = submitBtn.innerText;
         submitBtn.innerText = 'Processing Queue & Token...';
         submitBtn.disabled = true;
 
         try {
-            // Queue aur Token calculate karo
             let slotInfo = await calculateNextQueueSlot(duration);
 
-            // Supabase database mein save karo (`buysecond_records` table)
+            // Supabase database mein save karo (`buysecond_records` aur `admin_central_queue` ke liye)
             const { data, error } = await supabaseClient
                 .from('buysecond_records')
                 .insert([
@@ -220,7 +213,7 @@ if (slotForm) {
             }
 
             // Success Token Display
-            alert(`🎉 बधाई ہو! आपकी बुकिंग सफल हो गई है।\n\n🎟️ आपका टोकन नंबर: #${slotInfo.queue_number}\n🕒 आपकी विज्ञापन चलने का समय: ${slotInfo.formatted_time}\n\nअब आपको पेमेंट गेटवे पर redirect किया जा रहा है...`);
+            alert(`🎉 बधाई हो! आपकी बुकिंग सफल हो गई है।\n\n🎟️ आपका टोकन नंबर: #${slotInfo.queue_number}\n🕒 आपकी विज्ञापन चलने का समय: ${slotInfo.formatted_time}\n\nअब आपको पेमेंट गेटवे पर redirect किया जा रहा है...`);
 
             slotModal.style.display = 'none';
             slotForm.reset();
