@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
-const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_URL = 'https://swndqwrujyepctncxfhr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Apni legacy/working key yahan rakhein
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -100,26 +100,23 @@ async function initVisitorCounter() {
 
     let hasVisited = sessionStorage.getItem('buysecond_visited');
 
-    // Supabase se current total count fetch karo (`site_analytics` table)
     let { data, error } = await supabaseClient
         .from('site_analytics')
         .select('count')
         .eq('id', 1)
         .single();
 
-    let currentCount = data ? data.count : 120; // Default base count
+    let currentCount = data ? data.count : 120;
 
     if (!hasVisited) {
         currentCount += 1;
         sessionStorage.setItem('buysecond_visited', 'true');
 
-        // Supabase mein count update karo
         await supabaseClient
             .from('site_analytics')
             .upsert({ id: 1, count: currentCount });
     }
 
-    // Screen par count dikhao jo sirf badhega
     visitorEl.innerText = currentCount;
 }
 
@@ -135,8 +132,7 @@ async function calculateNextQueueSlot(durationSeconds) {
     let { data: existingSlots, error } = await supabaseClient
         .from('buysecond_records')
         .select('*')
-        .eq('slot_date', dateStr)
-        .order('queue_number', { ascending: false });
+        .order('id', { ascending: false });
 
     let nextQueueNo = 1;
     let allocatedTimeObj = new Date(targetDate);
@@ -144,33 +140,13 @@ async function calculateNextQueueSlot(durationSeconds) {
 
     if (existingSlots && existingSlots.length > 0) {
         nextQueueNo = existingSlots.length + 1;
-        let lastSlot = existingSlots[0];
-        if (lastSlot.end_timestamp) {
-            let lastEnd = new Date(lastSlot.end_timestamp);
-            if (lastEnd > allocatedTimeObj) {
-                allocatedTimeObj = lastEnd;
-            }
-        }
     }
 
     let startTime = new Date(allocatedTimeObj);
     let endTime = new Date(startTime.getTime() + durationSeconds * 1000);
 
-    if (endTime.getHours() >= dayEndHour) {
-        targetDate.setDate(targetDate.getDate() + 1);
-        dateStr = targetDate.toISOString().split('T')[0];
-        allocatedTimeObj = new Date(targetDate);
-        allocatedTimeObj.setHours(dayStartHour, 0, 0, 0);
-
-        startTime = new Date(allocatedTimeObj);
-        endTime = new Date(startTime.getTime() + durationSeconds * 1000);
-    }
-
     return {
         queue_number: nextQueueNo,
-        slot_date: dateStr,
-        start_timestamp: startTime.toISOString(),
-        end_timestamp: endTime.toISOString(),
         formatted_time: `${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()}`
     };
 }
@@ -185,6 +161,9 @@ if (slotForm) {
         const adTitle = document.getElementById('adTitle').value;
         const country = slotCountry.value;
 
+        const fileInput = slotForm.querySelector('input[type="file"]');
+        const fileName = fileInput && fileInput.files[0] ? fileInput.files[0].name : '';
+
         const submitBtn = slotForm.querySelector('button[type="submit"]');
         let originalText = submitBtn.innerText;
         submitBtn.innerText = 'Processing Queue & Token...';
@@ -193,17 +172,16 @@ if (slotForm) {
         try {
             let slotInfo = await calculateNextQueueSlot(duration);
 
-            // Supabase database mein save karo (`buysecond_records` aur `admin_central_queue` ke liye)
+            // Supabase database mein save karo (Aapke exact table columns ke sath)
             const { data, error } = await supabaseClient
                 .from('buysecond_records')
                 .insert([
                     {
                         brand_name: adTitle,
                         target_url: targetUrl,
-                        duration_seconds: duration,
-                        queue_number: slotInfo.queue_number,
-                        slot_date: slotInfo.slot_date,
-                        scheduled_time: slotInfo.formatted_time,
+                        video_url: fileName,
+                        duration_second: duration,
+                        slot_time: slotInfo.formatted_time,
                         status: 'pending'
                     }
                 ]);
@@ -212,7 +190,6 @@ if (slotForm) {
                 throw error;
             }
 
-            // Success Token Display
             alert(`🎉 बधाई हो! आपकी बुकिंग सफल हो गई है।\n\n🎟️ आपका टोकन नंबर: #${slotInfo.queue_number}\n🕒 आपकी विज्ञापन चलने का समय: ${slotInfo.formatted_time}\n\nअब आपको पेमेंट गेटवे पर redirect किया जा रहा है...`);
 
             slotModal.style.display = 'none';
