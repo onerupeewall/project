@@ -14,7 +14,7 @@ window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
-    manageUserTokenDisplay();
+    manageUserTokenDisplay(); // Yeh ab database se bhi verify karega
 
     // --- MODAL MANAGEMENT ---
     const slotModal = document.getElementById('slotModal');
@@ -199,9 +199,14 @@ window.addEventListener('DOMContentLoaded', () => {
                     const fileName = Date.now() + '_' + Math.random().toString(36).substring(2) + '.' + fileExt;
                     const filePath = fileName;
 
+                    // Mobile aur desktop dono ke liye contentType zaroori hai
                     let { data: uploadData, error: uploadError } = await supabaseClient.storage
                         .from('ad-videos')
-                        .upload(filePath, file);
+                        .upload(filePath, file, {
+                            cacheControl: '3600',
+                            upsert: false,
+                            contentType: file.type
+                        });
 
                     if (uploadError) throw uploadError;
 
@@ -230,6 +235,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 if (error) throw error;
 
+                // Naye insert kiye gaye record ki exact ID fetch karein taaki token clear tracking sahi rahe
+                let { data: latestRec } = await supabaseClient
+                    .from('buysecond_records')
+                    .select('id')
+                    .order('id', { ascending: false })
+                    .limit(1);
+
+                let realTokenId = latestRec && latestRec.length > 0 ? latestRec[0].id : slotInfo.queue_number;
+
                 let successBox = document.getElementById('successMsgBox');
                 if (!successBox) {
                     successBox = document.createElement('div');
@@ -237,10 +251,10 @@ window.addEventListener('DOMContentLoaded', () => {
                     successBox.style.cssText = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
                     slotForm.prepend(successBox);
                 }
-                successBox.innerHTML = '✅ Booking Successful! Token: #' + slotInfo.queue_number + ' | Time: ' + slotInfo.formatted_time;
+                successBox.innerHTML = '✅ Booking Successful! Token: #' + realTokenId + ' | Time: ' + slotInfo.formatted_time;
 
                 await updateAvailableSecondsCounter();
-                manageUserTokenDisplay(slotInfo.queue_number, slotInfo.date_str, slotInfo.time_str);
+                manageUserTokenDisplay(realTokenId, slotInfo.date_str, slotInfo.time_str);
 
                 setTimeout(() => {
                     slotModal.style.display = 'none';
@@ -259,7 +273,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
 // --- HELPER FUNCTIONS ---
 
 async function initVisitorCounter() {
@@ -305,7 +318,7 @@ async function updateAvailableSecondsCounter() {
     }
 }
 
-function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
+async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
     let tokenSection = document.getElementById('userTokenSection');
     let displayTokenVal = document.getElementById('displayTokenVal');
     let displayDateVal = document.getElementById('displayDateVal');
@@ -328,6 +341,25 @@ function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
         let savedTime = localStorage.getItem('buysecond_time');
 
         if (savedToken && savedDate && savedTime) {
+            // Check karein ki kya yeh token abhi bhi Supabase mein exist karta hai ya admin ne delete kar diya
+            try {
+                let { data, error } = await supabaseClient
+                    .from('buysecond_records')
+                    .select('id')
+                    .eq('id', savedToken);
+
+                if (error || !data || data.length === 0) {
+                    // Agar admin ne delete kar diya hai, toh local storage clear karke section hide kar do
+                    localStorage.removeItem('buysecond_token');
+                    localStorage.removeItem('buysecond_date');
+                    localStorage.removeItem('buysecond_time');
+                    tokenSection.style.display = 'none';
+                    return;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+
             displayTokenVal.innerText = '#' + savedToken;
             displayDateVal.innerText = savedDate;
             displayTimeVal.innerText = savedTime;
@@ -345,6 +377,16 @@ function getCountdownElement() {
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
+
+    // Jaise hi ad play ho, saved token clear kar do taaki screen se hat jaye
+    let savedToken = localStorage.getItem('buysecond_token');
+    if (savedToken && String(ad.id) === String(savedToken)) {
+        localStorage.removeItem('buysecond_token');
+        localStorage.removeItem('buysecond_date');
+        localStorage.removeItem('buysecond_time');
+        let tokenSection = document.getElementById('userTokenSection');
+        if (tokenSection) tokenSection.style.display = 'none';
+    }
 
     let duration = parseInt(ad.duration_second) || 10;
     let fileUrl = ad.file_url || ad.video_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop';
@@ -458,7 +500,9 @@ async function calculateNextQueueSlot(durationSeconds) {
     startTime.setHours(dayStartHour, 0, 0, 0);
     startTime.setSeconds(startTime.getSeconds() + totalBookedSecondsBeforeThis);
 
-    let dateStr = startTime.toLocaleDateString('en-US', { day: '2-digit', month: 'long' });
+    // Proper date format with day, month and year (e.g., 03 October 2026)
+    let options = { day: '2-digit', month: 'long', year: 'numeric' };
+    let dateStr = startTime.toLocaleDateString('en-US', options);
     let timeStr = startTime.toLocaleTimeString();
 
     return {
