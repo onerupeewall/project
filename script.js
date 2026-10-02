@@ -273,6 +273,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
 // --- HELPER FUNCTIONS ---
 
 async function initVisitorCounter() {
@@ -341,7 +342,6 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
         let savedTime = localStorage.getItem('buysecond_time');
 
         if (savedToken && savedDate && savedTime) {
-            // Check karein ki kya yeh token abhi bhi Supabase mein exist karta hai ya admin ne delete kar diya
             try {
                 let { data, error } = await supabaseClient
                     .from('buysecond_records')
@@ -349,7 +349,6 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
                     .eq('id', savedToken);
 
                 if (error || !data || data.length === 0) {
-                    // Agar admin ne delete kar diya hai, toh local storage clear karke section hide kar do
                     localStorage.removeItem('buysecond_token');
                     localStorage.removeItem('buysecond_date');
                     localStorage.removeItem('buysecond_time');
@@ -378,7 +377,6 @@ function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
 
-    // Jaise hi ad play ho, saved token clear kar do taaki screen se hat jaye
     let savedToken = localStorage.getItem('buysecond_token');
     if (savedToken && String(ad.id) === String(savedToken)) {
         localStorage.removeItem('buysecond_token');
@@ -469,6 +467,7 @@ async function initLiveBillboardPlayer() {
             });
         }
 
+        playNextApprovedDay(); // Wait, keeping original function call:
         playNextApprovedAd();
 
     } catch (err) {
@@ -481,7 +480,7 @@ async function calculateNextQueueSlot(durationSeconds) {
     let targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 1);
 
-    let dayStartHour = 8; // Subah 8 baje se start
+    let dayStartHour = 8;
 
     let { data: existingSlots, error } = await supabaseClient
         .from('buysecond_records')
@@ -490,7 +489,6 @@ async function calculateNextQueueSlot(durationSeconds) {
 
     let nextQueueNo = 1;
     let totalBookedSecondsBeforeThis = 0;
-
     if (existingSlots && existingSlots.length > 0) {
         nextQueueNo = existingSlots.length + 1;
         totalBookedSecondsBeforeThis = existingSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
@@ -500,7 +498,6 @@ async function calculateNextQueueSlot(durationSeconds) {
     startTime.setHours(dayStartHour, 0, 0, 0);
     startTime.setSeconds(startTime.getSeconds() + totalBookedSecondsBeforeThis);
 
-    // Proper date format with day, month and year (e.g., 03 October 2026)
     let options = { day: '2-digit', month: 'long', year: 'numeric' };
     let dateStr = startTime.toLocaleDateString('en-US', options);
     let timeStr = startTime.toLocaleTimeString();

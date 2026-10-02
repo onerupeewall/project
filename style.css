@@ -13,10 +13,11 @@ body {
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
-    padding: 20px;
+    padding: 15px;
     font-size: 16px;
     width: 100%;
     overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
 }
 
 header {
@@ -25,13 +26,13 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 22px;
+    padding: 12px 18px;
     background-color: #000000;
     border-bottom: 1px solid #1a2234;
 }
 
 .logo {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 700;
     text-transform: capitalize;
     letter-spacing: 0.5px;
@@ -40,7 +41,7 @@ header {
 
 .terms-link {
     color: #9ca3af;
-    font-size: 16px;
+    font-size: 15px;
     text-decoration: none;
     cursor: pointer;
 }
@@ -53,30 +54,30 @@ header {
     width: 100%;
     max-width: 950px;
     background-color: #000000;
-    padding: 22px 0;
+    padding: 15px 0;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
 }
 
 .screen-time-banner {
     text-align: center;
     color: #ef4444;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    margin: -4px 0 2px 0;
+    margin: 0;
 }
 
 .warning-banner {
     background-color: #121824;
     border: 1px solid #1f293d;
     border-left: 4px solid #f59e0b;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
     color: #d1d5db;
-    line-height: 1.5;
+    line-height: 1.4;
 }
 
     .warning-banner span {
@@ -88,8 +89,8 @@ header {
     background: url('buysecond.png') no-repeat center center !important;
     background-size: 100% 100% !important;
     border: 2px solid #d4af37 !important;
-    box-shadow: 0 10px 35px rgba(212, 175, 55, 0.2);
-    height: 380px;
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+    height: 320px;
     position: relative;
     cursor: pointer;
     border-radius: 10px;
@@ -100,10 +101,10 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 15px;
+    font-size: 14px;
     color: #9ca3af;
     background-color: #121824;
-    padding: 14px 20px;
+    padding: 12px 16px;
     border-radius: 8px;
 }
 
@@ -111,7 +112,7 @@ header {
     background: none;
     border: none;
     color: #3b82f6;
-    font-size: 15px;
+    font-size: 14px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -122,7 +123,6 @@ header {
     display: flex;
     justify-content: center;
     width: 100%;
-    margin-top: 5px;
     position: relative;
     z-index: 50;
 }
@@ -131,8 +131,8 @@ header {
     background: linear-gradient(135deg, #2563eb, #3b82f6);
     color: white;
     border: none;
-    padding: 12px 35px;
-    font-size: 18px;
+    padding: 12px 25px;
+    font-size: 16px;
     border-radius: 30px;
     cursor: pointer;
     display: flex;
@@ -155,17 +155,16 @@ header {
     background-color: #0b0f17;
     border: 1px solid #1f293d;
     border-radius: 10px;
-    padding: 16px;
-    margin-top: 5px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    padding: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
     text-align: center;
 }
 
 .global-header {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     color: #ffffff;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -178,16 +177,15 @@ header {
 
 .country-list {
     color: #94a3b8;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 /* Main Screen Available Seats & Token Display */
 .total-seats-main-display {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: #ffffff;
     text-align: center;
-    margin-top: 10px;
 }
 
 .status-token-section {
@@ -195,14 +193,13 @@ header {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    margin-top: 10px;
 }
 
 .token-display-box {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: #ffffff;
-    line-height: 1.6;
+    line-height: 1.5;
 }
 
 .token-highlight, .date-highlight, .time-highlight {
@@ -226,41 +223,41 @@ header {
 
 .modal-content {
     background-color: #0b0f17;
-    margin: 3% auto;
-    padding: 25px;
+    margin: 5% auto;
+    padding: 20px;
     border: 1px solid #1f293d;
     width: 90%;
-    max-width: 650px;
+    max-width: 600px;
     border-radius: 12px;
     color: #d1d5db;
     position: relative;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow-y: auto;
 }
 
 .modal-main-title {
     color: #ffffff;
-    font-size: 20px;
-    margin-bottom: 15px;
+    font-size: 18px;
+    margin-bottom: 12px;
     font-weight: 700;
 }
 
 .modal-form {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
     width: 100%;
     position: relative;
 }
 
     .form-group label {
-        font-size: 14px;
+        font-size: 13px;
         color: #e5e7eb;
         font-weight: 500;
     }
@@ -271,7 +268,7 @@ header {
     .form-group input[type="file"] {
         background-color: #121824;
         border: 1px solid #1f293d;
-        padding: 10px 14px;
+        padding: 9px 12px;
         border-radius: 6px;
         color: #ffffff;
         font-size: 14px;
@@ -304,17 +301,17 @@ header {
     background-color: #121824;
     border: 1px solid #1f293d;
     border-radius: 6px;
-    max-height: 180px;
+    max-height: 160px;
     overflow-y: auto;
     z-index: 100;
     margin-top: 4px;
 }
 
 .custom-dropdown-item {
-    padding: 10px 14px;
+    padding: 9px 12px;
     color: #ffffff;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
 }
 
     .custom-dropdown-item:hover {
@@ -322,10 +319,10 @@ header {
     }
 
 .price-display {
-    font-size: 15px;
+    font-size: 14px;
     color: #34d399;
     font-weight: 600;
-    margin-top: 5px;
+    margin-top: 3px;
 }
 
 /* Checkbox Alignment Fix */
@@ -333,16 +330,16 @@ header {
     display: flex;
     flex-direction: row !important;
     align-items: flex-start !important;
-    gap: 12px;
+    gap: 10px;
     background-color: #121824;
-    padding: 12px;
+    padding: 10px;
     border-radius: 6px;
     border: 1px solid #1f293d;
 }
 
     .checkbox-group-box input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         accent-color: #2563eb;
         margin-top: 2px;
         cursor: pointer;
@@ -350,7 +347,7 @@ header {
     }
 
     .checkbox-group-box label {
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.4;
         cursor: pointer;
         color: #d1d5db;
@@ -359,9 +356,9 @@ header {
 .close-btn {
     color: #9ca3af;
     position: absolute;
-    right: 20px;
-    top: 15px;
-    font-size: 28px;
+    right: 15px;
+    top: 12px;
+    font-size: 24px;
     font-weight: bold;
     cursor: pointer;
     z-index: 10;
@@ -373,10 +370,10 @@ header {
 
 @media screen and (max-width: 768px) {
     body {
-        padding: 10px;
+        padding: 8px;
     }
 
     .billboard {
-        height: 220px;
+        height: 240px;
     }
 }
