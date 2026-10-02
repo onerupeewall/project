@@ -128,7 +128,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (executeSearchBtn) {
         executeSearchBtn.addEventListener('click', async () => {
             let tokenInput = document.getElementById('searchTokenInput').value.trim();
-            let searchDateInput = document.getElementById('searchDateInput') ? document.getElementById('searchDateInput').value.trim() : '';
 
             if (!tokenInput) {
                 searchResultArea.innerHTML = '<span style="color: #ef4444;">Kripya Token Number zaroor bharein!</span>';
@@ -440,22 +439,25 @@ async function calculateNextQueueSlot(durationSeconds) {
     let targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 1);
 
-    let dayStartHour = 8;
+    let dayStartHour = 8; // Subah 8 baje se start
 
     let { data: existingSlots, error } = await supabaseClient
         .from('buysecond_records')
-        .select('*')
-        .order('id', { ascending: false });
+        .select('duration_second')
+        .order('id', { ascending: true });
 
     let nextQueueNo = 1;
-    let allocatedTimeObj = new Date(targetDate);
-    allocatedTimeObj.setHours(dayStartHour, 0, 0, 0);
+    let totalBookedSecondsBeforeThis = 0;
 
     if (existingSlots && existingSlots.length > 0) {
         nextQueueNo = existingSlots.length + 1;
+        totalBookedSecondsBeforeThis = existingSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
     }
 
-    let startTime = new Date(allocatedTimeObj);
+    let startTime = new Date(targetDate);
+    startTime.setHours(dayStartHour, 0, 0, 0);
+    startTime.setSeconds(startTime.getSeconds() + totalBookedSecondsBeforeThis);
+
     let dateStr = startTime.toLocaleDateString('en-US', { day: '2-digit', month: 'long' });
     let timeStr = startTime.toLocaleTimeString();
 
