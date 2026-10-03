@@ -36,7 +36,7 @@
         </div>
 
         <div class="warning-banner">
-            <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन के खिलाफ है (जैसे आपत्तिजनक या असुरक्षित सामग्री), तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड नहीं किया जाएगा[span_1](start_span)[span_1](end_span).
+            <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन के खिलाफ है (जैसे आपत्तिजनक या असुरक्षित सामग्री), तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड नहीं किया जाएगा।
         </div>
 
         <div class="billboard" id="billboardBox"></div>
@@ -64,7 +64,7 @@
             </div>
         </div>
 
-        <!-- Token Display Section (Plain text format without background box, hidden by default) -->
+        <!-- Token Display Section -->
         <div class="status-token-section" id="userTokenSection" style="display: none;">
             <div id="userTokenDisplay">
                 Token Number <span class="token-highlight" id="displayTokenVal">#1</span><br>
@@ -73,9 +73,9 @@
             </div>
         </div>
 
-        <!-- Total Available Seconds Seat Display (Always Visible on Main Screen) -->
+        <!-- Total Available Seconds Seat Display -->
         <div class="total-seats-main-display">
-            Total Available Second Seat: <span id="remainingSecondsCount">50400</span>
+            Total Available Second Seat: <span id="remainingSecondsCount">50370</span>
         </div>
 
     </div>
@@ -99,32 +99,13 @@
                 </div>
 
                 <div class="form-group">
-                    <label>3. अपना देश चुनें (Type or Select Country):</label>
-                    <div class="custom-input-wrap">
-                        <input type="text" id="slotCountryDisplay" placeholder="Type your country name (e.g. India, Japan...)" autocomplete="off" required>
-                        <input type="hidden" id="slotCountry" value="India">
-                        <span class="dropdown-arrow" id="countryDropdownToggle">▼</span>
-                        <div class="custom-dropdown-list" id="countryDropdownList">
-                            <div class="custom-dropdown-item" data-country="India" data-flag="🇮🇳">🇮🇳 India</div>
-                            <div class="custom-dropdown-item" data-country="America (USA)" data-flag="🇺🇸">🇺🇸 America (USA)</div>
-                            <div class="custom-dropdown-item" data-country="UK" data-flag="🇬🇧">🇬🇧 UK</div>
-                            <div class="custom-dropdown-item" data-country="Canada" data-flag="🇨🇦">🇨🇦 Canada</div>
-                            <div class="custom-dropdown-item" data-country="Australia" data-flag="🇦🇺">🇦🇺 Australia</div>
-                            <div class="custom-dropdown-item" data-country="Japan" data-flag="🇯🇵">🇯🇵 Japan</div>
-                            <div class="custom-dropdown-item" data-country="Germany" data-flag="🇩🇪">🇩🇪 Germany</div>
-                            <div class="custom-dropdown-item" data-country="France" data-flag="🇫🇷">🇫🇷 France</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>4. विज्ञापन की अवधि (Duration & Price - ₹10/sec):</label>
+                    <label>3. विज्ञापन की अवधि (Duration & Price - ₹10/sec):</label>
                     <input type="number" id="durationInput" min="1" value="10" placeholder="Enter duration in seconds..." required>
                     <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹100</span></div>
                 </div>
 
                 <div class="form-group">
-                    <label>5. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
+                    <label>4. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
                     <input type="text" id="adTitle" placeholder="जैसे: अपनी company या ब्रांड का नाम लिखें" required>
                 </div>
 
@@ -204,8 +185,8 @@
             <h2 class="modal-main-title">Terms & Conditions for Advertisers</h2>
             <div style="font-size: 13px; line-height: 1.6; display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
                 <p><b>1. Content Guidelines & Standards:</b> Every video or image uploaded to buysecond.in must comply with safety and quality standards (No nudity, no violence).</p>
-                <p><b>2. Automated AI Security Screening:</b> Every uploaded media file will undergo an automated AI security scan to instantly detect inappropriate content.</p>
-                <p><b>3. Final Review & Owner Approval:</b> After AI screening, a final manual review will be done by the website owner before going live on the billboard.</p>
+                <p><b>2. Manual Owner Review:</b> Every uploaded media file will undergo strict manual review and approval directly by the platform owner before going live on the billboard.</p>
+                <p><b>3. Final Owner Approval:</b> Final publication rights and scheduling are entirely managed and approved by the platform owner.</p>
                 <p><b>4. Strict Zero Refund Policy:</b> If any content is rejected due to violations, the ad will be canceled and no money will be refunded.</p>
                 <p><b>5. Advertiser Responsibility:</b> The advertiser is solely responsible for the target URL and brand name provided; the platform holds no liability.</p>
             </div>

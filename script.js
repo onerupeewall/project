@@ -74,43 +74,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // --- COUNTRY DROPDOWN ---
-    const countryDropdownToggle = document.getElementById('countryDropdownToggle');
-    const countryDropdownList = document.getElementById('countryDropdownList');
-    const slotCountryDisplay = document.getElementById('slotCountryDisplay');
-    const slotCountry = document.getElementById('slotCountry');
-
-    if (countryDropdownToggle && countryDropdownList) {
-        countryDropdownToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            countryDropdownList.style.display = countryDropdownList.style.display === 'block' ? 'none' : 'block';
-        });
-    }
-
-    if (slotCountryDisplay && countryDropdownList) {
-        slotCountryDisplay.addEventListener('click', (e) => {
-            e.stopPropagation();
-            countryDropdownList.style.display = countryDropdownList.style.display === 'block' ? 'none' : 'block';
-        });
-    }
-
-    if (countryDropdownList) {
-        countryDropdownList.addEventListener('click', (e) => {
-            const item = e.target.closest('.custom-dropdown-item');
-            if (item) {
-                const countryName = item.getAttribute('data-country');
-                const flag = item.getAttribute('data-flag');
-                slotCountryDisplay.value = flag + ' ' + countryName;
-                slotCountry.value = countryName;
-                countryDropdownList.style.display = 'none';
-            }
-        });
-    }
-
-    window.addEventListener('click', () => {
-        if (countryDropdownList) countryDropdownList.style.display = 'none';
-    });
-
     // --- DURATION & AMOUNT ---
     const durationInput = document.getElementById('durationInput');
     const totalAmount = document.getElementById('totalAmount');
@@ -310,7 +273,6 @@ async function initVisitorCounter() {
     visitorEl.innerText = currentCount;
 }
 
-// Tomorrow Booking Available Seconds Counter (Filters slots specifically for tomorrow's date)
 async function updateAvailableSecondsCounter() {
     let remainingEl = document.getElementById('remainingSecondsCount');
     if (!remainingEl) return;
@@ -327,7 +289,6 @@ async function updateAvailableSecondsCounter() {
 
         let bookedSeconds = 0;
         if (records && records.length > 0) {
-            // Sirf kal (Tomorrow) ki date wale records ke seconds ko count karega
             let tomorrowRecords = records.filter(rec => rec.slot_time && rec.slot_time.includes(tomorrowDateStr));
             bookedSeconds = tomorrowRecords.reduce((total, rec) => total + (parseInt(rec.duration_second) || 0), 0);
         }
@@ -409,12 +370,21 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     let duration = parseInt(ad.duration_second) || 10;
-    let fileUrl = ad.file_url || ad.video_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop';
-    let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov');
+    let fileUrl = ad.file_url || ad.video_url || '';
 
-    let mediaHTML = isVideo
-        ? '<video src="' + fileUrl + '" autoplay muted style="width: 100%; height: 100%; object-fit: contain; max-height: 270px; border-radius: 6px;"></video>'
-        : '<img src="' + fileUrl + '" alt="' + (ad.brand_name || '') + '" style="width: 100%; height: 100%; object-fit: contain; max-height: 270px; border-radius: 6px;">';
+    // Check if file is video or image based on extension or URL content
+    let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov');
+
+    let mediaHTML = '';
+    if (fileUrl) {
+        if (isVideo) {
+            mediaHTML = '<video src="' + fileUrl + '" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: contain; max-height: 230px; border-radius: 6px;"></video>';
+        } else {
+            mediaHTML = '<img src="' + fileUrl + '" alt="' + (ad.brand_name || '') + '" style="width: 100%; height: 100%; object-fit: contain; max-height: 230px; border-radius: 6px;">';
+        }
+    } else {
+        mediaHTML = '<div style="color: #9ca3af; font-size: 13px;">No Media Provided</div>';
+    }
 
     let buttonText = ad.target_url && ad.target_url.toLowerCase().includes('shop') ? 'Shop Now' : 'Tap Link';
 
@@ -439,6 +409,8 @@ function renderAdOnBillboard(ad, onComplete) {
 
         if (timeLeft <= 0) {
             clearInterval(globalTimerInterval);
+            // Reset billboardBox to default CSS background/content when ad time finishes
+            billboardBox.innerHTML = '';
             if (onComplete) onComplete();
         }
     }, 1000);
@@ -448,8 +420,6 @@ async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
 
-    const defaultBannerHTML = billboardBox.innerHTML;
-
     try {
         let { data: queueRecords, error } = await supabaseClient
             .from('buysecond_records')
@@ -457,7 +427,7 @@ async function initLiveBillboardPlayer() {
             .order('id', { ascending: true });
 
         if (error || !queueRecords || queueRecords.length === 0) {
-            billboardBox.innerHTML = defaultBannerHTML;
+            billboardBox.innerHTML = '';
             let timerEl = getCountdownElement();
             if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
             return;
@@ -466,7 +436,7 @@ async function initLiveBillboardPlayer() {
         let approvedAds = queueRecords.filter(ad => ad.status === 'approved');
 
         if (approvedAds.length === 0) {
-            billboardBox.innerHTML = defaultBannerHTML;
+            billboardBox.innerHTML = '';
             let timerEl = getCountdownElement();
             if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
             return;
@@ -493,7 +463,7 @@ async function initLiveBillboardPlayer() {
 
     } catch (err) {
         console.error('Billboard Player Error:', err);
-        billboardBox.innerHTML = defaultBannerHTML;
+        billboardBox.innerHTML = '';
     }
 }
 
@@ -516,7 +486,6 @@ async function calculateNextQueueSlot(durationSeconds) {
 
     if (existingSlots && existingSlots.length > 0) {
         nextQueueNo = existingSlots.length + 1;
-        // Sirf target date (tomorrow/future date) ke booked seconds calculate honge
         let targetDateSlots = existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr));
         totalBookedSecondsBeforeThis = targetDateSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
     }
