@@ -15,6 +15,18 @@ window.addEventListener('DOMContentLoaded', () => {
     initLiveBillboardPlayer();
     manageUserTokenDisplay();
 
+    // Set Minimum Date for Calendar to Tomorrow (Today disabled)
+    const bookingDateInput = document.getElementById('bookingDateInput');
+    if (bookingDateInput) {
+        let tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        let tYear = tomorrow.getFullYear();
+        let tMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        let tDay = String(tomorrow.getDate()).padStart(2, '0');
+        bookingDateInput.min = `${tYear}-${tMonth}-${tDay}`;
+        bookingDateInput.value = `${tYear}-${tMonth}-${tDay}`;
+    }
+
     // --- MODAL MANAGEMENT ---
     const slotModal = document.getElementById('slotModal');
     const openSlotModal = document.getElementById('openSlotModal');
@@ -87,17 +99,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
             if (!file) return;
 
-            // If it's a video file, check its duration instantly
             if (file.type.startsWith('video/')) {
                 const videoElement = document.createElement('video');
                 videoElement.preload = 'metadata';
                 videoElement.onloadedmetadata = function () {
                     window.URL.revokeObjectURL(videoElement.src);
-                    if (videoElement.duration > 30.5) { // 30 seconds threshold with slight buffer
+                    if (videoElement.duration > 30.5) {
                         fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + Math.round(videoElement.duration) + 's. Maximum 30 seconds allowed!';
                         fileErrorMsg.style.display = 'block';
                         if (submitBtn) submitBtn.disabled = true;
-                        adFileInput.value = ''; // Clear file input
+                        adFileInput.value = '';
                     }
                 }
                 videoElement.src = URL.createObjectURL(file);
@@ -160,7 +171,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (searchYear && !slotTimeStr.includes(searchYear)) matchesDate = false;
 
                     if (!matchesDate) {
-                        searchResultArea.innerHTML = '<span style="color: #ef4444;">Token number match hua, lekin chuni gayi date se record match nahi ho raha!</span>';
+                        searchResultArea.innerHTML = '<span style="color: #ef4444;">Token number match ہوا, lekin chuni gayi date se record match nahi ho raha!</span>';
                         return;
                     }
                 }
@@ -206,6 +217,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const targetUrl = document.getElementById('targetUrl').value;
             const adTitle = document.getElementById('adTitle').value;
             const fileInput = document.getElementById('adFile');
+            const selectedDateVal = document.getElementById('bookingDateInput').value; // YYYY-MM-DD
 
             const submitBtn = slotForm.querySelector('button[type="submit"]');
             let originalText = submitBtn.innerText;
@@ -238,7 +250,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     publicFileUrl = publicUrlData.publicUrl;
                 }
 
-                let slotInfo = await calculateNextQueueSlot(duration);
+                let slotInfo = await calculateCustomQueueSlot(duration, selectedDateVal);
 
                 const { data, error } = await supabaseClient
                     .from('buysecond_records')
@@ -249,13 +261,12 @@ window.addEventListener('DOMContentLoaded', () => {
                             file_url: publicFileUrl,
                             duration_second: duration,
                             slot_time: slotInfo.formatted_time,
-                            status: 'approved' // Immediate display for testing & live view
+                            status: 'approved'
                         }
                     ]);
 
                 if (error) throw error;
 
-                // Fetch real inserted row ID (Token Number) from Supabase table
                 let { data: latestRec } = await supabaseClient
                     .from('buysecond_records')
                     .select('id')
@@ -417,7 +428,6 @@ function renderAdOnBillboard(ad, onComplete) {
     let mediaHTML = '';
     if (fileUrl) {
         if (isVideo) {
-            // Smart layout: Background blurred video for filling empty space + Main centered crisp video
             mediaHTML =
                 '<div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">' +
                 '<video src="' + fileUrl + '" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.5;"></video>' +
@@ -426,7 +436,6 @@ function renderAdOnBillboard(ad, onComplete) {
                 '<video src="' + fileUrl + '" autoplay muted playsinline style="max-width: 100%; max-height: 220px; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></video>' +
                 '</div>';
         } else {
-            // Smart layout for images (Horizontal or Vertical)
             mediaHTML =
                 '<div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">' +
                 '<img src="' + fileUrl + '" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.5;">' +
@@ -468,6 +477,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
+// --- LIVE BILLBOARD PLAYER (Plays ONLY Today's Ads) ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -485,10 +495,18 @@ async function initLiveBillboardPlayer() {
             return;
         }
 
-        let approvedAds = queueRecords.filter(ad => ad.status === 'approved');
+        // Get Current Date string in same format as saved in slot_time (e.g. "October 04, 2026")
+        let today = new Date();
+        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+        let todayDateStr = today.toLocaleDateString('en-US', optionsCheck);
 
-        if (approvedAds.length === 0) {
-            billboardBox.innerHTML = '';
+        // Filter: Approved AND scheduled strictly for TODAY'S date
+        let todaysApprovedAds = queueRecords.filter(ad => {
+            return ad.status === 'approved' && ad.slot_time && ad.slot_time.includes(todayDateStr);
+        });
+
+        if (todaysApprovedAds.length === 0) {
+            billboardBox.innerHTML = ''; // Shows default background banner if no ads for today
             let timerEl = getCountdownElement();
             if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
             return;
@@ -499,11 +517,11 @@ async function initLiveBillboardPlayer() {
         function playNextApprovedAd() {
             if (isPlayingPastRecord) return;
 
-            if (currentIndex >= approvedAds.length) {
+            if (currentIndex >= todaysApprovedAds.length) {
                 currentIndex = 0;
             }
 
-            let currentAd = approvedAds[currentIndex];
+            let currentAd = todaysApprovedAds[currentIndex];
             currentIndex++;
 
             renderAdOnBillboard(currentAd, () => {
@@ -519,9 +537,10 @@ async function initLiveBillboardPlayer() {
     }
 }
 
-async function calculateNextQueueSlot(durationSeconds) {
-    let targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 1);
+async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
+    // selectedDateStr format is YYYY-MM-DD from date input
+    let parts = selectedDateStr.split('-');
+    let targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
     let dayStartHour = 8;
 

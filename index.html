@@ -88,30 +88,34 @@
     <div id="slotModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="closeSlotModal">&times;</span>
-            <h2 class="modal-main-title">Book Your Advertising Slot (Starting From Tomorrow)</h2>
+            <h2 class="modal-main-title">Book Your Advertising Slot</h2>
 
             <form id="slotForm" class="modal-form">
                 <div class="form-group">
-                    <label>1. विज्ञापन फाइल अपलोड करें (Video / Image File - Max 30s):</label>
+                    <label>1. Select Booking Date (Kal ya aage ki date chunein):</label>
+                    <input type="date" id="bookingDateInput" required style="background-color: #121824; border: 1px solid #1f293d; padding: 9px 12px; border-radius: 6px; color: #ffffff; font-size: 14px; outline: none; width: 100%;">
+                </div>
+
+                <div class="form-group">
+                    <label>2. विज्ञापन फाइल अपलोड करें (Video / Image File - Max 30s):</label>
                     <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required>
                     <small>सिर्फ .mp4, .jpg, या .png फाइल मान्य हैं। (अधिकतम 30 सेकंड)</small>
-                    <!-- Instant File Error Box -->
                     <div id="fileErrorMsg" style="color: #ef4444; font-size: 12px; font-weight: 600; display: none; margin-top: 4px;"></div>
                 </div>
 
                 <div class="form-group">
-                    <label>2. डेस्टिनेशन लिंक (Target URL):</label>
+                    <label>3. डेस्टिनेशन लिंक (Target URL):</label>
                     <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required>
                 </div>
 
                 <div class="form-group">
-                    <label>3. विज्ञापन की अवधि (Duration & Price - ₹10/sec):</label>
+                    <label>4. विज्ञापन की अवधि (Duration & Price - ₹10/sec):</label>
                     <input type="number" id="durationInput" min="1" max="30" value="10" placeholder="Enter duration in seconds (Max 30)..." required>
                     <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹100</span></div>
                 </div>
 
                 <div class="form-group">
-                    <label>4. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
+                    <label>5. विज्ञापन का नाम / ब्रांड नाम (Ad Title / Brand Name):</label>
                     <input type="text" id="adTitle" placeholder="जैसे: अपनी company या ब्रांड का नाम लिखें" required>
                 </div>
 
