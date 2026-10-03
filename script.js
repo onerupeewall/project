@@ -14,7 +14,7 @@ window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
-    manageUserTokenDisplay(); // Yeh ab database se bhi verify karega
+    manageUserTokenDisplay();
 
     // --- MODAL MANAGEMENT ---
     const slotModal = document.getElementById('slotModal');
@@ -128,6 +128,9 @@ window.addEventListener('DOMContentLoaded', () => {
     if (executeSearchBtn) {
         executeSearchBtn.addEventListener('click', async () => {
             let tokenInput = document.getElementById('searchTokenInput').value.trim();
+            let searchDay = document.getElementById('searchDay').value;
+            let searchMonth = document.getElementById('searchMonth').value;
+            let searchYear = document.getElementById('searchYear').value;
 
             if (!tokenInput) {
                 searchResultArea.innerHTML = '<span style="color: #ef4444;">Kripya Token Number zaroor bharein!</span>';
@@ -149,6 +152,20 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
 
                 let record = data[0];
+
+                if (searchDay || searchMonth || searchYear) {
+                    let slotTimeStr = record.slot_time || '';
+                    let matchesDate = true;
+                    if (searchDay && !slotTimeStr.includes(searchDay)) matchesDate = false;
+                    if (searchMonth && !slotTimeStr.includes(searchMonth)) matchesDate = false;
+                    if (searchYear && !slotTimeStr.includes(searchYear)) matchesDate = false;
+
+                    if (!matchesDate) {
+                        searchResultArea.innerHTML = '<span style="color: #ef4444;">Token number match hua, lekin chuni gayi date se record match nahi ho raha!</span>';
+                        return;
+                    }
+                }
+
                 searchResultArea.innerHTML =
                     '<div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #1f293d; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">' +
                     '<p><b>Brand / Ad Name:</b> ' + record.brand_name + '</p>' +
@@ -199,7 +216,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     const fileName = Date.now() + '_' + Math.random().toString(36).substring(2) + '.' + fileExt;
                     const filePath = fileName;
 
-                    // Mobile aur desktop dono ke liye contentType zaroori hai
                     let { data: uploadData, error: uploadError } = await supabaseClient.storage
                         .from('ad-videos')
                         .upload(filePath, file, {
@@ -235,7 +251,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 if (error) throw error;
 
-                // Naye insert kiye gaye record ki exact ID fetch karein taaki token clear tracking sahi rahe
                 let { data: latestRec } = await supabaseClient
                     .from('buysecond_records')
                     .select('id')
@@ -273,7 +288,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
 // --- HELPER FUNCTIONS ---
 
 async function initVisitorCounter() {
@@ -296,18 +310,26 @@ async function initVisitorCounter() {
     visitorEl.innerText = currentCount;
 }
 
+// Tomorrow Booking Available Seconds Counter (Filters slots specifically for tomorrow's date)
 async function updateAvailableSecondsCounter() {
     let remainingEl = document.getElementById('remainingSecondsCount');
     if (!remainingEl) return;
 
     try {
+        let tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        let options = { day: '2-digit', month: 'long', year: 'numeric' };
+        let tomorrowDateStr = tomorrow.toLocaleDateString('en-US', options);
+
         let { data: records, error } = await supabaseClient
             .from('buysecond_records')
-            .select('duration_second');
+            .select('duration_second, slot_time');
 
         let bookedSeconds = 0;
         if (records && records.length > 0) {
-            bookedSeconds = records.reduce((total, rec) => total + (parseInt(rec.duration_second) || 0), 0);
+            // Sirf kal (Tomorrow) ki date wale records ke seconds ko count karega
+            let tomorrowRecords = records.filter(rec => rec.slot_time && rec.slot_time.includes(tomorrowDateStr));
+            bookedSeconds = tomorrowRecords.reduce((total, rec) => total + (parseInt(rec.duration_second) || 0), 0);
         }
 
         let availableSeconds = TOTAL_DAILY_SECONDS - bookedSeconds;
@@ -467,7 +489,6 @@ async function initLiveBillboardPlayer() {
             });
         }
 
-        playNextApprovedDay(); // Wait, keeping original function call:
         playNextApprovedAd();
 
     } catch (err) {
@@ -484,22 +505,27 @@ async function calculateNextQueueSlot(durationSeconds) {
 
     let { data: existingSlots, error } = await supabaseClient
         .from('buysecond_records')
-        .select('duration_second')
+        .select('duration_second, slot_time')
         .order('id', { ascending: true });
+
+    let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+    let targetDateStr = targetDate.toLocaleDateString('en-US', optionsCheck);
 
     let nextQueueNo = 1;
     let totalBookedSecondsBeforeThis = 0;
+
     if (existingSlots && existingSlots.length > 0) {
         nextQueueNo = existingSlots.length + 1;
-        totalBookedSecondsBeforeThis = existingSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
+        // Sirf target date (tomorrow/future date) ke booked seconds calculate honge
+        let targetDateSlots = existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr));
+        totalBookedSecondsBeforeThis = targetDateSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
     }
 
     let startTime = new Date(targetDate);
     startTime.setHours(dayStartHour, 0, 0, 0);
     startTime.setSeconds(startTime.getSeconds() + totalBookedSecondsBeforeThis);
 
-    let options = { day: '2-digit', month: 'long', year: 'numeric' };
-    let dateStr = startTime.toLocaleDateString('en-US', options);
+    let dateStr = startTime.toLocaleDateString('en-US', optionsCheck);
     let timeStr = startTime.toLocaleTimeString();
 
     return {

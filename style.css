@@ -1,3 +1,11 @@
+/* Text selection disable karne ke liye taaki kahin bhi word select na ho */
+body, html {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -265,7 +273,8 @@ header {
     .form-group input[type="text"],
     .form-group input[type="url"],
     .form-group input[type="number"],
-    .form-group input[type="file"] {
+    .form-group input[type="file"],
+    .form-group select {
         background-color: #121824;
         border: 1px solid #1f293d;
         padding: 9px 12px;
@@ -275,6 +284,17 @@ header {
         outline: none;
         width: 100%;
     }
+
+    /* Dropdown specific size limit (approx 4 items height) & hidden scrollbar */
+    .form-group select {
+        max-height: 110px;
+        overflow-y: auto;
+        scrollbar-width: none; /* Firefox */
+    }
+
+        .form-group select::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
 
 /* Custom Dropdown Styling */
 .custom-input-wrap {
@@ -301,14 +321,19 @@ header {
     background-color: #121824;
     border: 1px solid #1f293d;
     border-radius: 6px;
-    max-height: 160px;
+    max-height: 130px; /* Approx 4 items height */
     overflow-y: auto;
     z-index: 100;
     margin-top: 4px;
+    scrollbar-width: none; /* Firefox */
 }
 
+    .custom-dropdown-list::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
+
 .custom-dropdown-item {
-    padding: 9px 12px;
+    padding: 8px 12px;
     color: #ffffff;
     cursor: pointer;
     font-size: 13px;
@@ -377,3 +402,15 @@ header {
         height: 240px;
     }
 }
+/* Dropdown list ki height kam karne aur scrollbar hide karne ke liye */
+.form-group select,
+.custom-dropdown-list {
+    max-height: 1110px !important;
+    overflow-y: auto !important;
+    scrollbar-width: none !important; /* Firefox */
+}
+
+    .form-group select::-webkit-scrollbar,
+    .custom-dropdown-list::-webkit-scrollbar {
+        display: none !important; /* Chrome, Safari, Edge */
+    }
