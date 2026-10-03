@@ -181,7 +181,6 @@ header {
     font-size: 13px;
 }
 
-/* Main Screen Available Seats & Token Display */
 .total-seats-main-display {
     font-size: 16px;
     font-weight: 700;
@@ -277,7 +276,6 @@ header {
     margin-top: 3px;
 }
 
-/* Checkbox Alignment Fix */
 .checkbox-group-box {
     display: flex;
     flex-direction: row !important;

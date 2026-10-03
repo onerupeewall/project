@@ -39,6 +39,7 @@
             <span>सावधान (Warning):</span> अगर आपका वीडियो हमारी कंटेंट गाइडलाइन के खिलाफ है (जैसे आपत्तिजनक या असुरक्षित सामग्री), तो आपका विज्ञापन रिजेक्ट कर दिया जाएगा और कोई भी पैसा रिफंड नहीं किया जाएगा।
         </div>
 
+        <!-- Billboard Box -->
         <div class="billboard" id="billboardBox"></div>
 
         <div class="screen-footer">
@@ -66,10 +67,13 @@
 
         <!-- Token Display Section -->
         <div class="status-token-section" id="userTokenSection" style="display: none;">
-            <div id="userTokenDisplay">
+            <div id="userTokenDisplay" class="token-display-box">
                 Token Number <span class="token-highlight" id="displayTokenVal">#1</span><br>
                 Date <span class="date-highlight" id="displayDateVal">02 October</span><br>
                 Ad Time <span class="time-highlight" id="displayTimeVal">12:30:10</span>
+            </div>
+            <div id="tokenReminderText" style="color: #ef4444; font-size: 13px; font-weight: 700; margin-top: 6px; text-transform: uppercase; display: none;">
+                Kripya apna token number yaad rakhe
             </div>
         </div>
 
@@ -88,9 +92,11 @@
 
             <form id="slotForm" class="modal-form">
                 <div class="form-group">
-                    <label>1. विज्ञापन फाइल अपलोड करें (Video / Image File):</label>
+                    <label>1. विज्ञापन फाइल अपलोड करें (Video / Image File - Max 30s):</label>
                     <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required>
-                    <small>सिर्फ .mp4, .jpg, या .png फाइल मान्य हैं।</small>
+                    <small>सिर्फ .mp4, .jpg, या .png फाइल मान्य हैं। (अधिकतम 30 सेकंड)</small>
+                    <!-- Instant File Error Box -->
+                    <div id="fileErrorMsg" style="color: #ef4444; font-size: 12px; font-weight: 600; display: none; margin-top: 4px;"></div>
                 </div>
 
                 <div class="form-group">
@@ -100,7 +106,7 @@
 
                 <div class="form-group">
                     <label>3. विज्ञापन की अवधि (Duration & Price - ₹10/sec):</label>
-                    <input type="number" id="durationInput" min="1" value="10" placeholder="Enter duration in seconds..." required>
+                    <input type="number" id="durationInput" min="1" max="30" value="10" placeholder="Enter duration in seconds (Max 30)..." required>
                     <div class="price-display">कुल रकम (Total Amount): <span id="totalAmount">₹100</span></div>
                 </div>
 

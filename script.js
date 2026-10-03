@@ -9,7 +9,6 @@ const TOTAL_DAILY_SECONDS = 50400; // 14 Hours = 50,400 Seconds
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
 
-// Page load hone par saare elements aur modals ko bind karein
 window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
@@ -74,7 +73,39 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // --- DURATION & AMOUNT (Max 30 Sec Limit) ---
+    // --- INSTANT FILE VALIDATION (Max 30 Seconds Check before submit) ---
+    const adFileInput = document.getElementById('adFile');
+    const fileErrorMsg = document.getElementById('fileErrorMsg');
+    const submitBtn = document.querySelector('#slotForm button[type="submit"]');
+
+    if (adFileInput) {
+        adFileInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            fileErrorMsg.style.display = 'none';
+            fileErrorMsg.innerText = '';
+            if (submitBtn) submitBtn.disabled = false;
+
+            if (!file) return;
+
+            // If it's a video file, check its duration instantly
+            if (file.type.startsWith('video/')) {
+                const videoElement = document.createElement('video');
+                videoElement.preload = 'metadata';
+                videoElement.onloadedmetadata = function () {
+                    window.URL.revokeObjectURL(videoElement.src);
+                    if (videoElement.duration > 30.5) { // 30 seconds threshold with slight buffer
+                        fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + Math.round(videoElement.duration) + 's. Maximum 30 seconds allowed!';
+                        fileErrorMsg.style.display = 'block';
+                        if (submitBtn) submitBtn.disabled = true;
+                        adFileInput.value = ''; // Clear file input
+                    }
+                }
+                videoElement.src = URL.createObjectURL(file);
+            }
+        });
+    }
+
+    // --- DURATION & AMOUNT ---
     const durationInput = document.getElementById('durationInput');
     const totalAmount = document.getElementById('totalAmount');
     if (durationInput && totalAmount) {
@@ -168,17 +199,17 @@ window.addEventListener('DOMContentLoaded', () => {
             let duration = parseInt(durationInputEl ? durationInputEl.value : 10) || 10;
 
             if (duration > 30) {
-                alert('Ek user maximum 30 seconds tak ka hi video upload kar sakta hai.');
+                alert('Maximum 30 seconds allowed.');
                 return;
             }
 
             const targetUrl = document.getElementById('targetUrl').value;
             const adTitle = document.getElementById('adTitle').value;
-
             const fileInput = document.getElementById('adFile');
+
             const submitBtn = slotForm.querySelector('button[type="submit"]');
             let originalText = submitBtn.innerText;
-            submitBtn.innerText = 'Uploading Media...';
+            submitBtn.innerText = 'Uploading & Booking...';
             submitBtn.disabled = true;
 
             try {
@@ -207,7 +238,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     publicFileUrl = publicUrlData.publicUrl;
                 }
 
-                submitBtn.innerText = 'Booking Slot...';
                 let slotInfo = await calculateNextQueueSlot(duration);
 
                 const { data, error } = await supabaseClient
@@ -219,12 +249,13 @@ window.addEventListener('DOMContentLoaded', () => {
                             file_url: publicFileUrl,
                             duration_second: duration,
                             slot_time: slotInfo.formatted_time,
-                            status: 'approved' // Automatically approved for instant view testing
+                            status: 'approved' // Immediate display for testing & live view
                         }
                     ]);
 
                 if (error) throw error;
 
+                // Fetch real inserted row ID (Token Number) from Supabase table
                 let { data: latestRec } = await supabaseClient
                     .from('buysecond_records')
                     .select('id')
@@ -319,25 +350,16 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
     let displayTokenVal = document.getElementById('displayTokenVal');
     let displayDateVal = document.getElementById('displayDateVal');
     let displayTimeVal = document.getElementById('displayTimeVal');
+    let reminderEl = document.getElementById('tokenReminderText');
 
     if (!tokenSection) return;
-
-    // Check if container for reminder text already exists, else create it
-    let reminderEl = document.getElementById('tokenReminderText');
-    if (!reminderEl) {
-        reminderEl = document.createElement('div');
-        reminderEl.id = 'tokenReminderText';
-        reminderEl.style.cssText = 'color: #ef4444; font-size: 13px; font-weight: 700; margin-top: 6px; text-transform: uppercase;';
-        reminderEl.innerText = 'Kripya apna token number yaad rakhe';
-        tokenSection.appendChild(reminderEl);
-    }
 
     if (tokenNo && dateStr && timeStr) {
         displayTokenVal.innerText = '#' + tokenNo;
         displayDateVal.innerText = dateStr;
         displayTimeVal.innerText = timeStr;
         tokenSection.style.display = 'block';
-        reminderEl.style.display = 'block';
+        if (reminderEl) reminderEl.style.display = 'block';
 
         localStorage.setItem('buysecond_token', tokenNo);
         localStorage.setItem('buysecond_date', dateStr);
@@ -359,6 +381,7 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
                     localStorage.removeItem('buysecond_date');
                     localStorage.removeItem('buysecond_time');
                     tokenSection.style.display = 'none';
+                    if (reminderEl) reminderEl.style.display = 'none';
                     return;
                 }
             } catch (e) {
@@ -369,10 +392,10 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
             displayDateVal.innerText = savedDate;
             displayTimeVal.innerText = savedTime;
             tokenSection.style.display = 'block';
-            reminderEl.style.display = 'block';
+            if (reminderEl) reminderEl.style.display = 'block';
         } else {
             tokenSection.style.display = 'none';
-            reminderEl.style.display = 'none';
+            if (reminderEl) reminderEl.style.display = 'none';
         }
     }
 }
@@ -381,6 +404,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
+// --- SMART BILLBOARD RENDERING (Horizontal & Vertical Support with Blurred Background) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -388,29 +412,42 @@ function renderAdOnBillboard(ad, onComplete) {
     let duration = parseInt(ad.duration_second) || 10;
     let fileUrl = ad.file_url || ad.video_url || '';
 
-    // Check if file is video or image
     let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov');
 
     let mediaHTML = '';
     if (fileUrl) {
         if (isVideo) {
-            mediaHTML = '<video src="' + fileUrl + '" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: contain; max-height: 230px; border-radius: 6px;"></video>';
+            // Smart layout: Background blurred video for filling empty space + Main centered crisp video
+            mediaHTML =
+                '<div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">' +
+                '<video src="' + fileUrl + '" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.5;"></video>' +
+                '</div>' +
+                '<div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">' +
+                '<video src="' + fileUrl + '" autoplay muted playsinline style="max-width: 100%; max-height: 220px; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></video>' +
+                '</div>';
         } else {
-            mediaHTML = '<img src="' + fileUrl + '" alt="' + (ad.brand_name || '') + '" style="width: 100%; height: 100%; object-fit: contain; max-height: 230px; border-radius: 6px;">';
+            // Smart layout for images (Horizontal or Vertical)
+            mediaHTML =
+                '<div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">' +
+                '<img src="' + fileUrl + '" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.5;">' +
+                '</div>' +
+                '<div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">' +
+                '<img src="' + fileUrl + '" alt="' + (ad.brand_name || '') + '" style="max-width: 100%; max-height: 220px; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">' +
+                '</div>';
         }
     } else {
-        mediaHTML = '<div style="color: #9ca3af; font-size: 13px;">No Media Provided</div>';
+        mediaHTML = '<div style="color: #9ca3af; font-size: 13px; z-index: 2; position: relative;">No Media Provided</div>';
     }
 
     let buttonText = ad.target_url && ad.target_url.toLowerCase().includes('shop') ? 'Shop Now' : 'Tap Link';
 
     billboardBox.innerHTML =
-        '<div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; text-align: center; border-radius: 10px; box-sizing: border-box;">' +
-        '<div style="font-size: 15px; font-weight: 700; color: #10B981;">📢 ' + (ad.brand_name || 'Featured Ad') + '</div>' +
-        '<div style="width: 100%; flex-grow: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 4px 0;">' +
+        '<div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden;">' +
+        '<div style="font-size: 15px; font-weight: 700; color: #10B981; z-index: 3; position: relative;">📢 ' + (ad.brand_name || 'Featured Ad') + '</div>' +
+        '<div style="width: 100%; flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; margin: 4px 0;">' +
         mediaHTML +
         '</div>' +
-        '<a href="' + (ad.target_url || '#') + '" target="_blank" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 5px 18px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 4px 12px rgba(37,99,235,0.4);">' + buttonText + ' →</a>' +
+        '<a href="' + (ad.target_url || '#') + '" target="_blank" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 5px 18px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 4px 12px rgba(37,99,235,0.4); z-index: 3; position: relative;">' + buttonText + ' →</a>' +
         '</div>';
 
     if (globalTimerInterval) clearInterval(globalTimerInterval);
