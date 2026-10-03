@@ -74,12 +74,17 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // --- DURATION & AMOUNT ---
+    // --- DURATION & AMOUNT (Max 30 Sec Limit) ---
     const durationInput = document.getElementById('durationInput');
     const totalAmount = document.getElementById('totalAmount');
     if (durationInput && totalAmount) {
         durationInput.addEventListener('input', () => {
             let val = parseInt(durationInput.value) || 0;
+            if (val > 30) {
+                val = 30;
+                durationInput.value = 30;
+            }
+            if (val < 1) val = 1;
             totalAmount.innerText = '₹' + (val * 10);
         });
     }
@@ -160,7 +165,13 @@ window.addEventListener('DOMContentLoaded', () => {
         slotForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const durationInputEl = document.getElementById('durationInput');
-            const duration = parseInt(durationInputEl ? durationInputEl.value : 10) || 10;
+            let duration = parseInt(durationInputEl ? durationInputEl.value : 10) || 10;
+
+            if (duration > 30) {
+                alert('Ek user maximum 30 seconds tak ka hi video upload kar sakta hai.');
+                return;
+            }
+
             const targetUrl = document.getElementById('targetUrl').value;
             const adTitle = document.getElementById('adTitle').value;
 
@@ -208,7 +219,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             file_url: publicFileUrl,
                             duration_second: duration,
                             slot_time: slotInfo.formatted_time,
-                            status: 'pending'
+                            status: 'approved' // Automatically approved for instant view testing
                         }
                     ]);
 
@@ -239,7 +250,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     slotForm.reset();
                     if (totalAmount) totalAmount.innerText = '₹100';
                     if (successBox) successBox.remove();
-                }, 4000);
+                    initLiveBillboardPlayer();
+                }, 3000);
 
             } catch (err) {
                 alert('Booking failed: ' + (err.message || err));
@@ -310,11 +322,22 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
 
     if (!tokenSection) return;
 
+    // Check if container for reminder text already exists, else create it
+    let reminderEl = document.getElementById('tokenReminderText');
+    if (!reminderEl) {
+        reminderEl = document.createElement('div');
+        reminderEl.id = 'tokenReminderText';
+        reminderEl.style.cssText = 'color: #ef4444; font-size: 13px; font-weight: 700; margin-top: 6px; text-transform: uppercase;';
+        reminderEl.innerText = 'Kripya apna token number yaad rakhe';
+        tokenSection.appendChild(reminderEl);
+    }
+
     if (tokenNo && dateStr && timeStr) {
         displayTokenVal.innerText = '#' + tokenNo;
         displayDateVal.innerText = dateStr;
         displayTimeVal.innerText = timeStr;
         tokenSection.style.display = 'block';
+        reminderEl.style.display = 'block';
 
         localStorage.setItem('buysecond_token', tokenNo);
         localStorage.setItem('buysecond_date', dateStr);
@@ -346,8 +369,10 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
             displayDateVal.innerText = savedDate;
             displayTimeVal.innerText = savedTime;
             tokenSection.style.display = 'block';
+            reminderEl.style.display = 'block';
         } else {
             tokenSection.style.display = 'none';
+            reminderEl.style.display = 'none';
         }
     }
 }
@@ -360,19 +385,10 @@ function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
 
-    let savedToken = localStorage.getItem('buysecond_token');
-    if (savedToken && String(ad.id) === String(savedToken)) {
-        localStorage.removeItem('buysecond_token');
-        localStorage.removeItem('buysecond_date');
-        localStorage.removeItem('buysecond_time');
-        let tokenSection = document.getElementById('userTokenSection');
-        if (tokenSection) tokenSection.style.display = 'none';
-    }
-
     let duration = parseInt(ad.duration_second) || 10;
     let fileUrl = ad.file_url || ad.video_url || '';
 
-    // Check if file is video or image based on extension or URL content
+    // Check if file is video or image
     let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov');
 
     let mediaHTML = '';
@@ -409,7 +425,6 @@ function renderAdOnBillboard(ad, onComplete) {
 
         if (timeLeft <= 0) {
             clearInterval(globalTimerInterval);
-            // Reset billboardBox to default CSS background/content when ad time finishes
             billboardBox.innerHTML = '';
             if (onComplete) onComplete();
         }
