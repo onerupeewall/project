@@ -142,7 +142,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- EXECUTE SEARCH BUTTON LISTENER (Exact Format Date-Wise Token Matching) ---
+    // --- EXECUTE SEARCH BUTTON LISTENER ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
     const searchResultArea = document.getElementById('searchResultArea');
 
@@ -177,15 +177,12 @@ window.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Construct exact matching strings matching database format: "October 05, 2026" or "October 5, 2026"
-                let paddedDay = searchDay.padStart(2, '0');
-                let unpaddedDay = String(parseInt(searchDay));
-
+                let targetDayNum = parseInt(searchDay);
                 let dateFilteredRecords = data.filter(rec => {
                     let slotTime = (rec.slot_time || '').toLowerCase();
                     let mMatch = slotTime.includes(searchMonth.toLowerCase());
                     let yMatch = slotTime.includes(searchYear);
-                    let dMatch = slotTime.includes(` ${paddedDay},`) || slotTime.includes(` ${unpaddedDay},`) || slotTime.includes(`0${unpaddedDay},`);
+                    let dMatch = slotTime.includes(searchDay) || slotTime.includes(String(targetDayNum));
                     return mMatch && yMatch && dMatch;
                 });
 
@@ -421,7 +418,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING ---
+// --- INTELLIGENT MEDIA RENDERING (Full Screen Horizontal Fit, Cinematic Blur Vertical, Default Banner Restoration) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -470,6 +467,7 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
+                // Horizontal Video: Fills container fully with width/height 100% and object-fit fill
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <video src="${fileUrl}" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
@@ -487,6 +485,7 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
+                // Horizontal Image: Fills container fully with width/height 100% and object-fit fill
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <img src="${fileUrl}" alt="${brandName}" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
@@ -521,7 +520,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- LIVE BILLBOARD PLAYER LOOP ---
+// --- LIVE BILLBOARD PLAYER LOOP (Restores Default Banner when Empty) ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -533,7 +532,10 @@ async function initLiveBillboardPlayer() {
             .order('id', { ascending: true });
 
         if (error || !queueRecords || queueRecords.length === 0) {
-            billboardBox.innerHTML = ''; // Restores default CSS background banner image
+            // Restore default banner styling explicitly
+            billboardBox.innerHTML = '';
+            billboardBox.style.background = "url('buysecond.png') no-repeat center center";
+            billboardBox.style.backgroundSize = "100% 100%";
             return;
         }
 
@@ -546,7 +548,10 @@ async function initLiveBillboardPlayer() {
         });
 
         if (todaysApprovedAds.length === 0) {
-            billboardBox.innerHTML = ''; // Restores default CSS background banner image
+            // Restore default banner styling explicitly
+            billboardBox.innerHTML = '';
+            billboardBox.style.background = "url('buysecond.png') no-repeat center center";
+            billboardBox.style.backgroundSize = "100% 100%";
             let timerEl = getCountdownElement();
             if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
             return;
@@ -574,6 +579,8 @@ async function initLiveBillboardPlayer() {
     } catch (err) {
         console.error('Billboard Player Error:', err);
         billboardBox.innerHTML = '';
+        billboardBox.style.background = "url('buysecond.png') no-repeat center center";
+        billboardBox.style.backgroundSize = "100% 100%";
     }
 }
 
