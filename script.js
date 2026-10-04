@@ -418,7 +418,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Full Screen Horizontal Fit, Cinematic Blur Vertical, Default Banner Restoration) ---
+// --- INTELLIGENT MEDIA RENDERING (Full Stretch for Horizontal, Cinematic Blur for Vertical, Image Fixed) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -428,7 +428,7 @@ function renderAdOnBillboard(ad, onComplete) {
     let targetUrl = ad.target_url || '#';
     let brandName = ad.brand_name || 'Ad';
 
-    let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov');
+    let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov') || fileUrl.includes('.webm');
 
     if (isVideo) {
         let tempVid = document.createElement('video');
@@ -450,6 +450,12 @@ function renderAdOnBillboard(ad, onComplete) {
         tempImg.onerror = function () {
             buildBillboardMarkup(16, 9, false);
         };
+        // Immediate fallback render for images in case onload takes a split second
+        setTimeout(() => {
+            if (!billboardBox.querySelector('img') && !billboardBox.querySelector('video')) {
+                buildBillboardMarkup(16, 9, false);
+            }
+        }, 200);
     }
 
     function buildBillboardMarkup(width, height, isVid) {
@@ -467,10 +473,10 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Video: Fills container fully with width/height 100% and object-fit fill
+                // Horizontal Video: 100% width and height with object-fit cover to eliminate empty borders / black space completely
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <video src="${fileUrl}" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
+                        <video src="${fileUrl}" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;"></video>
                     </div>
                 `;
             }
@@ -485,10 +491,10 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Image: Fills container fully with width/height 100% and object-fit fill
+                // Horizontal Image: 100% width and height with object-fit cover to eliminate empty borders / black space completely
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <img src="${fileUrl}" alt="${brandName}" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                        <img src="${fileUrl}" alt="${brandName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">
                     </div>
                 `;
             }
@@ -532,7 +538,6 @@ async function initLiveBillboardPlayer() {
             .order('id', { ascending: true });
 
         if (error || !queueRecords || queueRecords.length === 0) {
-            // Restore default banner styling explicitly
             billboardBox.innerHTML = '';
             billboardBox.style.background = "url('buysecond.png') no-repeat center center";
             billboardBox.style.backgroundSize = "100% 100%";
@@ -548,7 +553,6 @@ async function initLiveBillboardPlayer() {
         });
 
         if (todaysApprovedAds.length === 0) {
-            // Restore default banner styling explicitly
             billboardBox.innerHTML = '';
             billboardBox.style.background = "url('buysecond.png') no-repeat center center";
             billboardBox.style.backgroundSize = "100% 100%";
