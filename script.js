@@ -113,7 +113,6 @@ window.addEventListener('DOMContentLoaded', () => {
                         if (submitBtn) submitBtn.disabled = true;
                         adFileInput.value = '';
                     } else {
-                        // Automatically set duration input based on video length
                         if (durationInput) {
                             durationInput.value = vDuration < 1 ? 1 : vDuration;
                             if (totalAmount) totalAmount.innerText = '₹' + (parseInt(durationInput.value) * 10);
@@ -122,7 +121,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
                 videoElement.src = URL.createObjectURL(file);
             } else if (file.type.startsWith('image/')) {
-                // For images, default to 10 seconds
                 if (durationInput) {
                     durationInput.value = 10;
                     if (totalAmount) totalAmount.innerText = '₹100';
@@ -144,7 +142,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- EXECUTE SEARCH BUTTON LISTENER (Mandatory Date Check & Date-Wise Token) ---
+    // --- EXECUTE SEARCH BUTTON LISTENER (Strict Date-Wise Token Serial Search) ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
     const searchResultArea = document.getElementById('searchResultArea');
 
@@ -160,42 +158,47 @@ window.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Strictly mandate Date selection
             if (!searchDay || !searchMonth || !searchYear) {
-                searchResultArea.innerHTML = '<span style="color: #ef4444;">⚠️ Kripya Day, Month aur Year teeno select karein! Bina date ke record nahi milega.</span>';
+                searchResultArea.innerHTML = '<span style="color: #ef4444;">⚠️ Kripya Day, Month aur Year teeno select karein!</span>';
                 return;
             }
 
-            let cleanToken = tokenInput.replace('#', '');
-            let targetDateSearchStr = `${searchDay} ${searchMonth} ${searchYear}`;
+            let cleanToken = parseInt(tokenInput.replace('#', '')) || 1;
+            let targetDateSearchStr = `${searchDay.padStart(2, '0')} ${searchMonth} ${searchYear}`;
+            let altDateSearchStr = `${parseInt(searchDay)} ${searchMonth} ${searchYear}`;
             searchResultArea.innerHTML = 'Searching record...';
 
             try {
-                // Fetch all records for that date to find the correct date-wise token match
+                // Fetch all records ordered by creation/ID ascending so that daily sequence is correct
                 let { data, error } = await supabaseClient
                     .from('buysecond_records')
                     .select('*')
                     .order('id', { ascending: true });
 
                 if (error || !data || data.length === 0) {
-                    searchResultArea.innerHTML = '<span style="color: #ef4444;">Koi record nahi mila.</span>';
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Koi record database mein nahi mila.</span>`;
                     return;
                 }
 
-                // Filter records by the selected date string
-                let dateFilteredRecords = data.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateSearchStr));
+                // Filter records belonging strictly to the selected date
+                let dateFilteredRecords = data.filter(rec => {
+                    let slotTime = rec.slot_time || '';
+                    return slotTime.includes(searchMonth) &&
+                        slotTime.includes(searchYear) &&
+                        (slotTime.includes(targetDateSearchStr) || slotTime.includes(altDateSearchStr));
+                });
 
                 if (dateFilteredRecords.length === 0) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Chuni gayi date (${targetDateSearchStr}) par koi record uplabdh nahi hai.</span>`;
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Chuni gayi date (${searchDay} ${searchMonth} ${searchYear}) par koi record uplabdh nahi hai.</span>`;
                     return;
                 }
 
-                // Find record matching the date-wise token number index (1-based index for that date)
-                let tokenIndex = parseInt(cleanToken) - 1;
-                let record = dateFilteredRecords[tokenIndex];
+                // Map cleanToken to the array index (Token #1 is index 0, Token #7 is index 6)
+                let targetIndex = cleanToken - 1;
+                let record = dateFilteredRecords[targetIndex];
 
                 if (!record) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Is date par Token #${cleanToken} ka koi record nahi mila! (Is date par kul ${dateFilteredRecords.length} tokens hain).</span>`;
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Is date par Token #${cleanToken} nahi mila! (Is date par kul ${dateFilteredRecords.length} tokens hi hain).</span>`;
                     return;
                 }
 
@@ -240,7 +243,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const targetUrl = document.getElementById('targetUrl').value;
             const adTitle = document.getElementById('adTitle').value;
             const fileInput = document.getElementById('adFile');
-            const selectedDateVal = document.getElementById('bookingDateInput').value; // YYYY-MM-DD
+            const selectedDateVal = document.getElementById('bookingDateInput').value;
 
             const submitBtn = slotForm.querySelector('button[type="submit"]');
             let originalText = submitBtn.innerText;
@@ -251,7 +254,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 let slotInfo = await calculateCustomQueueSlot(duration, selectedDateVal);
 
                 if (slotInfo.quota_exceeded) {
-                    alert('⚠️ Is date ki 50,400 seconds ki seat full ho chuki hai! Kripya kisi aage ki date ke liye booking karein.');
+                    alert('⚠️ Is date ki 50,400 seconds ki seat full ho chuki hai!');
                     submitBtn.innerText = originalText;
                     submitBtn.disabled = false;
                     return;
@@ -263,11 +266,10 @@ window.addEventListener('DOMContentLoaded', () => {
                     const file = fileInput.files[0];
                     const fileExt = file.name.split('.').pop();
                     const fileName = Date.now() + '_' + Math.random().toString(36).substring(2) + '.' + fileExt;
-                    const filePath = fileName;
 
-                    let { data: uploadData, error: uploadError } = await supabaseClient.storage
+                    let { error: uploadError } = await supabaseClient.storage
                         .from('ad-videos')
-                        .upload(filePath, file, {
+                        .upload(fileName, file, {
                             cacheControl: '3600',
                             upsert: false,
                             contentType: file.type
@@ -277,7 +279,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
                     const { data: publicUrlData } = supabaseClient.storage
                         .from('ad-videos')
-                        .getPublicUrl(filePath);
+                        .getPublicUrl(fileName);
 
                     publicFileUrl = publicUrlData.publicUrl;
                 }
@@ -333,7 +335,7 @@ async function initVisitorCounter() {
     let visitorEl = document.getElementById('totalGlobalCount');
     if (!visitorEl) return;
 
-    let { data, error } = await supabaseClient
+    let { data } = await supabaseClient
         .from('site_analytics')
         .select('count')
         .eq('id', 1)
@@ -359,7 +361,7 @@ async function updateAvailableSecondsCounter() {
         let options = { day: '2-digit', month: 'long', year: 'numeric' };
         let tomorrowDateStr = tomorrow.toLocaleDateString('en-US', options);
 
-        let { data: records, error } = await supabaseClient
+        let { data: records } = await supabaseClient
             .from('buysecond_records')
             .select('duration_second, slot_time');
 
@@ -398,9 +400,9 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
         localStorage.setItem('buysecond_date', dateStr);
         localStorage.setItem('buysecond_time', timeStr);
     } else {
-        let savedToken = localStorage.getItem('buysecond_token');
-        let savedDate = localStorage.getItem('buysecond_date');
-        let savedTime = localStorage.getItem('buysecond_time');
+        let savedToken = localStorage.getItem('bs_token') || localStorage.getItem('buysecond_token');
+        let savedDate = localStorage.getItem('bs_date') || localStorage.getItem('buysecond_date');
+        let savedTime = localStorage.getItem('bs_time') || localStorage.getItem('buysecond_time');
 
         if (savedToken && savedDate && savedTime) {
             displayTokenVal.innerText = '#' + savedToken;
@@ -419,7 +421,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Horizontal auto-fit/stretch, Vertical cinematic blur, Direct URL click fix) ---
+// --- INTELLIGENT MEDIA RENDERING ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -431,17 +433,15 @@ function renderAdOnBillboard(ad, onComplete) {
 
     let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov');
 
-    // We detect if media is vertical or horizontal dynamically using an Image/Video element check or fallback ratio
     if (isVideo) {
         let tempVid = document.createElement('video');
         tempVid.src = fileUrl;
         tempVid.onloadedmetadata = function () {
             buildBillboardMarkup(tempVid.videoWidth, tempVid.videoHeight, true);
         };
-        // Fallback if metadata takes a moment
         setTimeout(() => {
-            if (!billboardBox.hasChildNodes() || billboardBox.innerHTML.includes('Loading')) {
-                buildBillboardMarkup(16, 9, true); // default horizontal fallback
+            if (!billboardBox.querySelector('video') && !billboardBox.querySelector('img')) {
+                buildBillboardMarkup(16, 9, true);
             }
         }, 300);
     } else {
@@ -461,7 +461,6 @@ function renderAdOnBillboard(ad, onComplete) {
 
         if (isVid) {
             if (isVertical) {
-                // Vertical Video: Cinematic blur background + contained vertical foreground
                 mediaTagHTML = `
                     <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
                         <video src="${fileUrl}" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;"></video>
@@ -471,7 +470,6 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Video: Stretched / Auto-fit to fill screen completely without side blur
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <video src="${fileUrl}" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
@@ -480,7 +478,6 @@ function renderAdOnBillboard(ad, onComplete) {
             }
         } else {
             if (isVertical) {
-                // Vertical Image: Cinematic blur background + contained vertical foreground
                 mediaTagHTML = `
                     <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
                         <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;">
@@ -490,7 +487,6 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Image: Stretched / Auto-fit to fill screen completely without side blur
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <img src="${fileUrl}" alt="${brandName}" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
@@ -581,7 +577,7 @@ async function initLiveBillboardPlayer() {
     }
 }
 
-// --- DATE-WISE TOKEN RESET (#1 starts fresh every single day) & 50,400s QUOTA ---
+// --- DATE-WISE TOKEN RESET & 50,400s QUOTA ---
 async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
     let parts = selectedDateStr.split('-');
     let targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -603,12 +599,10 @@ async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
 
     let totalBookedSecondsBeforeThis = targetDateSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
 
-    // Check if 50400 quota is full for this date
     if (totalBookedSecondsBeforeThis + durationSeconds > TOTAL_DAILY_SECONDS) {
         return { quota_exceeded: true };
     }
 
-    // Token strictly resets to #1 for each specific date independently
     let dailyTokenNumber = targetDateSlots.length + 1;
 
     let startTime = new Date(targetDate);
