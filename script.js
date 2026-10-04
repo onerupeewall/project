@@ -62,7 +62,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- CHECK RECORD MODAL MANAGEMENT (10 Years History Search) ---
+    // --- CHECK RECORD MODAL MANAGEMENT ---
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
@@ -85,10 +85,12 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // --- INSTANT FILE VALIDATION (Max 30 Seconds Check before submit) ---
+    // --- INSTANT FILE VALIDATION & AUTO DURATION SELECTOR ---
     const adFileInput = document.getElementById('adFile');
     const fileErrorMsg = document.getElementById('fileErrorMsg');
     const submitBtn = document.querySelector('#slotForm button[type="submit"]');
+    const durationInput = document.getElementById('durationInput');
+    const totalAmount = document.getElementById('totalAmount');
 
     if (adFileInput) {
         adFileInput.addEventListener('change', function (e) {
@@ -104,21 +106,32 @@ window.addEventListener('DOMContentLoaded', () => {
                 videoElement.preload = 'metadata';
                 videoElement.onloadedmetadata = function () {
                     window.URL.revokeObjectURL(videoElement.src);
-                    if (videoElement.duration > 30.5) {
-                        fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + Math.round(videoElement.duration) + 's. Maximum 30 seconds allowed!';
+                    let vDuration = Math.round(videoElement.duration);
+                    if (vDuration > 30) {
+                        fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + vDuration + 's. Maximum 30 seconds allowed!';
                         fileErrorMsg.style.display = 'block';
                         if (submitBtn) submitBtn.disabled = true;
                         adFileInput.value = '';
+                    } else {
+                        // Automatically set duration input based on video length
+                        if (durationInput) {
+                            durationInput.value = vDuration < 1 ? 1 : vDuration;
+                            if (totalAmount) totalAmount.innerText = '₹' + (parseInt(durationInput.value) * 10);
+                        }
                     }
                 }
                 videoElement.src = URL.createObjectURL(file);
+            } else if (file.type.startsWith('image/')) {
+                // For images, default to 10 seconds
+                if (durationInput) {
+                    durationInput.value = 10;
+                    if (totalAmount) totalAmount.innerText = '₹100';
+                }
             }
         });
     }
 
     // --- DURATION & AMOUNT ---
-    const durationInput = document.getElementById('durationInput');
-    const totalAmount = document.getElementById('totalAmount');
     if (durationInput && totalAmount) {
         durationInput.addEventListener('input', () => {
             let val = parseInt(durationInput.value) || 0;
@@ -131,7 +144,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- EXECUTE SEARCH BUTTON LISTENER (10-Year Record Search) ---
+    // --- EXECUTE SEARCH BUTTON LISTENER (Mandatory Date Check & Date-Wise Token) ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
     const searchResultArea = document.getElementById('searchResultArea');
 
@@ -147,33 +160,43 @@ window.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Strictly mandate Date selection
+            if (!searchDay || !searchMonth || !searchYear) {
+                searchResultArea.innerHTML = '<span style="color: #ef4444;">⚠️ Kripya Day, Month aur Year teeno select karein! Bina date ke record nahi milega.</span>';
+                return;
+            }
+
             let cleanToken = tokenInput.replace('#', '');
+            let targetDateSearchStr = `${searchDay} ${searchMonth} ${searchYear}`;
             searchResultArea.innerHTML = 'Searching record...';
 
             try {
+                // Fetch all records for that date to find the correct date-wise token match
                 let { data, error } = await supabaseClient
                     .from('buysecond_records')
                     .select('*')
-                    .eq('id', cleanToken);
+                    .order('id', { ascending: true });
 
                 if (error || !data || data.length === 0) {
-                    searchResultArea.innerHTML = '<span style="color: #ef4444;">Is Token Number ka koi record nahi mila.</span>';
+                    searchResultArea.innerHTML = '<span style="color: #ef4444;">Koi record nahi mila.</span>';
                     return;
                 }
 
-                let record = data[0];
+                // Filter records by the selected date string
+                let dateFilteredRecords = data.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateSearchStr));
 
-                if (searchDay || searchMonth || searchYear) {
-                    let slotTimeStr = record.slot_time || '';
-                    let matchesDate = true;
-                    if (searchDay && !slotTimeStr.includes(searchDay)) matchesDate = false;
-                    if (searchMonth && !slotTimeStr.includes(searchMonth)) matchesDate = false;
-                    if (searchYear && !slotTimeStr.includes(searchYear)) matchesDate = false;
+                if (dateFilteredRecords.length === 0) {
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Chuni gayi date (${targetDateSearchStr}) par koi record uplabdh nahi hai.</span>`;
+                    return;
+                }
 
-                    if (!matchesDate) {
-                        searchResultArea.innerHTML = '<span style="color: #ef4444;">Token number match hua, lekin chuni gayi date se record match nahi ho raha!</span>';
-                        return;
-                    }
+                // Find record matching the date-wise token number index (1-based index for that date)
+                let tokenIndex = parseInt(cleanToken) - 1;
+                let record = dateFilteredRecords[tokenIndex];
+
+                if (!record) {
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Is date par Token #${cleanToken} ka koi record nahi mila! (Is date par kul ${dateFilteredRecords.length} tokens hain).</span>`;
+                    return;
                 }
 
                 searchResultArea.innerHTML =
@@ -201,7 +224,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- FORM SUBMISSION (Instant Non-Stuck Upload & Date-Wise Token Reset #1) ---
+    // --- FORM SUBMISSION ---
     const slotForm = document.getElementById('slotForm');
     if (slotForm) {
         slotForm.addEventListener('submit', async (e) => {
@@ -225,7 +248,6 @@ window.addEventListener('DOMContentLoaded', () => {
             submitBtn.disabled = true;
 
             try {
-                // Calculate queue & check 50400 quota + date-wise token reset to 1
                 let slotInfo = await calculateCustomQueueSlot(duration, selectedDateVal);
 
                 if (slotInfo.quota_exceeded) {
@@ -397,47 +419,96 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- SMART BILLBOARD RENDERING (Cinematic Blur for Vertical, Auto-fit for Horizontal) ---
+// --- INTELLIGENT MEDIA RENDERING (Horizontal auto-fit/stretch, Vertical cinematic blur, Direct URL click fix) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
 
     let duration = parseInt(ad.duration_second) || 10;
     let fileUrl = ad.file_url || ad.video_url || '';
+    let targetUrl = ad.target_url || '#';
+    let brandName = ad.brand_name || 'Ad';
 
     let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov');
 
-    let mediaHTML = '';
-    if (fileUrl) {
-        if (isVideo) {
-            mediaHTML =
-                '<div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">' +
-                '<video src="' + fileUrl + '" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;"></video>' +
-                '</div>' +
-                '<div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">' +
-                '<video src="' + fileUrl + '" autoplay muted playsinline style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></video>' +
-                '</div>';
-        } else {
-            mediaHTML =
-                '<div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">' +
-                '<img src="' + fileUrl + '" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;">' +
-                '</div>' +
-                '<div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">' +
-                '<img src="' + fileUrl + '" alt="' + (ad.brand_name || '') + '" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">' +
-                '</div>';
-        }
+    // We detect if media is vertical or horizontal dynamically using an Image/Video element check or fallback ratio
+    if (isVideo) {
+        let tempVid = document.createElement('video');
+        tempVid.src = fileUrl;
+        tempVid.onloadedmetadata = function () {
+            buildBillboardMarkup(tempVid.videoWidth, tempVid.videoHeight, true);
+        };
+        // Fallback if metadata takes a moment
+        setTimeout(() => {
+            if (!billboardBox.hasChildNodes() || billboardBox.innerHTML.includes('Loading')) {
+                buildBillboardMarkup(16, 9, true); // default horizontal fallback
+            }
+        }, 300);
     } else {
-        mediaHTML = '<div style="color: #9ca3af; font-size: 13px; z-index: 2; position: relative;">No Media Provided</div>';
+        let tempImg = new Image();
+        tempImg.src = fileUrl;
+        tempImg.onload = function () {
+            buildBillboardMarkup(tempImg.naturalWidth, tempImg.naturalHeight, false);
+        };
+        tempImg.onerror = function () {
+            buildBillboardMarkup(16, 9, false);
+        };
     }
 
-    let buttonText = ad.target_url && ad.target_url.toLowerCase().includes('shop') ? 'Shop Now' : 'Tap Link';
+    function buildBillboardMarkup(width, height, isVid) {
+        let isVertical = height > width;
+        let mediaTagHTML = '';
 
-    billboardBox.innerHTML =
-        '<div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden;">' +
-        '<div style="font-size: 15px; font-weight: 700; color: #10B981; z-index: 3; position: relative; background: rgba(0,0,0,0.6); padding: 2px 10px; border-radius: 4px;">📢 ' + (ad.brand_name || 'Ad') + '</div>' +
-        mediaHTML +
-        '<a href="' + (ad.target_url || '#') + '" target="_blank" style="z-index: 3; position: relative; background: #2563eb; color: white; padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(37,99,235,0.4);">' + buttonText + ' →</a>' +
-        '</div>';
+        if (isVid) {
+            if (isVertical) {
+                // Vertical Video: Cinematic blur background + contained vertical foreground
+                mediaTagHTML = `
+                    <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
+                        <video src="${fileUrl}" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;"></video>
+                    </div>
+                    <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <video src="${fileUrl}" autoplay muted playsinline style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></video>
+                    </div>
+                `;
+            } else {
+                // Horizontal Video: Stretched / Auto-fit to fill screen completely without side blur
+                mediaTagHTML = `
+                    <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <video src="${fileUrl}" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
+                    </div>
+                `;
+            }
+        } else {
+            if (isVertical) {
+                // Vertical Image: Cinematic blur background + contained vertical foreground
+                mediaTagHTML = `
+                    <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
+                        <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;">
+                    </div>
+                    <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <img src="${fileUrl}" alt="${brandName}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                    </div>
+                `;
+            } else {
+                // Horizontal Image: Stretched / Auto-fit to fill screen completely without side blur
+                mediaTagHTML = `
+                    <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <img src="${fileUrl}" alt="${brandName}" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                    </div>
+                `;
+            }
+        }
+
+        let buttonText = targetUrl.toLowerCase().includes('shop') ? 'Shop Now' : 'Tap Link';
+
+        billboardBox.innerHTML = `
+            <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden;">
+                <div style="font-size: 15px; font-weight: 700; color: #10B981; z-index: 3; position: relative; background: rgba(0,0,0,0.6); padding: 2px 10px; border-radius: 4px;">📢 ${brandName}</div>
+                ${mediaTagHTML}
+                <a href="${targetUrl}" target="_blank" style="z-index: 3; position: relative; background: #2563eb; color: white; padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(37,99,235,0.4);">${buttonText} →</a>
+            </div>
+        `;
+    }
 
     let timeLeft = duration;
     let timerEl = getCountdownElement();
@@ -510,7 +581,7 @@ async function initLiveBillboardPlayer() {
     }
 }
 
-// --- DATE-WISE TOKEN RESET (#1 per day) & 50,400s QUOTA CALCULATION ---
+// --- DATE-WISE TOKEN RESET (#1 starts fresh every single day) & 50,400s QUOTA ---
 async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
     let parts = selectedDateStr.split('-');
     let targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -537,7 +608,7 @@ async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
         return { quota_exceeded: true };
     }
 
-    // Date-wise token number resets and starts from 1 each day
+    // Token strictly resets to #1 for each specific date independently
     let dailyTokenNumber = targetDateSlots.length + 1;
 
     let startTime = new Date(targetDate);

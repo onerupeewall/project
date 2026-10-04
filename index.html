@@ -144,11 +144,11 @@
                 <input type="text" id="searchTokenInput" placeholder="e.g. #1 or 1" required>
             </div>
 
-            <!-- Day, Month, Year Selection for Past Record -->
+            <!-- Day, Month, Year Selection for Past Record (Mandatory now) -->
             <div class="form-group">
-                <label>Select Date (Day, Month, Year):</label>
+                <label>Select Date (Day, Month, Year - Required):</label>
                 <div style="display: flex; gap: 8px;">
-                    <select id="searchDay" style="flex: 1; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;">
+                    <select id="searchDay" style="flex: 1; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;" required>
                         <option value="">Day</option>
                         <script>
                             for (let i = 1; i <= 31; i++) {
@@ -157,7 +157,7 @@
                         </script>
                     </select>
 
-                    <select id="searchMonth" style="flex: 1.5; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;">
+                    <select id="searchMonth" style="flex: 1.5; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;" required>
                         <option value="">Month</option>
                         <option value="January">January</option>
                         <option value="February">February</option>
@@ -173,7 +173,7 @@
                         <option value="December">December</option>
                     </select>
 
-                    <select id="searchYear" style="flex: 1.2; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;">
+                    <select id="searchYear" style="flex: 1.2; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;" required>
                         <option value="">Year</option>
                         <script>
                             let curY = new Date().getFullYear();

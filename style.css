@@ -86,8 +86,6 @@ header {
     }
 
 .billboard {
-    background: url('buysecond.png') no-repeat center center !important;
-    background-size: 100% 100% !important;
     border: 2px solid #d4af37 !important;
     box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
     height: 320px;
@@ -96,6 +94,7 @@ header {
     border-radius: 10px;
     width: 100%;
     overflow: hidden;
+    background: #0b0f17;
 }
 
 .screen-footer {
