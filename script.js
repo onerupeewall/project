@@ -62,7 +62,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- CHECK RECORD MODAL MANAGEMENT ---
+    // --- CHECK RECORD MODAL MANAGEMENT (10 Years History Search) ---
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
@@ -131,7 +131,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- EXECUTE SEARCH BUTTON LISTENER ---
+    // --- EXECUTE SEARCH BUTTON LISTENER (10-Year Record Search) ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
     const searchResultArea = document.getElementById('searchResultArea');
 
@@ -171,7 +171,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (searchYear && !slotTimeStr.includes(searchYear)) matchesDate = false;
 
                     if (!matchesDate) {
-                        searchResultArea.innerHTML = '<span style="color: #ef4444;">Token number match ہوا, lekin chuni gayi date se record match nahi ho raha!</span>';
+                        searchResultArea.innerHTML = '<span style="color: #ef4444;">Token number match hua, lekin chuni gayi date se record match nahi ho raha!</span>';
                         return;
                     }
                 }
@@ -201,7 +201,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- FORM SUBMISSION ---
+    // --- FORM SUBMISSION (Instant Non-Stuck Upload & Date-Wise Token Reset #1) ---
     const slotForm = document.getElementById('slotForm');
     if (slotForm) {
         slotForm.addEventListener('submit', async (e) => {
@@ -225,6 +225,16 @@ window.addEventListener('DOMContentLoaded', () => {
             submitBtn.disabled = true;
 
             try {
+                // Calculate queue & check 50400 quota + date-wise token reset to 1
+                let slotInfo = await calculateCustomQueueSlot(duration, selectedDateVal);
+
+                if (slotInfo.quota_exceeded) {
+                    alert('⚠️ Is date ki 50,400 seconds ki seat full ho chuki hai! Kripya kisi aage ki date ke liye booking karein.');
+                    submitBtn.innerText = originalText;
+                    submitBtn.disabled = false;
+                    return;
+                }
+
                 let publicFileUrl = '';
 
                 if (fileInput && fileInput.files && fileInput.files[0]) {
@@ -250,8 +260,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     publicFileUrl = publicUrlData.publicUrl;
                 }
 
-                let slotInfo = await calculateCustomQueueSlot(duration, selectedDateVal);
-
                 const { data, error } = await supabaseClient
                     .from('buysecond_records')
                     .insert([
@@ -267,14 +275,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 if (error) throw error;
 
-                let { data: latestRec } = await supabaseClient
-                    .from('buysecond_records')
-                    .select('id')
-                    .order('id', { ascending: false })
-                    .limit(1);
-
-                let realTokenId = latestRec && latestRec.length > 0 ? latestRec[0].id : slotInfo.queue_number;
-
                 let successBox = document.getElementById('successMsgBox');
                 if (!successBox) {
                     successBox = document.createElement('div');
@@ -282,10 +282,10 @@ window.addEventListener('DOMContentLoaded', () => {
                     successBox.style.cssText = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
                     slotForm.prepend(successBox);
                 }
-                successBox.innerHTML = '✅ Booking Successful! Token: #' + realTokenId + ' | Time: ' + slotInfo.formatted_time;
+                successBox.innerHTML = '✅ Booking Successful! Token: #' + slotInfo.daily_token_number + ' | Date: ' + slotInfo.date_str;
 
                 await updateAvailableSecondsCounter();
-                manageUserTokenDisplay(realTokenId, slotInfo.date_str, slotInfo.time_str);
+                manageUserTokenDisplay(slotInfo.daily_token_number, slotInfo.date_str, slotInfo.time_str);
 
                 setTimeout(() => {
                     slotModal.style.display = 'none';
@@ -293,7 +293,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (totalAmount) totalAmount.innerText = '₹100';
                     if (successBox) successBox.remove();
                     initLiveBillboardPlayer();
-                }, 3000);
+                }, 2500);
 
             } catch (err) {
                 alert('Booking failed: ' + (err.message || err));
@@ -381,24 +381,6 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
         let savedTime = localStorage.getItem('buysecond_time');
 
         if (savedToken && savedDate && savedTime) {
-            try {
-                let { data, error } = await supabaseClient
-                    .from('buysecond_records')
-                    .select('id')
-                    .eq('id', savedToken);
-
-                if (error || !data || data.length === 0) {
-                    localStorage.removeItem('buysecond_token');
-                    localStorage.removeItem('buysecond_date');
-                    localStorage.removeItem('buysecond_time');
-                    tokenSection.style.display = 'none';
-                    if (reminderEl) reminderEl.style.display = 'none';
-                    return;
-                }
-            } catch (e) {
-                console.error(e);
-            }
-
             displayTokenVal.innerText = '#' + savedToken;
             displayDateVal.innerText = savedDate;
             displayTimeVal.innerText = savedTime;
@@ -415,7 +397,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- SMART BILLBOARD RENDERING (Horizontal & Vertical Support with Blurred Background) ---
+// --- SMART BILLBOARD RENDERING (Cinematic Blur for Vertical, Auto-fit for Horizontal) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -430,18 +412,18 @@ function renderAdOnBillboard(ad, onComplete) {
         if (isVideo) {
             mediaHTML =
                 '<div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">' +
-                '<video src="' + fileUrl + '" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.5;"></video>' +
+                '<video src="' + fileUrl + '" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;"></video>' +
                 '</div>' +
                 '<div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">' +
-                '<video src="' + fileUrl + '" autoplay muted playsinline style="max-width: 100%; max-height: 220px; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></video>' +
+                '<video src="' + fileUrl + '" autoplay muted playsinline style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></video>' +
                 '</div>';
         } else {
             mediaHTML =
                 '<div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">' +
-                '<img src="' + fileUrl + '" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.5;">' +
+                '<img src="' + fileUrl + '" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;">' +
                 '</div>' +
                 '<div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">' +
-                '<img src="' + fileUrl + '" alt="' + (ad.brand_name || '') + '" style="max-width: 100%; max-height: 220px; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">' +
+                '<img src="' + fileUrl + '" alt="' + (ad.brand_name || '') + '" style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">' +
                 '</div>';
         }
     } else {
@@ -452,32 +434,27 @@ function renderAdOnBillboard(ad, onComplete) {
 
     billboardBox.innerHTML =
         '<div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden;">' +
-        '<div style="font-size: 15px; font-weight: 700; color: #10B981; z-index: 3; position: relative;">📢 ' + (ad.brand_name || 'Featured Ad') + '</div>' +
-        '<div style="width: 100%; flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; margin: 4px 0;">' +
+        '<div style="font-size: 15px; font-weight: 700; color: #10B981; z-index: 3; position: relative; background: rgba(0,0,0,0.6); padding: 2px 10px; border-radius: 4px;">📢 ' + (ad.brand_name || 'Ad') + '</div>' +
         mediaHTML +
-        '</div>' +
-        '<a href="' + (ad.target_url || '#') + '" target="_blank" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 5px 18px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 600; box-shadow: 0 4px 12px rgba(37,99,235,0.4); z-index: 3; position: relative;">' + buttonText + ' →</a>' +
+        '<a href="' + (ad.target_url || '#') + '" target="_blank" style="z-index: 3; position: relative; background: #2563eb; color: white; padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(37,99,235,0.4);">' + buttonText + ' →</a>' +
         '</div>';
 
-    if (globalTimerInterval) clearInterval(globalTimerInterval);
     let timeLeft = duration;
     let timerEl = getCountdownElement();
 
-    if (timerEl) timerEl.innerText = 'Next Video in: ' + timeLeft + ' Sec';
+    if (globalTimerInterval) clearInterval(globalTimerInterval);
 
     globalTimerInterval = setInterval(() => {
+        if (timerEl) timerEl.innerText = `Playing Ad... (${timeLeft}s left)`;
         timeLeft--;
-        if (timerEl) timerEl.innerText = 'Next Video in: ' + timeLeft + ' Sec';
-
-        if (timeLeft <= 0) {
+        if (timeLeft < 0) {
             clearInterval(globalTimerInterval);
-            billboardBox.innerHTML = '';
-            if (onComplete) onComplete();
+            if (typeof onComplete === 'function') onComplete();
         }
     }, 1000);
 }
 
-// --- LIVE BILLBOARD PLAYER (Plays ONLY Today's Ads) ---
+// --- LIVE BILLBOARD PLAYER LOOP ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -490,23 +467,19 @@ async function initLiveBillboardPlayer() {
 
         if (error || !queueRecords || queueRecords.length === 0) {
             billboardBox.innerHTML = '';
-            let timerEl = getCountdownElement();
-            if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
             return;
         }
 
-        // Get Current Date string in same format as saved in slot_time (e.g. "October 04, 2026")
         let today = new Date();
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = today.toLocaleDateString('en-US', optionsCheck);
 
-        // Filter: Approved AND scheduled strictly for TODAY'S date
         let todaysApprovedAds = queueRecords.filter(ad => {
             return ad.status === 'approved' && ad.slot_time && ad.slot_time.includes(todayDateStr);
         });
 
         if (todaysApprovedAds.length === 0) {
-            billboardBox.innerHTML = ''; // Shows default background banner if no ads for today
+            billboardBox.innerHTML = '';
             let timerEl = getCountdownElement();
             if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
             return;
@@ -537,14 +510,14 @@ async function initLiveBillboardPlayer() {
     }
 }
 
+// --- DATE-WISE TOKEN RESET (#1 per day) & 50,400s QUOTA CALCULATION ---
 async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
-    // selectedDateStr format is YYYY-MM-DD from date input
     let parts = selectedDateStr.split('-');
     let targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
-    let dayStartHour = 8;
+    let dayStartHour = 8; // 8 AM Start
 
-    let { data: existingSlots, error } = await supabaseClient
+    let { data: existingSlots } = await supabaseClient
         .from('buysecond_records')
         .select('duration_second, slot_time')
         .order('id', { ascending: true });
@@ -552,14 +525,20 @@ async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
     let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
     let targetDateStr = targetDate.toLocaleDateString('en-US', optionsCheck);
 
-    let nextQueueNo = 1;
-    let totalBookedSecondsBeforeThis = 0;
-
+    let targetDateSlots = [];
     if (existingSlots && existingSlots.length > 0) {
-        nextQueueNo = existingSlots.length + 1;
-        let targetDateSlots = existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr));
-        totalBookedSecondsBeforeThis = targetDateSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
+        targetDateSlots = existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr));
     }
+
+    let totalBookedSecondsBeforeThis = targetDateSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
+
+    // Check if 50400 quota is full for this date
+    if (totalBookedSecondsBeforeThis + durationSeconds > TOTAL_DAILY_SECONDS) {
+        return { quota_exceeded: true };
+    }
+
+    // Date-wise token number resets and starts from 1 each day
+    let dailyTokenNumber = targetDateSlots.length + 1;
 
     let startTime = new Date(targetDate);
     startTime.setHours(dayStartHour, 0, 0, 0);
@@ -569,7 +548,8 @@ async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
     let timeStr = startTime.toLocaleTimeString();
 
     return {
-        queue_number: nextQueueNo,
+        quota_exceeded: false,
+        daily_token_number: dailyTokenNumber,
         formatted_time: dateStr + ' at ' + timeStr,
         date_str: dateStr,
         time_str: timeStr
