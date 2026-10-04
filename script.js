@@ -142,7 +142,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- EXECUTE SEARCH BUTTON LISTENER (Strict Date-Wise Token Serial Search) ---
+    // --- EXECUTE SEARCH BUTTON LISTENER (Exact Format Date-Wise Token Matching) ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
     const searchResultArea = document.getElementById('searchResultArea');
 
@@ -164,41 +164,41 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             let cleanToken = parseInt(tokenInput.replace('#', '')) || 1;
-            let targetDateSearchStr = `${searchDay.padStart(2, '0')} ${searchMonth} ${searchYear}`;
-            let altDateSearchStr = `${parseInt(searchDay)} ${searchMonth} ${searchYear}`;
             searchResultArea.innerHTML = 'Searching record...';
 
             try {
-                // Fetch all records ordered by creation/ID ascending so that daily sequence is correct
                 let { data, error } = await supabaseClient
                     .from('buysecond_records')
                     .select('*')
                     .order('id', { ascending: true });
 
                 if (error || !data || data.length === 0) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Koi record database mein nahi mila.</span>`;
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Database mein koi record nahi mila.</span>`;
                     return;
                 }
 
-                // Filter records belonging strictly to the selected date
+                // Construct exact matching strings matching database format: "October 05, 2026" or "October 5, 2026"
+                let paddedDay = searchDay.padStart(2, '0');
+                let unpaddedDay = String(parseInt(searchDay));
+
                 let dateFilteredRecords = data.filter(rec => {
-                    let slotTime = rec.slot_time || '';
-                    return slotTime.includes(searchMonth) &&
-                        slotTime.includes(searchYear) &&
-                        (slotTime.includes(targetDateSearchStr) || slotTime.includes(altDateSearchStr));
+                    let slotTime = (rec.slot_time || '').toLowerCase();
+                    let mMatch = slotTime.includes(searchMonth.toLowerCase());
+                    let yMatch = slotTime.includes(searchYear);
+                    let dMatch = slotTime.includes(` ${paddedDay},`) || slotTime.includes(` ${unpaddedDay},`) || slotTime.includes(`0${unpaddedDay},`);
+                    return mMatch && yMatch && dMatch;
                 });
 
                 if (dateFilteredRecords.length === 0) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Chuni gayi date (${searchDay} ${searchMonth} ${searchYear}) par koi record uplabdh nahi hai.</span>`;
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Chuni gayi date (${searchMonth} ${searchDay}, ${searchYear}) par koi record nahi mila.</span>`;
                     return;
                 }
 
-                // Map cleanToken to the array index (Token #1 is index 0, Token #7 is index 6)
                 let targetIndex = cleanToken - 1;
                 let record = dateFilteredRecords[targetIndex];
 
                 if (!record) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Is date par Token #${cleanToken} nahi mila! (Is date par kul ${dateFilteredRecords.length} tokens hi hain).</span>`;
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Is date par Token #${cleanToken} nahi mila! (Is date par kul ${dateFilteredRecords.length} tokens hain).</span>`;
                     return;
                 }
 
@@ -396,9 +396,9 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
         tokenSection.style.display = 'block';
         if (reminderEl) reminderEl.style.display = 'block';
 
-        localStorage.setItem('buysecond_token', tokenNo);
-        localStorage.setItem('buysecond_date', dateStr);
-        localStorage.setItem('buysecond_time', timeStr);
+        localStorage.setItem('bs_token', tokenNo);
+        localStorage.setItem('bs_date', dateStr);
+        localStorage.setItem('bs_time', timeStr);
     } else {
         let savedToken = localStorage.getItem('bs_token') || localStorage.getItem('buysecond_token');
         let savedDate = localStorage.getItem('bs_date') || localStorage.getItem('buysecond_date');
@@ -533,7 +533,7 @@ async function initLiveBillboardPlayer() {
             .order('id', { ascending: true });
 
         if (error || !queueRecords || queueRecords.length === 0) {
-            billboardBox.innerHTML = '';
+            billboardBox.innerHTML = ''; // Restores default CSS background banner image
             return;
         }
 
@@ -546,7 +546,7 @@ async function initLiveBillboardPlayer() {
         });
 
         if (todaysApprovedAds.length === 0) {
-            billboardBox.innerHTML = '';
+            billboardBox.innerHTML = ''; // Restores default CSS background banner image
             let timerEl = getCountdownElement();
             if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
             return;
