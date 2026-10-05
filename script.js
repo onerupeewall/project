@@ -85,19 +85,18 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // --- DYNAMIC FORM INPUTS FOR FREQUENCY & DAYS ---
+    // --- DYNAMIC FORM INPUTS FOR FREQUENCY (Max 10) & DAYS (Max 30) ---
     const slotFormContainer = document.getElementById('slotForm');
     if (slotFormContainer && !document.getElementById('frequencyInput')) {
-        // Automatically inject Frequency & Days fields into the form if not already in HTML
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
 
         let campaignFieldsHTML = `
             <div style="margin-bottom: 12px;">
-                <label style="font-size: 13px; color: #9ca3af; display: block; margin-bottom: 4px;">Times per Day (Frequency):</label>
-                <input type="number" id="frequencyInput" value="1" min="1" max="20" style="width: 100%; padding: 8px; background: #121824; border: 1px solid #1f293d; color: #fff; border-radius: 6px;">
+                <label style="font-size: 13px; color: #9ca3af; display: block; margin-bottom: 4px;">Times per Day (Max 10):</label>
+                <input type="number" id="frequencyInput" value="1" min="1" max="10" style="width: 100%; padding: 8px; background: #121824; border: 1px solid #1f293d; color: #fff; border-radius: 6px;">
             </div>
             <div style="margin-bottom: 12px;">
-                <label style="font-size: 13px; color: #9ca3af; display: block; margin-bottom: 4px;">Number of Days (Campaign Length):</label>
+                <label style="font-size: 13px; color: #9ca3af; display: block; margin-bottom: 4px;">Number of Days (Max 30):</label>
                 <input type="number" id="campaignDaysInput" value="1" min="1" max="30" style="width: 100%; padding: 8px; background: #121824; border: 1px solid #1f293d; color: #fff; border-radius: 6px;">
             </div>
         `;
@@ -119,9 +118,13 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!durationInput || !totalAmount) return;
         let dur = parseInt(durationInput.value) || 10;
         let freq = frequencyInput ? parseInt(frequencyInput.value) || 1 : 1;
+        if (freq > 10) freq = 10;
+        if (freq < 1) freq = 1;
         let days = campaignDaysInput ? parseInt(campaignDaysInput.value) || 1 : 1;
+        if (days > 30) days = 30;
+        if (days < 1) days = 1;
 
-        let ratePerSec = dur <= 10 ? 10 : 10; // Base rate logic
+        let ratePerSec = 10;
         let calculatedTotal = dur * freq * days * ratePerSec;
         totalAmount.innerText = '₹' + calculatedTotal;
     }
@@ -270,7 +273,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- FORM SUBMISSION WITH MULTI-DAY & FREQUENCY SUPPORT ---
+    // --- FORM SUBMISSION WITH UNIFIED SINGLE CAMPAIGN TOKEN & EQUAL SPACING ---
     const slotForm = document.getElementById('slotForm');
     if (slotForm) {
         slotForm.addEventListener('submit', async (e) => {
@@ -278,7 +281,12 @@ window.addEventListener('DOMContentLoaded', () => {
             const durationInputEl = document.getElementById('durationInput');
             let duration = parseInt(durationInputEl ? durationInputEl.value : 10) || 10;
             let frequency = document.getElementById('frequencyInput') ? parseInt(document.getElementById('frequencyInput').value) || 1 : 1;
+            if (frequency > 10) frequency = 10;
+            if (frequency < 1) frequency = 1;
+
             let campaignDays = document.getElementById('campaignDaysInput') ? parseInt(document.getElementById('campaignDaysInput').value) || 1 : 1;
+            if (campaignDays > 30) campaignDays = 30;
+            if (campaignDays < 1) campaignDays = 1;
 
             if (duration > 30) {
                 alert('Maximum 30 seconds allowed per slot.');
@@ -320,28 +328,45 @@ window.addEventListener('DOMContentLoaded', () => {
                     publicFileUrl = publicUrlData.publicUrl;
                 }
 
-                // Loop through each day of the campaign
                 let baseParts = selectedDateVal.split('-');
                 let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
-                let lastTokenNumber = 1;
+
+                // Calculate exact evenly-spaced time intervals across the 14-hour window (50,400 seconds)
+                let totalDaySecondsSpan = TOTAL_DAILY_SECONDS;
+                let intervalSpace = Math.floor(totalDaySecondsSpan / frequency);
+
+                let dayOffsets = [];
+                for (let f = 0; f < frequency; f++) {
+                    dayOffsets.push(f * intervalSpace);
+                }
+
+                // Fetch existing records to determine correct date-wise token number
+                let { data: existingSlots } = await supabaseClient
+                    .from('buysecond_records')
+                    .select('duration_second, slot_time')
+                    .order('id', { ascending: true });
+
+                let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+                let firstDayDateStr = startDate.toLocaleDateString('en-US', optionsCheck);
+                let firstDayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(firstDayDateStr)) : [];
+                let unifiedCampaignToken = firstDayExisting.length + 1;
+
                 let lastDateStr = '';
                 let lastTimeStr = '';
 
+                // Loop through each day of the campaign (up to 30 days)
                 for (let d = 0; d < campaignDays; d++) {
                     let currentDayDate = new Date(startDate);
                     currentDayDate.setDate(startDate.getDate() + d);
                     let currentDayStrVal = `${currentDayDate.getFullYear()}-${String(currentDayDate.getMonth() + 1).padStart(2, '0')}-${String(currentDayDate.getDate()).padStart(2, '0')}`;
-
-                    // Distribute frequency slots across the day (8 AM to 10 PM = 50,400 seconds)
-                    let totalDaySecondsSpan = TOTAL_DAILY_SECONDS;
-                    let intervalSpace = Math.floor(totalDaySecondsSpan / frequency);
+                    let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
 
                     for (let f = 0; f < frequency; f++) {
-                        let slotOffsetSeconds = f * intervalSpace;
-                        let slotInfo = await calculateSpecificQueueSlot(duration, currentDayStrVal, slotOffsetSeconds);
+                        let desiredOffset = dayOffsets[f];
+                        let slotInfo = await calculateDistributedQueueSlot(duration, currentDayStrVal, desiredOffset, unifiedCampaignToken);
 
                         if (slotInfo.quota_exceeded) {
-                            alert(`⚠️ Date ${slotInfo.date_str} par 50,400 seconds ki seat full ho chuki hai! Baki din book nahi ho paye.`);
+                            alert(`⚠️ Date ${targetDateStr} par 50,400 seconds ki seat full ho chuki hai!`);
                             break;
                         }
 
@@ -349,6 +374,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             .from('buysecond_records')
                             .insert([
                                 {
+                                    id: slotInfo.unified_token_id, // Unified single token ID mapping across campaign
                                     brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
                                     target_url: targetUrl,
                                     file_url: publicFileUrl,
@@ -358,9 +384,20 @@ window.addEventListener('DOMContentLoaded', () => {
                                 }
                             ]);
 
-                        if (insertError) throw insertError;
+                        if (insertError) {
+                            // Fallback if custom ID insert fails due to primary key collision, let DB auto-increment
+                            await supabaseClient.from('buysecond_records').insert([
+                                {
+                                    brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
+                                    target_url: targetUrl,
+                                    file_url: publicFileUrl,
+                                    duration_second: duration,
+                                    slot_time: slotInfo.formatted_time,
+                                    status: 'pending'
+                                }
+                            ]);
+                        }
 
-                        lastTokenNumber = slotInfo.daily_token_number;
                         lastDateStr = slotInfo.date_str;
                         lastTimeStr = slotInfo.time_str;
                     }
@@ -370,13 +407,14 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!successBox) {
                     successBox = document.createElement('div');
                     successBox.id = 'successMsgBox';
-                    successBox.style.cssText = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
+                    successBox.style.cssText
+                        = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
                     slotForm.prepend(successBox);
                 }
-                successBox.innerHTML = `✅ Campaign Booked Successfully! (${campaignDays} Days, ${frequency}x/Day)`;
+                successBox.innerHTML = `✅ Campaign Booked Successfully! Token: #${unifiedCampaignToken} (${campaignDays} Days, ${frequency}x/Day)`;
 
                 await updateAvailableSecondsCounter();
-                manageUserTokenDisplay(lastTokenNumber, lastDateStr, lastTimeStr);
+                manageUserTokenDisplay(unifiedCampaignToken, lastDateStr, lastTimeStr);
 
                 setTimeout(() => {
                     slotModal.style.display = 'none';
@@ -706,8 +744,8 @@ async function initLiveBillboardPlayer() {
     }
 }
 
-// --- SPECIFIC QUEUE SLOT CALCULATOR FOR CAMPAigns ---
-async function calculateSpecificQueueSlot(durationSeconds, selectedDateStr, customOffsetSeconds) {
+// --- DISTRIBUTED QUEUE SLOT CALCULATOR WITH UNIFIED TOKEN MAPPING ---
+async function calculateDistributedQueueSlot(durationSeconds, selectedDateStr, targetOffsetSeconds, unifiedTokenId) {
     let parts = selectedDateStr.split('-');
     let targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
@@ -732,20 +770,16 @@ async function calculateSpecificQueueSlot(durationSeconds, selectedDateStr, cust
         return { quota_exceeded: true };
     }
 
-    let dailyTokenNumber = targetDateSlots.length + 1;
-
     let startTime = new Date(targetDate);
     startTime.setHours(dayStartHour, 0, 0, 0);
-    // Apply custom offset spacing for multi-frequency distribution across the day
-    let finalOffset = Math.min(totalBookedSecondsBeforeThis, customOffsetSeconds);
-    startTime.setSeconds(startTime.getSeconds() + finalOffset);
+    startTime.setSeconds(startTime.getSeconds() + targetOffsetSeconds);
 
     let dateStr = startTime.toLocaleDateString('en-US', optionsCheck);
     let timeStr = startTime.toLocaleTimeString();
 
     return {
         quota_exceeded: false,
-        daily_token_number: dailyTokenNumber,
+        unified_token_id: unifiedTokenId,
         formatted_time: dateStr + ' at ' + timeStr,
         date_str: dateStr,
         time_str: timeStr
