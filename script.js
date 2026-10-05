@@ -108,7 +108,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     window.URL.revokeObjectURL(videoElement.src);
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
-                        fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + vDuration + 's. Maximum 30 seconds allowed!';
+                        fileErrorMsg.innerText = '⚠️️ Error: Video duration is ' + vDuration + 's. Maximum 30 seconds allowed!';
                         fileErrorMsg.style.display = 'block';
                         if (submitBtn) submitBtn.disabled = true;
                         adFileInput.value = '';
@@ -393,7 +393,6 @@ function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
         tokenSection.style.display = 'block';
         if (reminderEl) reminderEl.style.display = 'block';
 
-        // Save fresh token so it doesn't show old cached values
         localStorage.setItem('bs_token', tokenNo);
         localStorage.setItem('bs_date', dateStr);
         localStorage.setItem('bs_time', timeStr);
@@ -407,7 +406,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Full Screen Horizontal Fill, Vertical Blur, Image Fixed) ---
+// --- INTELLIGENT MEDIA RENDERING (Strict Image & Video Type Check + 100% Full Screen Horizontal Fill) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -416,7 +415,9 @@ function renderAdOnBillboard(ad, onComplete) {
     let fileUrl = ad.file_url || ad.video_url || '';
     let targetUrl = ad.target_url || '#';
 
-    let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov') || fileUrl.includes('.webm');
+    // Strict extension check for video vs image
+    let lowerUrl = fileUrl.toLowerCase();
+    let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm');
 
     let isCompletedCalled = false;
     function triggerComplete() {
@@ -492,7 +493,7 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Image: 100% full screen fill without any empty space (Fixed Image Rendering)
+                // Horizontal Image: 100% full screen fill without any empty space
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
