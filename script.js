@@ -142,7 +142,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- EXECUTE SEARCH BUTTON LISTENER (Date-Wise Independent Token #1 Search) ---
+    // --- EXECUTE SEARCH BUTTON LISTENER ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
     const searchResultArea = document.getElementById('searchResultArea');
 
@@ -418,7 +418,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Badge Removed, Full Screen Stretch, No Replay) ---
+// --- INTELLIGENT MEDIA RENDERING (Full Screen Image & Video Fix + Clickable Target URL) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -438,30 +438,9 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        let tempVid = document.createElement('video');
-        tempVid.src = fileUrl;
-        tempVid.onloadedmetadata = function() {
-            buildBillboardMarkup(tempVid.videoWidth, tempVid.videoHeight, true);
-        };
-        setTimeout(() => {
-            if (!billboardBox.querySelector('video') && !billboardBox.querySelector('img')) {
-                buildBillboardMarkup(16, 9, true);
-            }
-        }, 300);
+        buildBillboardMarkup(16, 9, true);
     } else {
-        let tempImg = new Image();
-        tempImg.src = fileUrl;
-        tempImg.onload = function() {
-            buildBillboardMarkup(tempImg.naturalWidth, tempImg.naturalHeight, false);
-        };
-        tempImg.onerror = function() {
-            buildBillboardMarkup(16, 9, false);
-        };
-        setTimeout(() => {
-            if (!billboardBox.querySelector('img') && !billboardBox.querySelector('video')) {
-                buildBillboardMarkup(16, 9, false);
-            }
-        }, 200);
+        buildBillboardMarkup(16, 9, false);
     }
 
     function buildBillboardMarkup(width, height, isVid) {
@@ -504,12 +483,10 @@ function renderAdOnBillboard(ad, onComplete) {
             }
         }
 
-        let buttonText = targetUrl.toLowerCase().includes('shop') ? 'Shop Now' : 'Tap Link';
-
+        // Entire billboard is clickable to redirect to targetUrl[span_1](start_span)[span_1](end_span)
         billboardBox.innerHTML = `
-            <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 10px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden;">
+            <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden; cursor: pointer;">
                 ${mediaTagHTML}
-                <a href="${targetUrl}" target="_blank" style="z-index: 3; position: relative; margin-bottom: 5px; background: #2563eb; color: white; padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(37,99,235,0.4);">${buttonText} →</a>
             </div>
         `;
 
@@ -538,7 +515,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- LIVE BILLBOARD PLAYER LOOP (Exact Time Scheduling & Default Banner Fallback) ---
+// --- LIVE BILLBOARD PLAYER LOOP ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -563,7 +540,6 @@ async function initLiveBillboardPlayer() {
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
-        // Filter approved ads for today
         let todaysApprovedAds = queueRecords.filter(ad => {
             return ad.status === 'approved' && ad.slot_time && ad.slot_time.includes(todayDateStr);
         });
@@ -576,9 +552,8 @@ async function initLiveBillboardPlayer() {
             return;
         }
 
-        // Calculate running slot time sequences for today
         let dayStart = new Date(now);
-        dayStart.setHours(8, 0, 0, 0); // 8 AM Start
+        dayStart.setHours(8, 0, 0, 0);
 
         let scheduledAds = [];
         let accumulatedSeconds = 0;
@@ -615,7 +590,6 @@ async function initLiveBillboardPlayer() {
             }
 
             if (currentPlayingAd) {
-                // Play active ad for its specific slot time without replay loop
                 let elapsedSecs = Math.floor((currentTime - currentPlayingAd.start) / 1000);
                 let remainingSecs = currentPlayingAd.duration - elapsedSecs;
                 if (remainingSecs < 1) remainingSecs = 1;
@@ -624,7 +598,6 @@ async function initLiveBillboardPlayer() {
                     setTimeout(checkAndPlaySchedule, 1000);
                 });
             } else {
-                // Default Banner Fallback when no ad is active at this exact second
                 billboardBox.innerHTML = '';
                 billboardBox.style.background = "url('buysecond.png') no-repeat center center";
                 billboardBox.style.backgroundSize = "100% 100%";
