@@ -251,7 +251,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 let slotInfo = await calculateCustomQueueSlot(duration, selectedDateVal);
 
                 if (slotInfo.quota_exceeded) {
-                    alert('⚠️ Is date ki 50,400 seconds ki seat full ho chuki hai!');
+                    alert('⚠️️ Is date ki 50,400 seconds ki seat full ho chuki hai!');
                     submitBtn.innerText = originalText;
                     submitBtn.disabled = false;
                     return;
@@ -418,7 +418,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Full Screen Image & Video Fix + Clickable Target URL) ---
+// --- INTELLIGENT MEDIA RENDERING (Strict Vertical Blur Background + Horizontal Full Fit + Image Fixed) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -438,17 +438,43 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        buildBillboardMarkup(16, 9, true);
+        let tempVid = document.createElement('video');
+        tempVid.src = fileUrl;
+        tempVid.onloadedmetadata = function() {
+            let isVert = tempVid.videoHeight > tempVid.videoWidth;
+            buildBillboardMarkup(isVert, true);
+        };
+        tempVid.onerror = function() {
+            buildBillboardMarkup(false, true);
+        };
+        setTimeout(() => {
+            if (!billboardBox.querySelector('video')) {
+                buildBillboardMarkup(false, true);
+            }
+        }, 400);
     } else {
-        buildBillboardMarkup(16, 9, false);
+        let tempImg = new Image();
+        tempImg.src = fileUrl;
+        tempImg.onload = function() {
+            let isVert = tempImg.naturalHeight > tempImg.naturalWidth;
+            buildBillboardMarkup(isVert, false);
+        };
+        tempImg.onerror = function() {
+            buildBillboardMarkup(false, false);
+        };
+        setTimeout(() => {
+            if (!billboardBox.querySelector('img')) {
+                buildBillboardMarkup(false, false);
+            }
+        }, 300);
     }
 
-    function buildBillboardMarkup(width, height, isVid) {
-        let isVertical = height > width;
+    function buildBillboardMarkup(isVertical, isVid) {
         let mediaTagHTML = '';
 
         if (isVid) {
             if (isVertical) {
+                // Vertical Video: Cinematic blur background + centered vertical foreground
                 mediaTagHTML = `
                     <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
                         <video src="${fileUrl}" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;"></video>
@@ -458,14 +484,16 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
+                // Horizontal Video: Full screen fit for both mobile & computer without cutting
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;"></video>
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; background: #000; border-radius: 6px;"></video>
                     </div>
                 `;
             }
         } else {
             if (isVertical) {
+                // Vertical Image: Cinematic blur background + centered vertical foreground
                 mediaTagHTML = `
                     <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
                         <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;">
@@ -475,15 +503,15 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
+                // Horizontal Image: Full screen fit for both mobile & computer without cutting
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">
+                        <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: contain; background: #000; border-radius: 6px;">
                     </div>
                 `;
             }
         }
 
-        // Entire billboard is clickable to redirect to targetUrl[span_1](start_span)[span_1](end_span)
         billboardBox.innerHTML = `
             <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden; cursor: pointer;">
                 ${mediaTagHTML}
