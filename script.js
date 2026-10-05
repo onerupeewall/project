@@ -142,7 +142,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- EXECUTE SEARCH BUTTON LISTENER ---
+    // --- EXECUTE SEARCH BUTTON LISTENER (Past Record Filtering) ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
     const searchResultArea = document.getElementById('searchResultArea');
 
@@ -418,7 +418,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Full Stretch for Horizontal, Cinematic Blur for Vertical, Fixed Image Support) ---
+// --- INTELLIGENT MEDIA RENDERING (Full Stretch / Object-fit Cover Fix) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -445,7 +445,6 @@ function renderAdOnBillboard(ad, onComplete) {
             }
         }, 300);
     } else {
-        // Image Handling Fix
         let tempImg = new Image();
         tempImg.src = fileUrl;
         tempImg.onload = function() {
@@ -476,7 +475,6 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Video Fixed: object-fit cover to eliminate empty black space/borders completely
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <video src="${fileUrl}" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;"></video>
@@ -494,7 +492,6 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Image Fixed: object-fit cover to eliminate borders completely
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <img src="${fileUrl}" alt="${brandName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">
@@ -529,7 +526,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- EXACT TIME-BASED LIVE BILLBOARD PLAYER (8 AM to 10 PM Active & Slot-Time Synchronized) ---
+// --- EXACT TIME-BASED LIVE BILLBOARD PLAYER & DEFAULT BANNER ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -551,7 +548,6 @@ async function initLiveBillboardPlayer() {
             let timerEl = getCountdownElement();
             if (timerEl) timerEl.innerText = 'Screen Time: 8 AM to 10 PM';
 
-            // Check every 1 minute to auto-start when 8 AM hits
             setTimeout(initLiveBillboardPlayer, 60000);
             return;
         }
@@ -565,13 +561,14 @@ async function initLiveBillboardPlayer() {
             billboardBox.innerHTML = '';
             billboardBox.style.background = "url('buysecond.png') no-repeat center center";
             billboardBox.style.backgroundSize = "100% 100%";
+            let timerEl = getCountdownElement();
+            if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
             return;
         }
 
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
-        // Filter ads for today's date and approved status
         let todaysApprovedAds = queueRecords.filter(ad => {
             return ad.status === 'approved' && ad.slot_time && ad.slot_time.includes(todayDateStr);
         });
@@ -585,18 +582,14 @@ async function initLiveBillboardPlayer() {
             return;
         }
 
-        // --- EXACT TIME SLOT SYNCHRONIZATION LOGIC ---
-        // Find which ad should be playing right now based on its exact scheduled timestamp
         let activeAdIndex = 0;
         let matchedAd = null;
         let timeToNextAd = 10;
 
         for (let i = 0; i < todaysApprovedAds.length; i++) {
             let ad = todaysApprovedAds[i];
-            // slot_time string format expected: "October 05, 2026 at 08:00:15 AM" or standard JS parsed date string
             let slotTimeString = ad.slot_time;
 
-            // Extract time part or parse full slot timestamp
             let adTimeParts = slotTimeString.split(' at ');
             if (adTimeParts.length > 1) {
                 let adDateObj = new Date(adTimeParts[0] + ' ' + adTimeParts[1]);
@@ -604,13 +597,11 @@ async function initLiveBillboardPlayer() {
                 let adEndTimeObj = new Date(adDateObj.getTime() + (adDuration * 1000));
 
                 if (now >= adDateObj && now < adEndTimeObj) {
-                    // Current time falls exactly inside this user's booked slot!
                     matchedAd = ad;
                     let remainingSecondsInSlot = Math.floor((adEndTimeObj - now) / 1000);
                     ad.duration_second = remainingSecondsInSlot > 0 ? remainingSecondsInSlot : 1;
                     break;
                 } else if (now < adDateObj) {
-                    // If current time hasn't reached this ad yet, queue up for it or show waiting
                     let diffSeconds = Math.floor((adDateObj - now) / 1000);
                     if (diffSeconds > 0 && diffSeconds < timeToNextAd) {
                         timeToNextAd = diffSeconds;
@@ -624,7 +615,6 @@ async function initLiveBillboardPlayer() {
                 initLiveBillboardPlayer();
             });
         } else {
-            // If no specific slot matches right this second, play sequentially or show standby countdown
             let timerEl = getCountdownElement();
             if (timerEl) timerEl.innerText = `Next Slot in: ${timeToNextAd}s`;
 
@@ -638,7 +628,7 @@ async function initLiveBillboardPlayer() {
     } catch (err) {
         console.error('Billboard Player Error:', err);
         billboardBox.innerHTML = '';
-        billboardBox.style.background = "url('buysecond.png') no-referer center center";
+        billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
     }
 }
