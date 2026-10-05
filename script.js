@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TOTAL_DAILY_SECONDS = 50400; // 14 Hours = 50,400 Seconds
+const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM) = 50,400 Seconds
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
@@ -85,18 +85,54 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
+    // --- DYNAMIC FORM INPUTS FOR FREQUENCY & DAYS ---
+    const slotFormContainer = document.getElementById('slotForm');
+    if (slotFormContainer && !document.getElementById('frequencyInput')) {
+        // Automatically inject Frequency & Days fields into the form if not already in HTML
+        const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
+
+        let campaignFieldsHTML = `
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 13px; color: #9ca3af; display: block; margin-bottom: 4px;">Times per Day (Frequency):</label>
+                <input type="number" id="frequencyInput" value="1" min="1" max="20" style="width: 100%; padding: 8px; background: #121824; border: 1px solid #1f293d; color: #fff; border-radius: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 13px; color: #9ca3af; display: block; margin-bottom: 4px;">Number of Days (Campaign Length):</label>
+                <input type="number" id="campaignDaysInput" value="1" min="1" max="30" style="width: 100%; padding: 8px; background: #121824; border: 1px solid #1f293d; color: #fff; border-radius: 6px;">
+            </div>
+        `;
+        if (durationGroup) {
+            durationGroup.insertAdjacentHTML('afterend', campaignFieldsHTML);
+        }
+    }
+
     // --- INSTANT FILE VALIDATION & AUTO DURATION SELECTOR ---
     const adFileInput = document.getElementById('adFile');
     const fileErrorMsg = document.getElementById('fileErrorMsg');
     const submitBtn = document.querySelector('#slotForm button[type="submit"]');
     const durationInput = document.getElementById('durationInput');
+    const frequencyInput = document.getElementById('frequencyInput');
+    const campaignDaysInput = document.getElementById('campaignDaysInput');
     const totalAmount = document.getElementById('totalAmount');
+
+    function updateCalculatedAmount() {
+        if (!durationInput || !totalAmount) return;
+        let dur = parseInt(durationInput.value) || 10;
+        let freq = frequencyInput ? parseInt(frequencyInput.value) || 1 : 1;
+        let days = campaignDaysInput ? parseInt(campaignDaysInput.value) || 1 : 1;
+
+        let ratePerSec = dur <= 10 ? 10 : 10; // Base rate logic
+        let calculatedTotal = dur * freq * days * ratePerSec;
+        totalAmount.innerText = '₹' + calculatedTotal;
+    }
 
     if (adFileInput) {
         adFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
-            fileErrorMsg.style.display = 'none';
-            fileErrorMsg.innerText = '';
+            if (fileErrorMsg) {
+                fileErrorMsg.style.display = 'none';
+                fileErrorMsg.innerText = '';
+            }
             if (submitBtn) submitBtn.disabled = false;
 
             if (!file) return;
@@ -108,14 +144,16 @@ window.addEventListener('DOMContentLoaded', () => {
                     window.URL.revokeObjectURL(videoElement.src);
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
-                        fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + vDuration + 's. Maximum 30 seconds allowed!';
-                        fileErrorMsg.style.display = 'block';
+                        if (fileErrorMsg) {
+                            fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + vDuration + 's. Maximum 30 seconds allowed!';
+                            fileErrorMsg.style.display = 'block';
+                        }
                         if (submitBtn) submitBtn.disabled = true;
                         adFileInput.value = '';
                     } else {
                         if (durationInput) {
                             durationInput.value = vDuration < 1 ? 1 : vDuration;
-                            if (totalAmount) totalAmount.innerText = '₹' + (parseInt(durationInput.value) * 10);
+                            updateCalculatedAmount();
                         }
                     }
                 }
@@ -123,24 +161,15 @@ window.addEventListener('DOMContentLoaded', () => {
             } else if (file.type.startsWith('image/')) {
                 if (durationInput) {
                     durationInput.value = 10;
-                    if (totalAmount) totalAmount.innerText = '₹100';
+                    updateCalculatedAmount();
                 }
             }
         });
     }
 
-    // --- DURATION & AMOUNT ---
-    if (durationInput && totalAmount) {
-        durationInput.addEventListener('input', () => {
-            let val = parseInt(durationInput.value) || 0;
-            if (val > 30) {
-                val = 30;
-                durationInput.value = 30;
-            }
-            if (val < 1) val = 1;
-            totalAmount.innerText = '₹' + (val * 10);
-        });
-    }
+    if (durationInput) durationInput.addEventListener('input', updateCalculatedAmount);
+    if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
+    if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
     // --- EXECUTE SEARCH BUTTON LISTENER ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
@@ -241,16 +270,18 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- FORM SUBMISSION ---
+    // --- FORM SUBMISSION WITH MULTI-DAY & FREQUENCY SUPPORT ---
     const slotForm = document.getElementById('slotForm');
     if (slotForm) {
         slotForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const durationInputEl = document.getElementById('durationInput');
             let duration = parseInt(durationInputEl ? durationInputEl.value : 10) || 10;
+            let frequency = document.getElementById('frequencyInput') ? parseInt(document.getElementById('frequencyInput').value) || 1 : 1;
+            let campaignDays = document.getElementById('campaignDaysInput') ? parseInt(document.getElementById('campaignDaysInput').value) || 1 : 1;
 
             if (duration > 30) {
-                alert('Maximum 30 seconds allowed.');
+                alert('Maximum 30 seconds allowed per slot.');
                 return;
             }
 
@@ -261,19 +292,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
             const submitBtn = slotForm.querySelector('button[type="submit"]');
             let originalText = submitBtn.innerText;
-            submitBtn.innerText = 'Uploading & Booking...';
+            submitBtn.innerText = 'Uploading & Booking Campaign...';
             submitBtn.disabled = true;
 
             try {
-                let slotInfo = await calculateCustomQueueSlot(duration, selectedDateVal);
-
-                if (slotInfo.quota_exceeded) {
-                    alert('⚠️️ Is date ki 50,400 seconds ki seat full ho chuki hai!');
-                    submitBtn.innerText = originalText;
-                    submitBtn.disabled = false;
-                    return;
-                }
-
                 let publicFileUrl = '';
 
                 if (fileInput && fileInput.files && fileInput.files[0]) {
@@ -298,20 +320,51 @@ window.addEventListener('DOMContentLoaded', () => {
                     publicFileUrl = publicUrlData.publicUrl;
                 }
 
-                const { data, error } = await supabaseClient
-                    .from('buysecond_records')
-                    .insert([
-                        {
-                            brand_name: adTitle,
-                            target_url: targetUrl,
-                            file_url: publicFileUrl,
-                            duration_second: duration,
-                            slot_time: slotInfo.formatted_time,
-                            status: 'pending'
-                        }
-                    ]);
+                // Loop through each day of the campaign
+                let baseParts = selectedDateVal.split('-');
+                let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
+                let lastTokenNumber = 1;
+                let lastDateStr = '';
+                let lastTimeStr = '';
 
-                if (error) throw error;
+                for (let d = 0; d < campaignDays; d++) {
+                    let currentDayDate = new Date(startDate);
+                    currentDayDate.setDate(startDate.getDate() + d);
+                    let currentDayStrVal = `${currentDayDate.getFullYear()}-${String(currentDayDate.getMonth() + 1).padStart(2, '0')}-${String(currentDayDate.getDate()).padStart(2, '0')}`;
+
+                    // Distribute frequency slots across the day (8 AM to 10 PM = 50,400 seconds)
+                    let totalDaySecondsSpan = TOTAL_DAILY_SECONDS;
+                    let intervalSpace = Math.floor(totalDaySecondsSpan / frequency);
+
+                    for (let f = 0; f < frequency; f++) {
+                        let slotOffsetSeconds = f * intervalSpace;
+                        let slotInfo = await calculateSpecificQueueSlot(duration, currentDayStrVal, slotOffsetSeconds);
+
+                        if (slotInfo.quota_exceeded) {
+                            alert(`⚠️ Date ${slotInfo.date_str} par 50,400 seconds ki seat full ho chuki hai! Baki din book nahi ho paye.`);
+                            break;
+                        }
+
+                        const { error: insertError } = await supabaseClient
+                            .from('buysecond_records')
+                            .insert([
+                                {
+                                    brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
+                                    target_url: targetUrl,
+                                    file_url: publicFileUrl,
+                                    duration_second: duration,
+                                    slot_time: slotInfo.formatted_time,
+                                    status: 'pending'
+                                }
+                            ]);
+
+                        if (insertError) throw insertError;
+
+                        lastTokenNumber = slotInfo.daily_token_number;
+                        lastDateStr = slotInfo.date_str;
+                        lastTimeStr = slotInfo.time_str;
+                    }
+                }
 
                 let successBox = document.getElementById('successMsgBox');
                 if (!successBox) {
@@ -320,10 +373,10 @@ window.addEventListener('DOMContentLoaded', () => {
                     successBox.style.cssText = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
                     slotForm.prepend(successBox);
                 }
-                successBox.innerHTML = '✅ Booking Successful! Token: #' + slotInfo.daily_token_number + ' | Date: ' + slotInfo.date_str + ' (Status: Pending Approval)';
+                successBox.innerHTML = `✅ Campaign Booked Successfully! (${campaignDays} Days, ${frequency}x/Day)`;
 
                 await updateAvailableSecondsCounter();
-                manageUserTokenDisplay(slotInfo.daily_token_number, slotInfo.date_str, slotInfo.time_str);
+                manageUserTokenDisplay(lastTokenNumber, lastDateStr, lastTimeStr);
 
                 setTimeout(() => {
                     slotModal.style.display = 'none';
@@ -423,7 +476,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Direct Instant Image & Video Loading Fix) ---
+// --- INTELLIGENT MEDIA RENDERING ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -459,7 +512,6 @@ function renderAdOnBillboard(ad, onComplete) {
             }
         }, 400);
     } else {
-        // Direct image handling using DOM image element to ensure 100% reliable rendering
         let tempImg = document.createElement('img');
         tempImg.src = fileUrl;
         tempImg.onload = function() {
@@ -654,8 +706,8 @@ async function initLiveBillboardPlayer() {
     }
 }
 
-// --- DATE-WISE TOKEN RESET & 50,400s QUOTA ---
-async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
+// --- SPECIFIC QUEUE SLOT CALCULATOR FOR CAMPAigns ---
+async function calculateSpecificQueueSlot(durationSeconds, selectedDateStr, customOffsetSeconds) {
     let parts = selectedDateStr.split('-');
     let targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
@@ -684,7 +736,9 @@ async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
 
     let startTime = new Date(targetDate);
     startTime.setHours(dayStartHour, 0, 0, 0);
-    startTime.setSeconds(startTime.getSeconds() + totalBookedSecondsBeforeThis);
+    // Apply custom offset spacing for multi-frequency distribution across the day
+    let finalOffset = Math.min(totalBookedSecondsBeforeThis, customOffsetSeconds);
+    startTime.setSeconds(startTime.getSeconds() + finalOffset);
 
     let dateStr = startTime.toLocaleDateString('en-US', optionsCheck);
     let timeStr = startTime.toLocaleTimeString();
