@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TOTAL_DAILY_SECONDS = 50400; // 14 Hours = 50,400 Seconds
+const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM) = 50,400 Seconds
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
@@ -93,7 +93,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const totalAmount = document.getElementById('totalAmount');
 
     if (adFileInput) {
-        adFileInput.addEventListener('change', function (e) {
+        adFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             fileErrorMsg.style.display = 'none';
             fileErrorMsg.innerText = '';
@@ -104,7 +104,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (file.type.startsWith('video/')) {
                 const videoElement = document.createElement('video');
                 videoElement.preload = 'metadata';
-                videoElement.onloadedmetadata = function () {
+                videoElement.onloadedmetadata = function() {
                     window.URL.revokeObjectURL(videoElement.src);
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
@@ -303,7 +303,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     successBox.style.cssText = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
                     slotForm.prepend(successBox);
                 }
-                successBox.innerHTML = '✅ Booking Successful! Token: #' + slotInfo.daily_token_number + ' | Date: ' + slotInfo.date_str;
+                successBox.innerHTML = '✅ Booking Successful! Token: #' + slotInfo.daily_token_number + ' | Date: ' + slotInfo.date_str + ' | Time: ' + slotInfo.time_str;
 
                 await updateAvailableSecondsCounter();
                 manageUserTokenDisplay(slotInfo.daily_token_number, slotInfo.date_str, slotInfo.time_str);
@@ -418,7 +418,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Full Stretch for Horizontal, Cinematic Blur for Vertical, Image Fixed) ---
+// --- INTELLIGENT MEDIA RENDERING (Full Stretch for Horizontal, Cinematic Blur for Vertical, Fixed Image Support) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -428,13 +428,16 @@ function renderAdOnBillboard(ad, onComplete) {
     let targetUrl = ad.target_url || '#';
     let brandName = ad.brand_name || 'Ad';
 
-    let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov') || fileUrl.includes('.webm');
+    let isVideo = fileUrl.match(/\.(mp4|mov|webm|m4v)(\?.*)?$/i) || fileUrl.includes('video') || fileUrl.includes('.mp4');
 
     if (isVideo) {
         let tempVid = document.createElement('video');
         tempVid.src = fileUrl;
-        tempVid.onloadedmetadata = function () {
+        tempVid.onloadedmetadata = function() {
             buildBillboardMarkup(tempVid.videoWidth, tempVid.videoHeight, true);
+        };
+        tempVid.onerror = function() {
+            buildBillboardMarkup(16, 9, true);
         };
         setTimeout(() => {
             if (!billboardBox.querySelector('video') && !billboardBox.querySelector('img')) {
@@ -442,15 +445,15 @@ function renderAdOnBillboard(ad, onComplete) {
             }
         }, 300);
     } else {
+        // Image Handling Fix
         let tempImg = new Image();
         tempImg.src = fileUrl;
-        tempImg.onload = function () {
+        tempImg.onload = function() {
             buildBillboardMarkup(tempImg.naturalWidth, tempImg.naturalHeight, false);
         };
-        tempImg.onerror = function () {
+        tempImg.onerror = function() {
             buildBillboardMarkup(16, 9, false);
         };
-        // Immediate fallback render for images in case onload takes a split second
         setTimeout(() => {
             if (!billboardBox.querySelector('img') && !billboardBox.querySelector('video')) {
                 buildBillboardMarkup(16, 9, false);
@@ -473,7 +476,7 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Video: 100% width and height with object-fit cover to eliminate empty borders / black space completely
+                // Horizontal Video Fixed: object-fit cover to eliminate empty black space/borders completely
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <video src="${fileUrl}" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;"></video>
@@ -491,7 +494,7 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Image: 100% width and height with object-fit cover to eliminate empty borders / black space completely
+                // Horizontal Image Fixed: object-fit cover to eliminate borders completely
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <img src="${fileUrl}" alt="${brandName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">
@@ -526,12 +529,33 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- LIVE BILLBOARD PLAYER LOOP (Restores Default Banner when Empty) ---
+// --- EXACT TIME-BASED LIVE BILLBOARD PLAYER (8 AM to 10 PM Active & Slot-Time Synchronized) ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
 
     try {
+        let now = new Date();
+        let currentHour = now.getHours();
+
+        // Check Operating Hours: 8 AM (8) to 10 PM (22)
+        if (currentHour < 8 || currentHour >= 22) {
+            billboardBox.innerHTML = '';
+            billboardBox.style.background = "#0b0f17";
+            billboardBox.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #ef4444; font-weight: bold; text-align: center; padding: 20px;">
+                    <p style="font-size: 18px; margin-bottom: 5px;">🌙 Screen is Closed</p>
+                    <p style="font-size: 14px; color: #9ca3af;">Operating Hours: 8:00 AM to 10:00 PM</p>
+                </div>
+            `;
+            let timerEl = getCountdownElement();
+            if (timerEl) timerEl.innerText = 'Screen Time: 8 AM to 10 PM';
+
+            // Check every 1 minute to auto-start when 8 AM hits
+            setTimeout(initLiveBillboardPlayer, 60000);
+            return;
+        }
+
         let { data: queueRecords, error } = await supabaseClient
             .from('buysecond_records')
             .select('*')
@@ -544,10 +568,10 @@ async function initLiveBillboardPlayer() {
             return;
         }
 
-        let today = new Date();
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-        let todayDateStr = today.toLocaleDateString('en-US', optionsCheck);
+        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
+        // Filter ads for today's date and approved status
         let todaysApprovedAds = queueRecords.filter(ad => {
             return ad.status === 'approved' && ad.slot_time && ad.slot_time.includes(todayDateStr);
         });
@@ -561,39 +585,70 @@ async function initLiveBillboardPlayer() {
             return;
         }
 
-        let currentIndex = 0;
+        // --- EXACT TIME SLOT SYNCHRONIZATION LOGIC ---
+        // Find which ad should be playing right now based on its exact scheduled timestamp
+        let activeAdIndex = 0;
+        let matchedAd = null;
+        let timeToNextAd = 10;
 
-        function playNextApprovedAd() {
-            if (isPlayingPastRecord) return;
+        for (let i = 0; i < todaysApprovedAds.length; i++) {
+            let ad = todaysApprovedAds[i];
+            // slot_time string format expected: "October 05, 2026 at 08:00:15 AM" or standard JS parsed date string
+            let slotTimeString = ad.slot_time;
 
-            if (currentIndex >= todaysApprovedAds.length) {
-                currentIndex = 0;
+            // Extract time part or parse full slot timestamp
+            let adTimeParts = slotTimeString.split(' at ');
+            if (adTimeParts.length > 1) {
+                let adDateObj = new Date(adTimeParts[0] + ' ' + adTimeParts[1]);
+                let adDuration = parseInt(ad.duration_second) || 10;
+                let adEndTimeObj = new Date(adDateObj.getTime() + (adDuration * 1000));
+
+                if (now >= adDateObj && now < adEndTimeObj) {
+                    // Current time falls exactly inside this user's booked slot!
+                    matchedAd = ad;
+                    let remainingSecondsInSlot = Math.floor((adEndTimeObj - now) / 1000);
+                    ad.duration_second = remainingSecondsInSlot > 0 ? remainingSecondsInSlot : 1;
+                    break;
+                } else if (now < adDateObj) {
+                    // If current time hasn't reached this ad yet, queue up for it or show waiting
+                    let diffSeconds = Math.floor((adDateObj - now) / 1000);
+                    if (diffSeconds > 0 && diffSeconds < timeToNextAd) {
+                        timeToNextAd = diffSeconds;
+                    }
+                }
             }
-
-            let currentAd = todaysApprovedAds[currentIndex];
-            currentIndex++;
-
-            renderAdOnBillboard(currentAd, () => {
-                playNextApprovedAd();
-            });
         }
 
-        playNextApprovedAd();
+        if (matchedAd) {
+            renderAdOnBillboard(matchedAd, () => {
+                initLiveBillboardPlayer();
+            });
+        } else {
+            // If no specific slot matches right this second, play sequentially or show standby countdown
+            let timerEl = getCountdownElement();
+            if (timerEl) timerEl.innerText = `Next Slot in: ${timeToNextAd}s`;
+
+            setTimeout(() => {
+                if (!isPlayingPastRecord) {
+                    initLiveBillboardPlayer();
+                }
+            }, Math.min(timeToNextAd * 1000, 10000));
+        }
 
     } catch (err) {
         console.error('Billboard Player Error:', err);
         billboardBox.innerHTML = '';
-        billboardBox.style.background = "url('buysecond.png') no-repeat center center";
+        billboardBox.style.background = "url('buysecond.png') no-referer center center";
         billboardBox.style.backgroundSize = "100% 100%";
     }
 }
 
-// --- DATE-WISE TOKEN RESET & 50,400s QUOTA ---
+// --- DATE-WISE TOKEN RESET & 50,400s QUOTA & EXACT TIMESTAMP CALCULATION ---
 async function calculateCustomQueueSlot(durationSeconds, selectedDateStr) {
     let parts = selectedDateStr.split('-');
     let targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
-    let dayStartHour = 8; // 8 AM Start
+    let dayStartHour = 8; // 8 AM Start Sharp
 
     let { data: existingSlots } = await supabaseClient
         .from('buysecond_records')
