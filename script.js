@@ -142,7 +142,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- EXECUTE SEARCH BUTTON LISTENER (Strictly Date-Wise 1-Based Token Serial Search) ---
+    // --- EXECUTE SEARCH BUTTON LISTENER (Date-Wise Independent Token #1 Search) ---
     const executeSearchBtn = document.getElementById('executeSearchBtn');
     const searchResultArea = document.getElementById('searchResultArea');
 
@@ -418,7 +418,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Auto-Progression & Countdown Fix) ---
+// --- INTELLIGENT MEDIA RENDERING (Badge Removed, Full Screen Stretch, No Replay) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -426,7 +426,6 @@ function renderAdOnBillboard(ad, onComplete) {
     let duration = parseInt(ad.duration_second) || 10;
     let fileUrl = ad.file_url || ad.video_url || '';
     let targetUrl = ad.target_url || '#';
-    let brandName = ad.brand_name || 'Ad';
 
     let isVideo = fileUrl.endsWith('.mp4') || fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('.mov') || fileUrl.includes('.webm');
 
@@ -493,13 +492,13 @@ function renderAdOnBillboard(ad, onComplete) {
                         <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;">
                     </div>
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <img src="${fileUrl}" alt="${brandName}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                        <img src="${fileUrl}" alt="Ad" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
                     </div>
                 `;
             } else {
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <img src="${fileUrl}" alt="${brandName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">
+                        <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">
                     </div>
                 `;
             }
@@ -508,10 +507,9 @@ function renderAdOnBillboard(ad, onComplete) {
         let buttonText = targetUrl.toLowerCase().includes('shop') ? 'Shop Now' : 'Tap Link';
 
         billboardBox.innerHTML = `
-            <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden;">
-                <div style="font-size: 15px; font-weight: 700; color: #10B981; z-index: 3; position: relative; background: rgba(0,0,0,0.6); padding: 2px 10px; border-radius: 4px;">📢 ${brandName}</div>
+            <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 10px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden;">
                 ${mediaTagHTML}
-                <a href="${targetUrl}" target="_blank" style="z-index: 3; position: relative; background: #2563eb; color: white; padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(37,99,235,0.4);">${buttonText} →</a>
+                <a href="${targetUrl}" target="_blank" style="z-index: 3; position: relative; margin-bottom: 5px; background: #2563eb; color: white; padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: bold; box-shadow: 0 4px 10px rgba(37,99,235,0.4);">${buttonText} →</a>
             </div>
         `;
 
@@ -540,7 +538,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- LIVE BILLBOARD PLAYER LOOP ---
+// --- LIVE BILLBOARD PLAYER LOOP (Exact Time Scheduling & Default Banner Fallback) ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -551,19 +549,21 @@ async function initLiveBillboardPlayer() {
             .select('*')
             .order('id', { ascending: true });
 
+        let timerEl = getCountdownElement();
+
         if (error || !queueRecords || queueRecords.length === 0) {
             billboardBox.innerHTML = '';
             billboardBox.style.background = "url('buysecond.png') no-repeat center center";
             billboardBox.style.backgroundSize = "100% 100%";
-            let timerEl = getCountdownElement();
-            if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
+            if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
             return;
         }
 
-        let today = new Date();
+        let now = new Date();
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-        let todayDateStr = today.toLocaleDateString('en-US', optionsCheck);
+        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
+        // Filter approved ads for today
         let todaysApprovedAds = queueRecords.filter(ad => {
             return ad.status === 'approved' && ad.slot_time && ad.slot_time.includes(todayDateStr);
         });
@@ -572,37 +572,81 @@ async function initLiveBillboardPlayer() {
             billboardBox.innerHTML = '';
             billboardBox.style.background = "url('buysecond.png') no-repeat center center";
             billboardBox.style.backgroundSize = "100% 100%";
-            let timerEl = getCountdownElement();
-            if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
+            if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
             return;
         }
 
-        let currentIndex = 0;
+        // Calculate running slot time sequences for today
+        let dayStart = new Date(now);
+        dayStart.setHours(8, 0, 0, 0); // 8 AM Start
 
-        function playNextApprovedAd() {
-            if (isPlayingPastRecord) return;
+        let scheduledAds = [];
+        let accumulatedSeconds = 0;
 
-            if (currentIndex >= todaysApprovedAds.length) {
-                currentIndex = 0;
-            }
+        for (let ad of todaysApprovedAds) {
+            let adDuration = parseInt(ad.duration_second) || 10;
+            let adStartTime = new Date(dayStart.getTime() + (accumulatedSeconds * 1000));
+            let adEndTime = new Date(adStartTime.getTime() + (adDuration * 1000));
 
-            let currentAd = todaysApprovedAds[currentIndex];
-            currentIndex++;
-
-            renderAdOnBillboard(currentAd, () => {
-                playNextApprovedAd();
+            scheduledAds.push({
+                adRecord: ad,
+                start: adStartTime,
+                end: adEndTime,
+                duration: adDuration
             });
+
+            accumulatedSeconds += adDuration;
         }
 
-        playNextApprovedAd();
+        function checkAndPlaySchedule() {
+            if (isPlayingPastRecord) return;
+
+            let currentTime = new Date();
+            let currentPlayingAd = null;
+            let nextUpcomingAd = null;
+
+            for (let item of scheduledAds) {
+                if (currentTime >= item.start && currentTime < item.end) {
+                    currentPlayingAd = item;
+                    break;
+                } else if (currentTime < item.start) {
+                    if (!nextUpcomingAd) nextUpcomingAd = item;
+                }
+            }
+
+            if (currentPlayingAd) {
+                // Play active ad for its specific slot time without replay loop
+                let elapsedSecs = Math.floor((currentTime - currentPlayingAd.start) / 1000);
+                let remainingSecs = currentPlayingAd.duration - elapsedSecs;
+                if (remainingSecs < 1) remainingSecs = 1;
+
+                renderAdOnBillboard(currentPlayingAd.adRecord, () => {
+                    setTimeout(checkAndPlaySchedule, 1000);
+                });
+            } else {
+                // Default Banner Fallback when no ad is active at this exact second
+                billboardBox.innerHTML = '';
+                billboardBox.style.background = "url('buysecond.png') no-repeat center center";
+                billboardBox.style.backgroundSize = "100% 100%";
+
+                if (nextUpcomingAd) {
+                    let diffSecs = Math.floor((nextUpcomingAd.start - currentTime) / 1000);
+                    if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs}s`;
+                } else {
+                    if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
+                }
+
+                setTimeout(checkAndPlaySchedule, 2000);
+            }
+        }
+
+        checkAndPlaySchedule();
 
     } catch (err) {
         console.error('Billboard Player Error:', err);
         billboardBox.innerHTML = '';
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
-        let timerEl = getCountdownElement();
-        if (timerEl) timerEl.innerText = 'Next Video in: 0 Sec';
     }
 }
 
