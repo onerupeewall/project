@@ -108,7 +108,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     window.URL.revokeObjectURL(videoElement.src);
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
-                        fileErrorMsg.innerText = '⚠️️ Error: Video duration is ' + vDuration + 's. Maximum 30 seconds allowed!';
+                        fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + vDuration + 's. Maximum 30 seconds allowed!';
                         fileErrorMsg.style.display = 'block';
                         if (submitBtn) submitBtn.disabled = true;
                         adFileInput.value = '';
@@ -199,23 +199,40 @@ window.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                let statusBadge = '';
+                let actionHTML = '';
+
+                if (record.status === 'approved') {
+                    statusBadge = '<span style="color: #10B981; font-weight: bold;">Status: Approved ✅</span>';
+                    actionHTML = '<button id="playSearchedAdBtn" style="margin-top: 5px; background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%;">Play Video Now</button>';
+                } else if (record.status === 'rejected') {
+                    statusBadge = '<span style="color: #ef4444; font-weight: bold;">Status: Rejected ❌ (Yah ad reject kar diya gaya hai)</span>';
+                    actionHTML = '';
+                } else {
+                    statusBadge = '<span style="color: #f59e0b; font-weight: bold;">Status: Pending ⏳ (Admin approval ka wait hai)</span>';
+                    actionHTML = '';
+                }
+
                 searchResultArea.innerHTML =
                     '<div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #1f293d; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">' +
                     '<p><b>Brand / Ad Name:</b> ' + record.brand_name + '</p>' +
                     '<p><b>Slot Time:</b> ' + record.slot_time + '</p>' +
                     '<p><b>Duration:</b> ' + record.duration_second + ' Seconds</p>' +
-                    '<button id="playSearchedAdBtn" style="margin-top: 5px; background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%;">Play Video Now</button>' +
+                    '<p>' + statusBadge + '</p>' +
+                    actionHTML +
                     '</div>';
 
-                document.getElementById('playSearchedAdBtn').addEventListener('click', () => {
-                    checkRecordModal.style.display = 'none';
-                    isPlayingPastRecord = true;
+                if (record.status === 'approved') {
+                    document.getElementById('playSearchedAdBtn').addEventListener('click', () => {
+                        checkRecordModal.style.display = 'none';
+                        isPlayingPastRecord = true;
 
-                    renderAdOnBillboard(record, () => {
-                        isPlayingPastRecord = false;
-                        initLiveBillboardPlayer();
+                        renderAdOnBillboard(record, () => {
+                            isPlayingPastRecord = false;
+                            initLiveBillboardPlayer();
+                        });
                     });
-                });
+                }
 
             } catch (err) {
                 console.error(err);
@@ -290,7 +307,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             file_url: publicFileUrl,
                             duration_second: duration,
                             slot_time: slotInfo.formatted_time,
-                            status: 'approved'
+                            status: 'pending'
                         }
                     ]);
 
@@ -303,7 +320,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     successBox.style.cssText = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
                     slotForm.prepend(successBox);
                 }
-                successBox.innerHTML = '✅ Booking Successful! Token: #' + slotInfo.daily_token_number + ' | Date: ' + slotInfo.date_str;
+                successBox.innerHTML = '✅ Booking Successful! Token: #' + slotInfo.daily_token_number + ' | Date: ' + slotInfo.date_str + ' (Status: Pending Approval)';
 
                 await updateAvailableSecondsCounter();
                 manageUserTokenDisplay(slotInfo.daily_token_number, slotInfo.date_str, slotInfo.time_str);
@@ -314,7 +331,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (totalAmount) totalAmount.innerText = '₹100';
                     if (successBox) successBox.remove();
                     initLiveBillboardPlayer();
-                }, 2500);
+                }, 3000);
 
             } catch (err) {
                 alert('Booking failed: ' + (err.message || err));
@@ -406,7 +423,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Strict Image & Video Type Check + 100% Full Screen Horizontal Fill) ---
+// --- INTELLIGENT MEDIA RENDERING (Direct Instant Image & Video Loading Fix) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -415,7 +432,6 @@ function renderAdOnBillboard(ad, onComplete) {
     let fileUrl = ad.file_url || ad.video_url || '';
     let targetUrl = ad.target_url || '#';
 
-    // Strict extension check for video vs image
     let lowerUrl = fileUrl.toLowerCase();
     let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm');
 
@@ -443,7 +459,8 @@ function renderAdOnBillboard(ad, onComplete) {
             }
         }, 400);
     } else {
-        let tempImg = new Image();
+        // Direct image handling using DOM image element to ensure 100% reliable rendering
+        let tempImg = document.createElement('img');
         tempImg.src = fileUrl;
         tempImg.onload = function() {
             let isVert = tempImg.naturalHeight > tempImg.naturalWidth;
@@ -456,7 +473,7 @@ function renderAdOnBillboard(ad, onComplete) {
             if (!billboardBox.querySelector('img')) {
                 buildBillboardMarkup(false, false);
             }
-        }, 300);
+        }, 400);
     }
 
     function buildBillboardMarkup(isVertical, isVid) {
@@ -464,7 +481,6 @@ function renderAdOnBillboard(ad, onComplete) {
 
         if (isVid) {
             if (isVertical) {
-                // Vertical Video: Cinematic blur background + centered vertical foreground
                 mediaTagHTML = `
                     <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
                         <video src="${fileUrl}" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;"></video>
@@ -474,7 +490,6 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Video: 100% full screen fill without any empty space
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
@@ -483,7 +498,6 @@ function renderAdOnBillboard(ad, onComplete) {
             }
         } else {
             if (isVertical) {
-                // Vertical Image: Cinematic blur background + centered vertical foreground
                 mediaTagHTML = `
                     <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
                         <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;">
@@ -493,7 +507,6 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Image: 100% full screen fill without any empty space
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                         <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
