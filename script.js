@@ -377,7 +377,7 @@ async function updateAvailableSecondsCounter() {
     }
 }
 
-async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
+function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
     let tokenSection = document.getElementById('userTokenSection');
     let displayTokenVal = document.getElementById('displayTokenVal');
     let displayDateVal = document.getElementById('displayDateVal');
@@ -393,24 +393,13 @@ async function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
         tokenSection.style.display = 'block';
         if (reminderEl) reminderEl.style.display = 'block';
 
+        // Save fresh token so it doesn't show old cached values
         localStorage.setItem('bs_token', tokenNo);
         localStorage.setItem('bs_date', dateStr);
         localStorage.setItem('bs_time', timeStr);
     } else {
-        let savedToken = localStorage.getItem('bs_token') || localStorage.getItem('buysecond_token');
-        let savedDate = localStorage.getItem('bs_date') || localStorage.getItem('buysecond_date');
-        let savedTime = localStorage.getItem('bs_time') || localStorage.getItem('buysecond_time');
-
-        if (savedToken && savedDate && savedTime) {
-            displayTokenVal.innerText = '#' + savedToken;
-            displayDateVal.innerText = savedDate;
-            displayTimeVal.innerText = savedTime;
-            tokenSection.style.display = 'block';
-            if (reminderEl) reminderEl.style.display = 'block';
-        } else {
-            tokenSection.style.display = 'none';
-            if (reminderEl) reminderEl.style.display = 'none';
-        }
+        tokenSection.style.display = 'none';
+        if (reminderEl) reminderEl.style.display = 'none';
     }
 }
 
@@ -418,7 +407,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (Strict Vertical Blur Background + Horizontal Full Fit + Image Fixed) ---
+// --- INTELLIGENT MEDIA RENDERING (Full Screen Horizontal Fill, Vertical Blur, Image Fixed) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -484,10 +473,10 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Video: Full screen fit for both mobile & computer without cutting
+                // Horizontal Video: 100% full screen fill without any empty space
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; background: #000; border-radius: 6px;"></video>
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
                     </div>
                 `;
             }
@@ -503,10 +492,10 @@ function renderAdOnBillboard(ad, onComplete) {
                     </div>
                 `;
             } else {
-                // Horizontal Image: Full screen fit for both mobile & computer without cutting
+                // Horizontal Image: 100% full screen fill without any empty space (Fixed Image Rendering)
                 mediaTagHTML = `
                     <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: contain; background: #000; border-radius: 6px;">
+                        <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
                     </div>
                 `;
             }
