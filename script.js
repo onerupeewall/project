@@ -13,7 +13,7 @@ window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
-    manageUserTokenDisplay();
+    loadMyActiveCampaign();
 
     // Set Minimum Date for Calendar to Tomorrow (Today disabled)
     const bookingDateInput = document.getElementById('bookingDateInput');
@@ -62,7 +62,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- CHECK RECORD MODAL MANAGEMENT ---
+    // --- MY ACTIVE CAMPAIGN MODAL MANAGEMENT ---
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
@@ -70,6 +70,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (checkRecordBtn && checkRecordModal) {
         checkRecordBtn.addEventListener('click', () => {
             checkRecordModal.style.display = 'block';
+            loadMyActiveCampaign();
         });
     }
 
@@ -91,13 +92,13 @@ window.addEventListener('DOMContentLoaded', () => {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
 
         let campaignFieldsHTML = `
-            <div style="margin-bottom: 12px;">
-                <label style="font-size: 13px; color: #9ca3af; display: block; margin-bottom: 4px;">Times per Day (Max 10):</label>
-                <input type="number" id="frequencyInput" value="1" min="1" max="10" style="width: 100%; padding: 8px; background: #121824; border: 1px solid #1f293d; color: #fff; border-radius: 6px;">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Times per Day (Max 10):</label>
+                <input type="number" id="frequencyInput" value="1" min="1" max="10" required>
             </div>
-            <div style="margin-bottom: 12px;">
-                <label style="font-size: 13px; color: #9ca3af; display: block; margin-bottom: 4px;">Number of Days (Max 30):</label>
-                <input type="number" id="campaignDaysInput" value="1" min="1" max="30" style="width: 100%; padding: 8px; background: #121824; border: 1px solid #1f293d; color: #fff; border-radius: 6px;">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Number of Days (Max 30):</label>
+                <input type="number" id="campaignDaysInput" value="1" min="1" max="30" required>
             </div>
         `;
         if (durationGroup) {
@@ -174,106 +175,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
-    // --- EXECUTE SEARCH BUTTON LISTENER ---
-    const executeSearchBtn = document.getElementById('executeSearchBtn');
-    const searchResultArea = document.getElementById('searchResultArea');
-
-    if (executeSearchBtn) {
-        executeSearchBtn.addEventListener('click', async () => {
-            let tokenInput = document.getElementById('searchTokenInput').value.trim();
-            let searchDay = document.getElementById('searchDay').value;
-            let searchMonth = document.getElementById('searchMonth').value;
-            let searchYear = document.getElementById('searchYear').value;
-
-            if (!tokenInput) {
-                searchResultArea.innerHTML = '<span style="color: #ef4444;">Kripya Token Number zaroor bharein!</span>';
-                return;
-            }
-
-            if (!searchDay || !searchMonth || !searchYear) {
-                searchResultArea.innerHTML = '<span style="color: #ef4444;">⚠️ Kripya Day, Month aur Year teeno select karein!</span>';
-                return;
-            }
-
-            let cleanToken = parseInt(tokenInput.replace('#', '')) || 1;
-            searchResultArea.innerHTML = 'Searching record...';
-
-            try {
-                let { data, error } = await supabaseClient
-                    .from('buysecond_records')
-                    .select('*')
-                    .order('id', { ascending: true });
-
-                if (error || !data || data.length === 0) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Database mein koi record nahi mila.</span>`;
-                    return;
-                }
-
-                let targetDayNum = parseInt(searchDay);
-                let dateFilteredRecords = data.filter(rec => {
-                    let slotTime = (rec.slot_time || '').toLowerCase();
-                    let mMatch = slotTime.includes(searchMonth.toLowerCase());
-                    let yMatch = slotTime.includes(searchYear);
-                    let dMatch = slotTime.includes(` ${targetDayNum},`) || slotTime.includes(` 0${targetDayNum},`) || slotTime.includes(`${targetDayNum} `);
-                    return mMatch && yMatch && dMatch;
-                });
-
-                if (dateFilteredRecords.length === 0) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Chuni gayi date (${searchMonth} ${searchDay}, ${searchYear}) par koi record nahi mila.</span>`;
-                    return;
-                }
-
-                // Match by unified token
-                let record = dateFilteredRecords.find(rec => (rec.unified_token || rec.id) === cleanToken);
-
-                if (!record) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Is date par Token #${cleanToken} nahi mila!</span>`;
-                    return;
-                }
-
-                let statusBadge = '';
-                let actionHTML = '';
-
-                if (record.status === 'approved') {
-                    statusBadge = '<span style="color: #10B981; font-weight: bold;">Status: Approved ✅</span>';
-                    actionHTML = '<button id="playSearchedAdBtn" style="margin-top: 5px; background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%;">Play Video Now</button>';
-                } else if (record.status === 'rejected') {
-                    statusBadge = '<span style="color: #ef4444; font-weight: bold;">Status: Rejected ❌ (Yah ad reject kar diya gaya hai)</span>';
-                    actionHTML = '';
-                } else {
-                    statusBadge = '<span style="color: #f59e0b; font-weight: bold;">Status: Pending ⏳ (Admin approval ka wait hai)</span>';
-                    actionHTML = '';
-                }
-
-                searchResultArea.innerHTML =
-                    '<div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #1f293d; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">' +
-                    '<p><b>Brand / Ad Name:</b> ' + record.brand_name + '</p>' +
-                    '<p><b>Slot Time:</b> ' + record.slot_time + '</p>' +
-                    '<p><b>Duration:</b> ' + record.duration_second + ' Seconds</p>' +
-                    '<p>' + statusBadge + '</p>' +
-                    actionHTML +
-                    '</div>';
-
-                if (record.status === 'approved') {
-                    document.getElementById('playSearchedAdBtn').addEventListener('click', () => {
-                        checkRecordModal.style.display = 'none';
-                        isPlayingPastRecord = true;
-
-                        renderAdOnBillboard(record, () => {
-                            isPlayingPastRecord = false;
-                            initLiveBillboardPlayer();
-                        });
-                    });
-                }
-
-            } catch (err) {
-                console.error(err);
-                searchResultArea.innerHTML = '<span style="color: #ef4444;">Search karne mein error aayi hai.</span>';
-            }
-        });
-    }
-
-    // --- FORM SUBMISSION WITH UNIFIED CAMPAIGN TOKEN & EQUAL SPACING ---
+    // --- FORM SUBMISSION (Saves as Pending Campaign) ---
     const slotForm = document.getElementById('slotForm');
     if (slotForm) {
         slotForm.addEventListener('submit', async (e) => {
@@ -282,11 +184,8 @@ window.addEventListener('DOMContentLoaded', () => {
             let duration = parseInt(durationInputEl ? durationInputEl.value : 10) || 10;
             let frequency = document.getElementById('frequencyInput') ? parseInt(document.getElementById('frequencyInput').value) || 1 : 1;
             if (frequency > 10) frequency = 10;
-            if (frequency < 1) frequency = 1;
-
             let campaignDays = document.getElementById('campaignDaysInput') ? parseInt(document.getElementById('campaignDaysInput').value) || 1 : 1;
             if (campaignDays > 30) campaignDays = 30;
-            if (campaignDays < 1) campaignDays = 1;
 
             if (duration > 30) {
                 alert('Maximum 30 seconds allowed per slot.');
@@ -300,7 +199,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
             const submitBtn = slotForm.querySelector('button[type="submit"]');
             let originalText = submitBtn.innerText;
-            submitBtn.innerText = 'Uploading & Booking Campaign...';
+            submitBtn.innerText = 'Submitting Campaign...';
             submitBtn.disabled = true;
 
             try {
@@ -330,97 +229,36 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 let baseParts = selectedDateVal.split('-');
                 let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
-
-                // Calculate exact evenly-spaced intervals across the 14-hour window (50,400 seconds)
-                let totalDaySecondsSpan = TOTAL_DAILY_SECONDS;
-                let intervalSpace = Math.floor(totalDaySecondsSpan / frequency);
-
-                let dayOffsets = [];
-                for (let f = 0; f < frequency; f++) {
-                    dayOffsets.push(f * intervalSpace);
-                }
-
-                // Fetch existing records to determine unified campaign token number starting from 1 each day/month
-                let { data: existingSlots } = await supabaseClient
-                    .from('buysecond_records')
-                    .select('unified_token, slot_time')
-                    .order('id', { ascending: true });
+                let endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + (campaignDays - 1));
 
                 let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-                let firstDayDateStr = startDate.toLocaleDateString('en-US', optionsCheck);
+                let startDateStr = startDate.toLocaleDateString('en-US', optionsCheck);
+                let endDateStr = endDate.toLocaleDateString('en-US', optionsCheck);
 
-                let maxExistingToken = 0;
-                if (existingSlots && existingSlots.length > 0) {
-                    existingSlots.forEach(rec => {
-                        if (rec.slot_time && rec.slot_time.includes(firstDayDateStr)) {
-                            let t = parseInt(rec.unified_token) || 1;
-                            if (t > maxExistingToken) maxExistingToken = t;
+                const { error: insertError } = await supabaseClient
+                    .from('buysecond_records')
+                    .insert([
+                        {
+                            brand_name: adTitle,
+                            target_url: targetUrl,
+                            file_url: publicFileUrl,
+                            duration_second: duration,
+                            slot_time: `${startDateStr} to ${endDateStr} (${frequency}x/Day)`,
+                            status: 'pending',
+                            unified_token: null
                         }
-                    });
-                }
-                let unifiedCampaignToken = maxExistingToken + 1;
+                    ]);
 
-                let lastDateStr = '';
-                let lastTimeStr = '';
+                if (insertError) throw insertError;
 
-                // Loop through each day of the campaign (up to 30 days)
-                for (let d = 0; d < campaignDays; d++) {
-                    let currentDayDate = new Date(startDate);
-                    currentDayDate.setDate(startDate.getDate() + d);
-                    let currentDayStrVal = `${currentDayDate.getFullYear()}-${String(currentDayDate.getMonth() + 1).padStart(2, '0')}-${String(currentDayDate.getDate()).padStart(2, '0')}`;
-                    let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
-
-                    for (let f = 0; f < frequency; f++) {
-                        let desiredOffset = dayOffsets[f];
-                        let slotInfo = await calculateDistributedQueueSlot(duration, currentDayStrVal, desiredOffset, unifiedCampaignToken);
-
-                        if (slotInfo.quota_exceeded) {
-                            alert(`⚠️ Date ${targetDateStr} par 50,400 seconds ki seat full ho chuki hai!`);
-                            break;
-                        }
-
-                        const { error: insertError } = await supabaseClient
-                            .from('buysecond_records')
-                            .insert([
-                                {
-                                    unified_token: unifiedCampaignToken,
-                                    brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
-                                    target_url: targetUrl,
-                                    file_url: publicFileUrl,
-                                    duration_second: duration,
-                                    slot_time: slotInfo.formatted_time,
-                                    status: 'pending'
-                                }
-                            ]);
-
-                        if (insertError) throw insertError;
-
-                        lastDateStr = slotInfo.date_str;
-                        lastTimeStr = slotInfo.time_str;
-                    }
-                }
-                let successBox = document.getElementById('successMsgBox');
-                if (!successBox) {
-                    successBox = document.createElement('div');
-                    successBox.id = 'successMsgBox';
-                    successBox.style.cssText = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
-                    slotForm.prepend(successBox);
-                }
-                successBox.innerHTML = `✅ Campaign Booked Successfully! Token: #${unifiedCampaignToken} (${campaignDays} Days, ${frequency}x/Day)`;
-
-                await updateAvailableSecondsCounter();
-                manageUserTokenDisplay(unifiedCampaignToken, lastDateStr, lastTimeStr);
-
-                setTimeout(() => {
-                    slotModal.style.display = 'none';
-                    slotForm.reset();
-                    if (totalAmount) totalAmount.innerText = '₹100';
-                    if (successBox) successBox.remove();
-                    initLiveBillboardPlayer();
-                }, 3000);
+                alert('✅ Campaign Submitted Successfully! Check "My Active Campaign" for status.');
+                slotForm.reset();
+                slotModal.style.display = 'none';
+                loadMyActiveCampaign();
 
             } catch (err) {
-                alert('Booking failed: ' + (err.message || err));
+                alert('Submission failed: ' + (err.message || err));
                 console.error(err);
             } finally {
                 submitBtn.innerText = originalText;
@@ -430,8 +268,63 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- HELPER FUNCTIONS ---
+// --- LOAD MY ACTIVE CAMPAIGN ---
+async function loadMyActiveCampaign() {
+    const searchResultArea = document.getElementById('searchResultArea');
+    if (!searchResultArea) return;
 
+    searchResultArea.innerHTML = 'Loading your active campaign...';
+
+    try {
+        let { data, error } = await supabaseClient
+            .from('buysecond_records')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(1);
+
+        if (error || !data || data.length === 0) {
+            searchResultArea.innerHTML = '<span style="color: #9ca3af;">Koi active campaign nahi mila. Kripya naya slot book karein.</span>';
+            return;
+        }
+
+        let record = data[0];
+        let statusHtml = '';
+
+        if (record.status === 'approved') {
+            statusHtml = `
+                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10b981; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                    <p style="color: #10B981; font-weight: bold;">Status: Approved ✅</p>
+                    <p><b>Token Number:</b> #${record.unified_token || record.id}</p>
+                    <p><b>Brand Name:</b> ${record.brand_name}</p>
+                    <p><b>Schedule / Timing:</b> ${record.slot_time}</p>
+                </div>
+            `;
+        } else if (record.status === 'rejected') {
+            statusHtml = `
+                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #ef4444; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                    <p style="color: #ef4444; font-weight: bold;">Status: Rejected ❌</p>
+                    <p><b>Brand Name:</b> ${record.brand_name}</p>
+                    <p style="color: #9ca3af; font-size: 12px;">Niyamion ke ullanghan ke karan yah campaign reject kar diya gaya hai.</p>
+                </div>
+            `;
+        } else {
+            statusHtml = `
+                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                    <p style="color: #f59e0b; font-weight: bold;">Status: Pending ⏳</p>
+                    <p><b>Brand Name:</b> ${record.brand_name}</p>
+                    <p style="color: #9ca3af; font-size: 13px;">Admin dwara review kiya ja raha hai. Approval ke baad Token aur Timing yahin show hogi.</p>
+                </div>
+            `;
+        }
+
+        searchResultArea.innerHTML = statusHtml;
+
+    } catch (err) {
+        console.error(err);
+        searchResultArea.innerHTML = '<span style="color: #ef4444;">Campaign load karne mein error aayi hai.</span>';
+    }
+}
+// --- HELPER FUNCTIONS ---
 async function initVisitorCounter() {
     let visitorEl = document.getElementById('totalGlobalCount');
     if (!visitorEl) return;
@@ -457,19 +350,14 @@ async function updateAvailableSecondsCounter() {
     if (!remainingEl) return;
 
     try {
-        let tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        let options = { day: '2-digit', month: 'long', year: 'numeric' };
-        let tomorrowDateStr = tomorrow.toLocaleDateString('en-US', options);
-
         let { data: records } = await supabaseClient
             .from('buysecond_records')
-            .select('duration_second, slot_time');
+            .select('duration_second, status')
+            .eq('status', 'approved');
 
         let bookedSeconds = 0;
         if (records && records.length > 0) {
-            let tomorrowRecords = records.filter(rec => rec.slot_time && rec.slot_time.includes(tomorrowDateStr));
-            bookedSeconds = tomorrowRecords.reduce((total, rec) => total + (parseInt(rec.duration_second) || 0), 0);
+            bookedSeconds = records.reduce((total, rec) => total + (parseInt(rec.duration_second) || 0), 0);
         }
 
         let availableSeconds = TOTAL_DAILY_SECONDS - bookedSeconds;
@@ -478,31 +366,6 @@ async function updateAvailableSecondsCounter() {
         remainingEl.innerText = availableSeconds;
     } catch (err) {
         console.error('Error updating available seconds:', err);
-    }
-}
-
-function manageUserTokenDisplay(tokenNo, dateStr, timeStr) {
-    let tokenSection = document.getElementById('userTokenSection');
-    let displayTokenVal = document.getElementById('displayTokenVal');
-    let displayDateVal = document.getElementById('displayDateVal');
-    let displayTimeVal = document.getElementById('displayTimeVal');
-    let reminderEl = document.getElementById('tokenReminderText');
-
-    if (!tokenSection) return;
-
-    if (tokenNo && dateStr && timeStr) {
-        displayTokenVal.innerText = '#' + tokenNo;
-        displayDateVal.innerText = dateStr;
-        displayTimeVal.innerText = timeStr;
-        tokenSection.style.display = 'block';
-        if (reminderEl) reminderEl.style.display = 'block';
-
-        localStorage.setItem('bs_token', tokenNo);
-        localStorage.setItem('bs_date', dateStr);
-        localStorage.setItem('bs_time', timeStr);
-    } else {
-        tokenSection.style.display = 'none';
-        if (reminderEl) reminderEl.style.display = 'none';
     }
 }
 
@@ -641,6 +504,7 @@ async function initLiveBillboardPlayer() {
         let { data: queueRecords, error } = await supabaseClient
             .from('buysecond_records')
             .select('*')
+            .eq('status', 'approved')
             .order('id', { ascending: true });
 
         let timerEl = getCountdownElement();
@@ -658,7 +522,7 @@ async function initLiveBillboardPlayer() {
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
         let todaysApprovedAds = queueRecords.filter(ad => {
-            return ad.status === 'approved' && ad.slot_time && ad.slot_time.includes(todayDateStr);
+            return ad.slot_time && ad.slot_time.includes(todayDateStr);
         });
 
         if (todaysApprovedAds.length === 0) {
@@ -738,46 +602,4 @@ async function initLiveBillboardPlayer() {
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
     }
-}
-
-// --- DISTRIBUTED QUEUE SLOT CALCULATOR WITH UNIFIED TOKEN MAPPING ---
-async function calculateDistributedQueueSlot(durationSeconds, selectedDateStr, targetOffsetSeconds, unifiedTokenId) {
-    let parts = selectedDateStr.split('-');
-    let targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
-
-    let dayStartHour = 8; // 8 AM Start
-
-    let { data: existingSlots } = await supabaseClient
-        .from('buysecond_records')
-        .select('duration_second, slot_time')
-        .order('id', { ascending: true });
-
-    let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-    let targetDateStr = targetDate.toLocaleDateString('en-US', optionsCheck);
-
-    let targetDateSlots = [];
-    if (existingSlots && existingSlots.length > 0) {
-        targetDateSlots = existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr));
-    }
-
-    let totalBookedSecondsBeforeThis = targetDateSlots.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
-
-    if (totalBookedSecondsBeforeThis + durationSeconds > TOTAL_DAILY_SECONDS) {
-        return { quota_exceeded: true };
-    }
-
-    let startTime = new Date(targetDate);
-    startTime.setHours(dayStartHour, 0, 0, 0);
-    startTime.setSeconds(startTime.getSeconds() + targetOffsetSeconds);
-
-    let dateStr = startTime.toLocaleDateString('en-US', optionsCheck);
-    let timeStr = startTime.toLocaleTimeString();
-
-    return {
-        quota_exceeded: false,
-        unified_token_id: unifiedTokenId,
-        formatted_time: dateStr + ' at ' + timeStr,
-        date_str: dateStr,
-        time_str: timeStr
-    };
 }
