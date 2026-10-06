@@ -175,7 +175,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
-    // --- FORM SUBMISSION (Saves as Pending Campaign) ---
+    // --- FORM SUBMISSION (Saves as Pending Campaign & Links to User Browser) ---
     const slotForm = document.getElementById('slotForm');
     if (slotForm) {
         slotForm.addEventListener('submit', async (e) => {
@@ -236,7 +236,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 let startDateStr = startDate.toLocaleDateString('en-US', optionsCheck);
                 let endDateStr = endDate.toLocaleDateString('en-US', optionsCheck);
 
-                const { error: insertError } = await supabaseClient
+                // Insert into Supabase and fetch the newly created record ID
+                let { data: insertedData, error: insertError } = await supabaseClient
                     .from('buysecond_records')
                     .insert([
                         {
@@ -248,9 +249,15 @@ window.addEventListener('DOMContentLoaded', () => {
                             status: 'pending',
                             unified_token: null
                         }
-                    ]);
+                    ])
+                    .select();
 
                 if (insertError) throw insertError;
+
+                if (insertedData && insertedData.length > 0) {
+                    // Save this specific campaign ID in the user's browser local storage so ONLY this user sees it
+                    localStorage.setItem('my_latest_campaign_id', insertedData[0].id);
+                }
 
                 alert('✅ Campaign Submitted Successfully! Check "My Active Campaign" for status.');
                 slotForm.reset();
@@ -268,26 +275,33 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- LOAD MY ACTIVE CAMPAIGN ---
+// --- LOAD USER'S SPECIFIC ACTIVE CAMPAIGN FROM LOCALSTORAGE ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
 
-    searchResultArea.innerHTML = 'Loading your active campaign...';
+    let myCampaignId = localStorage.getItem('my_latest_campaign_id');
+
+    if (!myCampaignId) {
+        searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapne is device se abhi tak koi campaign book nahi kiya hai. Kripya naya slot book karein.</span>';
+        return;
+    }
+
+    searchResultArea.innerHTML = 'Loading your active campaign status...';
 
     try {
         let { data, error } = await supabaseClient
             .from('buysecond_records')
             .select('*')
-            .order('id', { ascending: false })
-            .limit(1);
+            .eq('id', myCampaignId)
+            .single();
 
-        if (error || !data || data.length === 0) {
-            searchResultArea.innerHTML = '<span style="color: #9ca3af;">Koi active campaign nahi mila. Kripya naya slot book karein.</span>';
+        if (error || !data) {
+            searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapka active campaign nahi mila ya admin dwara delete kar diya gaya hai.</span>';
             return;
         }
 
-        let record = data[0];
+        let record = data;
         let statusHtml = '';
 
         if (record.status === 'approved') {
