@@ -130,7 +130,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     if (adFileInput) {
-        adFileInput.addEventListener('change', function(e) {
+        adFileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (fileErrorMsg) {
                 fileErrorMsg.style.display = 'none';
@@ -143,7 +143,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (file.type.startsWith('video/')) {
                 const videoElement = document.createElement('video');
                 videoElement.preload = 'metadata';
-                videoElement.onloadedmetadata = function() {
+                videoElement.onloadedmetadata = function () {
                     window.URL.revokeObjectURL(videoElement.src);
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
@@ -223,11 +223,11 @@ window.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                let targetIndex = cleanToken - 1;
-                let record = dateFilteredRecords[targetIndex];
+                // Match by unified token
+                let record = dateFilteredRecords.find(rec => (rec.unified_token || rec.id) === cleanToken);
 
                 if (!record) {
-                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Is date par Token #${cleanToken} nahi mila! (Is date par kul ${dateFilteredRecords.length} tokens hain).</span>`;
+                    searchResultArea.innerHTML = `<span style="color: #ef4444;">Is date par Token #${cleanToken} nahi mila!</span>`;
                     return;
                 }
 
@@ -273,7 +273,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- FORM SUBMISSION WITH UNIFIED SINGLE CAMPAIGN TOKEN & EQUAL SPACING ---
+    // --- FORM SUBMISSION WITH UNIFIED CAMPAIGN TOKEN & EQUAL SPACING ---
     const slotForm = document.getElementById('slotForm');
     if (slotForm) {
         slotForm.addEventListener('submit', async (e) => {
@@ -331,7 +331,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 let baseParts = selectedDateVal.split('-');
                 let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
 
-                // Calculate exact evenly-spaced time intervals across the 14-hour window (50,400 seconds)
+                // Calculate exact evenly-spaced intervals across the 14-hour window (50,400 seconds)
                 let totalDaySecondsSpan = TOTAL_DAILY_SECONDS;
                 let intervalSpace = Math.floor(totalDaySecondsSpan / frequency);
 
@@ -340,16 +340,25 @@ window.addEventListener('DOMContentLoaded', () => {
                     dayOffsets.push(f * intervalSpace);
                 }
 
-                // Fetch existing records to determine correct date-wise token number
+                // Fetch existing records to determine unified campaign token number starting from 1 each day/month
                 let { data: existingSlots } = await supabaseClient
                     .from('buysecond_records')
-                    .select('duration_second, slot_time')
+                    .select('unified_token, slot_time')
                     .order('id', { ascending: true });
 
                 let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
                 let firstDayDateStr = startDate.toLocaleDateString('en-US', optionsCheck);
-                let firstDayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(firstDayDateStr)) : [];
-                let unifiedCampaignToken = firstDayExisting.length + 1;
+
+                let maxExistingToken = 0;
+                if (existingSlots && existingSlots.length > 0) {
+                    existingSlots.forEach(rec => {
+                        if (rec.slot_time && rec.slot_time.includes(firstDayDateStr)) {
+                            let t = parseInt(rec.unified_token) || 1;
+                            if (t > maxExistingToken) maxExistingToken = t;
+                        }
+                    });
+                }
+                let unifiedCampaignToken = maxExistingToken + 1;
 
                 let lastDateStr = '';
                 let lastTimeStr = '';
@@ -374,7 +383,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             .from('buysecond_records')
                             .insert([
                                 {
-                                    id: slotInfo.unified_token_id, // Unified single token ID mapping across campaign
+                                    unified_token: unifiedCampaignToken,
                                     brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
                                     target_url: targetUrl,
                                     file_url: publicFileUrl,
@@ -384,31 +393,17 @@ window.addEventListener('DOMContentLoaded', () => {
                                 }
                             ]);
 
-                        if (insertError) {
-                            // Fallback if custom ID insert fails due to primary key collision, let DB auto-increment
-                            await supabaseClient.from('buysecond_records').insert([
-                                {
-                                    brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
-                                    target_url: targetUrl,
-                                    file_url: publicFileUrl,
-                                    duration_second: duration,
-                                    slot_time: slotInfo.formatted_time,
-                                    status: 'pending'
-                                }
-                            ]);
-                        }
+                        if (insertError) throw insertError;
 
                         lastDateStr = slotInfo.date_str;
                         lastTimeStr = slotInfo.time_str;
                     }
                 }
-
                 let successBox = document.getElementById('successMsgBox');
                 if (!successBox) {
                     successBox = document.createElement('div');
                     successBox.id = 'successMsgBox';
-                    successBox.style.cssText
-                        = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
+                    successBox.style.cssText = 'background: #10B981; color: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; text-align: center; font-weight: bold;';
                     slotForm.prepend(successBox);
                 }
                 successBox.innerHTML = `✅ Campaign Booked Successfully! Token: #${unifiedCampaignToken} (${campaignDays} Days, ${frequency}x/Day)`;
@@ -434,6 +429,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
 // --- HELPER FUNCTIONS ---
 
 async function initVisitorCounter() {
@@ -537,11 +533,11 @@ function renderAdOnBillboard(ad, onComplete) {
     if (isVideo) {
         let tempVid = document.createElement('video');
         tempVid.src = fileUrl;
-        tempVid.onloadedmetadata = function() {
+        tempVid.onloadedmetadata = function () {
             let isVert = tempVid.videoHeight > tempVid.videoWidth;
             buildBillboardMarkup(isVert, true);
         };
-        tempVid.onerror = function() {
+        tempVid.onerror = function () {
             buildBillboardMarkup(false, true);
         };
         setTimeout(() => {
@@ -552,11 +548,11 @@ function renderAdOnBillboard(ad, onComplete) {
     } else {
         let tempImg = document.createElement('img');
         tempImg.src = fileUrl;
-        tempImg.onload = function() {
+        tempImg.onload = function () {
             let isVert = tempImg.naturalHeight > tempImg.naturalWidth;
             buildBillboardMarkup(isVert, false);
         };
-        tempImg.onerror = function() {
+        tempImg.onerror = function () {
             buildBillboardMarkup(false, false);
         };
         setTimeout(() => {
@@ -614,7 +610,7 @@ function renderAdOnBillboard(ad, onComplete) {
         if (isVid) {
             let mediaEl = document.getElementById('activeAdMedia');
             if (mediaEl) {
-                mediaEl.onended = function() {
+                mediaEl.onended = function () {
                     triggerComplete();
                 };
             }
