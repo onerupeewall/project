@@ -13,14 +13,14 @@
     <!-- Google Translate Hidden Element -->
     <div id="google_translate_element" style="display:none;"></div>
     <script type="text/javascript">
-                function googleTranslateElementInit() {
-                    new google.translate.TranslateElement({
-                        pageLanguage: 'en',
-                        includedLanguages: 'hi,en,es,fr,de,ja,zh-CN,ar,ru,pt,it,ko,id,tr,vi',
-                        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-                        autoDisplay: true
-                    }, 'google_translate_element');
-                }
+                        function googleTranslateElementInit() {
+                            new google.translate.TranslateElement({
+                                pageLanguage: 'en',
+                                includedLanguages: 'hi,en,es,fr,de,ja,zh-CN,ar,ru,pt,it,ko,id,tr,vi',
+                                layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                                autoDisplay: true
+                            }, 'google_translate_element');
+                        }
     </script>
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
@@ -44,8 +44,9 @@
 
         <div class="screen-footer">
             <span id="timer-text">Next Video in: 0 Sec</span>
+            <!-- Updated button text to My Active Campaign -->
             <button class="check-record-btn" id="checkRecordBtn">
-                Past Your Second (Check Record)
+                My Active Campaign
             </button>
         </div>
 
@@ -127,67 +128,20 @@
                 </div>
 
                 <button type="submit" class="slot-btn" style="margin-top: 5px;">
-                    Proceed to Secure Payment & Get Token
+                    Proceed to Secure Payment & Submit
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- Check Record Modal -->
+    <!-- My Active Campaign Modal (Replaced Check Record Modal) -->
     <div id="checkRecordModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="closeCheckRecordModal">&times;</span>
-            <h2 class="modal-main-title">Check Past Record (Search by Token & Date)</h2>
-
-            <div class="form-group">
-                <label>Token Number:</label>
-                <input type="text" id="searchTokenInput" placeholder="e.g. #1 or 1" required>
+            <h2 class="modal-main-title">My Active Campaign Status</h2>
+            <div id="searchResultArea" style="margin-top: 15px; color: #d1d5db; font-size: 14px;">
+                Loading campaign status...
             </div>
-
-            <div class="form-group">
-                <label>Select Date (Day, Month, Year - Required):</label>
-                <div style="display: flex; gap: 8px;">
-                    <select id="searchDay" style="flex: 1; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;" required>
-                        <option value="">Day</option>
-                        <script>
-                                                        for(let i=1; i<=31; i++) {
-                                                            document.write(`<option value="${i < 10 ? '0'+i : i}">${i}</option>`);
-                                                        }
-                        </script>
-                    </select>
-
-                    <select id="searchMonth" style="flex: 1.5; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;" required>
-                        <option value="">Month</option>
-                        <option value="January">January</option>
-                        <option value="February">February</option>
-                        <option value="March">March</option>
-                        <option value="April">April</option>
-                        <option value="May">May</option>
-                        <option value="June">June</option>
-                        <option value="July">July</option>
-                        <option value="August">August</option>
-                        <option value="September">September</option>
-                        <option value="October">October</option>
-                        <option value="November">November</option>
-                        <option value="December">December</option>
-                    </select>
-
-                    <select id="searchYear" style="flex: 1.2; padding: 10px; background: #121824; border: 1px solid #1f293d; color: white; border-radius: 6px;" required>
-                        <option value="">Year</option>
-                        <script>
-                                                        let curY = new Date().getFullYear();
-                                                        for(let y=curY; y<=curY+10; y++) {
-                                                            document.write(`<option value="${y}">${y}</option>`);
-                                                        }
-                        </script>
-                    </select>
-                </div>
-            </div>
-
-            <button type="button" id="executeSearchBtn" class="slot-btn" style="margin-top: 5px;">
-                Search Record
-            </button>
-            <div id="searchResultArea" style="margin-top: 15px; color: #d1d5db; font-size: 14px;"></div>
         </div>
     </div>
 
