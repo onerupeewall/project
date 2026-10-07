@@ -1,9 +1,8 @@
-// --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM)
+const TOTAL_DAILY_SECONDS = 50400; // 8 AM to 10 PM (14 Hours)
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
@@ -163,22 +162,22 @@ window.addEventListener('DOMContentLoaded', () => {
                 let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
 
                 let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
-                let intervalSpace = Math.floor(TOTAL_DAILY_SECONDS / frequency);
 
                 for (let d = 0; d < campaignDays; d++) {
                     let currentDayDate = new Date(startDate);
                     currentDayDate.setDate(startDate.getDate() + d);
                     let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
+
                     let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
                     let dayBookedSecs = dayExisting.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
 
                     for (let f = 0; f < frequency; f++) {
-                        let finalOffset = dayBookedSecs + (f * intervalSpace);
                         let slotTimeObj = new Date(currentDayDate);
                         slotTimeObj.setHours(8, 0, 0, 0);
-                        slotTimeObj.setSeconds(finalOffset);
+                        slotTimeObj.setSeconds(dayBookedSecs);
 
-                        let formattedSlotStr = targetDateStr + ' at ' + slotTimeObj.toLocaleTimeString();
+                        let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+                        let formattedSlotStr = `${targetDateStr} at ${timeString}`;
 
                         let { error: insertError } = await supabaseClient.from('buysecond_records').insert([{
                             brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
@@ -316,7 +315,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- AUTONOMOUS SCHEDULER & DEFAULT BANNER ---
+// --- AUTONOMOUS CHRONOLOGICAL SCHEDULER & DEFAULT BANNER ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
