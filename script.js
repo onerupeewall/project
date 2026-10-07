@@ -13,11 +13,16 @@ window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
 
-    // Check if Admin requested Billboard Preview
-    let adminPreviewAdJson = localStorage.getItem('admin_preview_ad');
+    // Secure Admin Preview Check: Yeh sirf usi browser mein chalega jahan admin ne click kiya hai
+    let adminPreviewAdJson = sessionStorage.getItem('admin_preview_ad');
     if (adminPreviewAdJson) {
-        let previewAd = JSON.parse(adminPreviewAdJson);
-        playAdminPreviewOnBillboard(previewAd);
+        try {
+            let previewAd = JSON.parse(adminPreviewAdJson);
+            playAdminPreviewOnBillboard(previewAd);
+        } catch (e) {
+            console.error('Preview parse error:', e);
+            initLiveBillboardPlayer();
+        }
     } else {
         initLiveBillboardPlayer();
     }
@@ -90,9 +95,9 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     window.addEventListener('click', (e) => {
-        if (e.target === slotModal) slotModal.style.display = 'none';
-        if (e.target === termsModal) termsModal.style.display = 'none';
-        if (e.target === checkRecordModal) checkRecordModal.style.display = 'none';
+        if (slotModal && e.target === slotModal) slotModal.style.display = 'none';
+        if (termsModal && e.target === termsModal) termsModal.style.display = 'none';
+        if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
     // --- DYNAMIC FORM INPUTS FOR FREQUENCY (Max 10) & DAYS (Max 30) ---
@@ -206,10 +211,12 @@ window.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.getElementById('adFile');
             const selectedDateVal = document.getElementById('bookingDateInput').value;
 
-            const submitBtn = slotForm.querySelector('button[type="submit"]');
-            let originalText = submitBtn.innerText;
-            submitBtn.innerText = 'Submitting Campaign...';
-            submitBtn.disabled = true;
+            const submitBtnEl = slotForm.querySelector('button[type="submit"]');
+            let originalText = submitBtnEl ? submitBtnEl.innerText : 'Submit';
+            if (submitBtnEl) {
+                submitBtnEl.innerText = 'Submitting Campaign...';
+                submitBtnEl.disabled = true;
+            }
 
             try {
                 let publicFileUrl = '';
@@ -268,21 +275,23 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 alert('✅ Campaign Submitted Successfully! Check "My Active Campaign" for status.');
                 slotForm.reset();
-                slotModal.style.display = 'none';
+                if (slotModal) slotModal.style.display = 'none';
                 loadMyActiveCampaign();
 
             } catch (err) {
                 alert('Submission failed: ' + (err.message || err));
                 console.error(err);
             } finally {
-                submitBtn.innerText = originalText;
-                submitBtn.disabled = false;
+                if (submitBtnEl) {
+                    submitBtnEl.innerText = originalText;
+                    submitBtnEl.disabled = false;
+                }
             }
         });
     }
 });
 
-// --- ADMIN PREVIEW PLAYER FUNCTION ---
+// --- ADMIN PREVIEW PLAYER FUNCTION (Isolated via sessionStorage) ---
 function playAdminPreviewOnBillboard(ad) {
     const billboardBox = document.getElementById('billboardBox');
     let timerEl = getCountdownElement();
@@ -301,7 +310,7 @@ function playAdminPreviewOnBillboard(ad) {
 }
 
 function backToAdminPanel() {
-    localStorage.removeItem('admin_preview_ad');
+    sessionStorage.removeItem('admin_preview_ad');
     window.location.href = 'admin.html';
 }
 
@@ -368,7 +377,6 @@ async function loadMyActiveCampaign() {
         searchResultArea.innerHTML = '<span style="color: #ef4444;">Campaign load karne mein error aayi hai.</span>';
     }
 }
-}
 // --- HELPER FUNCTIONS ---
 async function initVisitorCounter() {
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -418,7 +426,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- ROBUST INTELLIGENT MEDIA RENDERING (FIXED FOR IMAGES & VIDEOS) ---
+// --- INTELLIGENT MEDIA RENDERING (IMAGES & VIDEOS) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -439,26 +447,24 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        buildBillboardMarkup(false, true);
+        buildBillboardMarkup(true);
     } else {
-        // Strict Image Render with Fallback
         let tempImg = new Image();
         tempImg.src = fileUrl;
         tempImg.onload = function () {
-            let isVert = tempImg.naturalHeight > tempImg.naturalWidth;
-            buildBillboardMarkup(isVert, false);
+            buildBillboardMarkup(false);
         };
         tempImg.onerror = function () {
-            buildBillboardMarkup(false, false);
+            buildBillboardMarkup(false);
         };
         setTimeout(() => {
-            if (!billboardBox.querySelector('img')) {
-                buildBillboardMarkup(false, false);
+            if (!billboardBox.querySelector('img') && !billboardBox.querySelector('video')) {
+                buildBillboardMarkup(false);
             }
-        }, 300);
+        }, 400);
     }
 
-    function buildBillboardMarkup(isVertical, isVid) {
+    function buildBillboardMarkup(isVid) {
         let mediaTagHTML = '';
 
         if (isVid) {
@@ -506,10 +512,18 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- AUTONOMOUS REAL-TIME BILLBOARD SCHEDULER (Independent of screen viewing) ---
+// --- AUTONOMOUS REAL-TIME BILLBOARD SCHEDULER & DEFAULT BANNER FALLBACK ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
+
+    function applyDefaultBanner() {
+        billboardBox.innerHTML = '';
+        billboardBox.style.background = "url('buysecond.png') no-repeat center center";
+        billboardBox.style.backgroundSize = "100% 100%";
+        let timerEl = getCountdownElement();
+        if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
+    }
 
     try {
         let { data: queueRecords, error } = await supabaseClient
@@ -518,14 +532,9 @@ async function initLiveBillboardPlayer() {
             .eq('status', 'approved')
             .order('id', { ascending: true });
 
-        let timerEl = getCountdownElement();
-
         if (error || !queueRecords || queueRecords.length === 0) {
-            billboardBox.innerHTML = '';
-            billboardBox.style.background = "url('buysecond.png') no-repeat center center";
-            billboardBox.style.backgroundSize = "100% 100%";
-            if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
-            setTimeout(initLiveBillboardPlayer, 5000); // Poll again
+            applyDefaultBanner();
+            setTimeout(initLiveBillboardPlayer, 10000);
             return;
         }
 
@@ -533,21 +542,16 @@ async function initLiveBillboardPlayer() {
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
-        // Filter ads scheduled for today based on slot_time text match
         let todaysApprovedAds = queueRecords.filter(ad => {
             return ad.slot_time && ad.slot_time.includes(todayDateStr);
         });
 
         if (todaysApprovedAds.length === 0) {
-            billboardBox.innerHTML = '';
-            billboardBox.style.background = "url('buysecond.png') no-repeat center center";
-            billboardBox.style.backgroundSize = "100% 100%";
-            if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
-            setTimeout(initLiveBillboardPlayer, 10000);
+            applyDefaultBanner();
+            setTimeout(initLiveBillboardPlayer, 15000);
             return;
         }
 
-        // Build exact timestamp schedule for today's ads
         let dayStart = new Date(now);
         dayStart.setHours(8, 0, 0, 0);
 
@@ -585,25 +589,23 @@ async function initLiveBillboardPlayer() {
                 }
             }
 
+            let timerEl = getCountdownElement();
+
             if (currentPlayingAd) {
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
                     setTimeout(checkAndPlaySchedule, 500);
                 });
             } else {
-                billboardBox.innerHTML = '';
-                billboardBox.style.background = "url('buysecond.png') no-repeat center center";
-                billboardBox.style.backgroundSize = "100% 100%";
+                applyDefaultBanner();
 
                 if (nextUpcomingAd) {
                     let diffSecs = Math.floor((nextUpcomingAd.start - currentTime) / 1000);
                     if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs}s`;
-
-                    // Intelligent short timeout to wake up precisely when next slot starts
                     let timeoutMs = diffSecs > 5 ? 5000 : (diffSecs * 1000);
                     setTimeout(checkAndPlaySchedule, timeoutMs);
                 } else {
                     if (timerEl) timerEl.innerText = 'Queue Finished for Today';
-                    setTimeout(initLiveBillboardPlayer, 30000); // Re-fetch for next day
+                    setTimeout(initLiveBillboardPlayer, 30000);
                 }
             }
         }
@@ -612,9 +614,7 @@ async function initLiveBillboardPlayer() {
 
     } catch (err) {
         console.error('Billboard Player Error:', err);
-        billboardBox.innerHTML = '';
-        billboardBox.style.background = "url('buysecond.png') no-repeat center center";
-        billboardBox.style.backgroundSize = "100% 100%";
-        setTimeout(initLiveBillboardPlayer, 10000);
+        applyDefaultBanner();
+        setTimeout(initLiveBillboardPlayer, 15000);
     }
 }
