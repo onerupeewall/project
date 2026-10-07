@@ -2,7 +2,7 @@ const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const TOTAL_DAILY_SECONDS = 50400; // 8 AM to 10 PM (14 Hours)
+const TOTAL_DAILY_SECONDS = 50400; // 8 AM to 10 PM
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
@@ -17,7 +17,6 @@ window.addEventListener('DOMContentLoaded', () => {
             let previewAd = JSON.parse(adminPreviewAdJson);
             playAdminPreviewOnBillboard(previewAd);
         } catch (e) {
-            console.error('Preview error:', e);
             initLiveBillboardPlayer();
         }
     } else {
@@ -193,6 +192,12 @@ window.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                // Save latest inserted record ID for tracking active campaign status
+                let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').order('id', { ascending: false }).limit(1);
+                if (latestRecord && latestRecord.length > 0) {
+                    localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
+                }
+
                 alert('✅ Campaign Submitted Successfully!');
                 slotFormContainer.reset();
                 slotModal.style.display = 'none';
@@ -220,26 +225,59 @@ function playAdminPreviewOnBillboard(ad) {
     });
 }
 
+// --- LOAD USER'S ACTIVE CAMPAIGN WITH ALL RUNS ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
+
     let myCampaignId = localStorage.getItem('my_latest_campaign_id');
     if (!myCampaignId) {
-        searchResultArea.innerHTML = '<span style="color: #9ca3af;">No active campaign found.</span>';
+        searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapne is device se abhi tak koi campaign book nahi kiya hai.</span>';
         return;
     }
+
     try {
-        let { data, error } = await supabaseClient.from('buysecond_records').select('*').eq('id', myCampaignId).single();
-        if (error || !data) return;
-        searchResultArea.innerHTML = `
-            <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10b981; margin-top: 10px;">
-                <p style="color: #10B981; font-weight: bold;">Status: ${data.status.toUpperCase()} ✅</p>
-                <p><b>Token:</b> #${data.unified_token || data.id}</p>
-                <p><b>Brand:</b> ${data.brand_name}</p>
-                <p><b>Timing:</b> ${data.slot_time}</p>
-            </div>
+        let { data: singleRecord, error } = await supabaseClient.from('buysecond_records').select('*').eq('id', myCampaignId).single();
+        if (error || !singleRecord) {
+            searchResultArea.innerHTML = '<span style="color: #9ca3af;">Campaign not found.</span>';
+            return;
+        }
+
+        // Fetch all runs belonging to this campaign cluster (same brand & file_url)
+        let cleanBrand = singleRecord.brand_name.replace(/\s*\(Run \d+\/\d+\)/g, '').trim();
+        let { data: allRuns } = await supabaseClient
+            .from('buysecond_records')
+            .select('*')
+            .eq('brand_name.ilike', `%${cleanBrand}%`)
+            .eq('file_url', singleRecord.file_url);
+
+        let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
+        let master = runsList[0];
+
+        let statusColor = master.status === 'approved' ? '#10B981' : (master.status === 'rejected' ? '#ef4444' : '#f59e0b');
+        let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Pending Assignment';
+
+        let html = `
+            <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid ${statusColor}; margin-top: 10px; max-height: 250px; overflow-y: auto;">
+                <p style="color: ${statusColor}; font-weight: bold; font-size: 15px;">Status: ${master.status.toUpperCase()} ✅</p>
+                <p><b>Token Number:</b> ${tokenDisplay}</p>
+                <p><b>Brand Name:</b> ${cleanBrand}</p>
+                <p><b>Total Runs:</b> ${runsList.length} Runs Total</p>
+                <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
+                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Scheduled Slots:</p>
         `;
-    } catch (err) { console.error(err); }
+
+        runsList.forEach((run, idx) => {
+            html += `<p style="font-size: 12px; color: #9ca3af;">↳ Run ${idx + 1}: ${run.slot_time}</p>`;
+        });
+
+        html += `</div>`;
+        searchResultArea.innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+        searchResultArea.innerHTML = '<span style="color: #ef4444;">Error loading campaign status.</span>';
+    }
 }
 
 async function initVisitorCounter() {
