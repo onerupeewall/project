@@ -291,7 +291,6 @@ function playAdminPreviewOnBillboard(ad) {
     if (timerEl) timerEl.innerText = 'Admin Preview Mode 📺';
 
     renderAdOnBillboard(ad, () => {
-        // When preview finishes, show Back to Admin button on billboard
         billboardBox.innerHTML = `
             <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; border-radius: 10px;">
                 <p style="color: #10b981; font-weight: bold; font-size: 16px;">Preview Finished ✅</p>
@@ -369,6 +368,7 @@ async function loadMyActiveCampaign() {
         searchResultArea.innerHTML = '<span style="color: #ef4444;">Campaign load karne mein error aayi hai.</span>';
     }
 }
+}
 // --- HELPER FUNCTIONS ---
 async function initVisitorCounter() {
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -418,7 +418,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING ---
+// --- ROBUST INTELLIGENT MEDIA RENDERING (FIXED FOR IMAGES & VIDEOS) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -428,7 +428,7 @@ function renderAdOnBillboard(ad, onComplete) {
     let targetUrl = ad.target_url || '#';
 
     let lowerUrl = fileUrl.toLowerCase();
-    let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm');
+    let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm') || lowerUrl.includes('video/mp4');
 
     let isCompletedCalled = false;
     function triggerComplete() {
@@ -439,22 +439,10 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        let tempVid = document.createElement('video');
-        tempVid.src = fileUrl;
-        tempVid.onloadedmetadata = function () {
-            let isVert = tempVid.videoHeight > tempVid.videoWidth;
-            buildBillboardMarkup(isVert, true);
-        };
-        tempVid.onerror = function () {
-            buildBillboardMarkup(false, true);
-        };
-        setTimeout(() => {
-            if (!billboardBox.querySelector('video')) {
-                buildBillboardMarkup(false, true);
-            }
-        }, 400);
+        buildBillboardMarkup(false, true);
     } else {
-        let tempImg = document.createElement('img');
+        // Strict Image Render with Fallback
+        let tempImg = new Image();
         tempImg.src = fileUrl;
         tempImg.onload = function () {
             let isVert = tempImg.naturalHeight > tempImg.naturalWidth;
@@ -467,46 +455,24 @@ function renderAdOnBillboard(ad, onComplete) {
             if (!billboardBox.querySelector('img')) {
                 buildBillboardMarkup(false, false);
             }
-        }, 400);
+        }, 300);
     }
 
     function buildBillboardMarkup(isVertical, isVid) {
         let mediaTagHTML = '';
 
         if (isVid) {
-            if (isVertical) {
-                mediaTagHTML = `
-                    <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
-                        <video src="${fileUrl}" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;"></video>
-                    </div>
-                    <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></video>
-                    </div>
-                `;
-            } else {
-                mediaTagHTML = `
-                    <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
-                    </div>
-                `;
-            }
+            mediaTagHTML = `
+                <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
+                </div>
+            `;
         } else {
-            if (isVertical) {
-                mediaTagHTML = `
-                    <div style="position: absolute; inset: 0; overflow: hidden; z-index: 1;">
-                        <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: blur(15px); opacity: 0.6;">
-                    </div>
-                    <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <img src="${fileUrl}" alt="Ad" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-                    </div>
-                `;
-            } else {
-                mediaTagHTML = `
-                    <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                        <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
-                    </div>
-                `;
-            }
+            mediaTagHTML = `
+                <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                </div>
+            `;
         }
 
         billboardBox.innerHTML = `
@@ -540,7 +506,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- LIVE BILLBOARD PLAYER LOOP ---
+// --- AUTONOMOUS REAL-TIME BILLBOARD SCHEDULER (Independent of screen viewing) ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -559,6 +525,7 @@ async function initLiveBillboardPlayer() {
             billboardBox.style.background = "url('buysecond.png') no-repeat center center";
             billboardBox.style.backgroundSize = "100% 100%";
             if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
+            setTimeout(initLiveBillboardPlayer, 5000); // Poll again
             return;
         }
 
@@ -566,6 +533,7 @@ async function initLiveBillboardPlayer() {
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
+        // Filter ads scheduled for today based on slot_time text match
         let todaysApprovedAds = queueRecords.filter(ad => {
             return ad.slot_time && ad.slot_time.includes(todayDateStr);
         });
@@ -575,9 +543,11 @@ async function initLiveBillboardPlayer() {
             billboardBox.style.background = "url('buysecond.png') no-repeat center center";
             billboardBox.style.backgroundSize = "100% 100%";
             if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
+            setTimeout(initLiveBillboardPlayer, 10000);
             return;
         }
 
+        // Build exact timestamp schedule for today's ads
         let dayStart = new Date(now);
         dayStart.setHours(8, 0, 0, 0);
 
@@ -616,12 +586,8 @@ async function initLiveBillboardPlayer() {
             }
 
             if (currentPlayingAd) {
-                let elapsedSecs = Math.floor((currentTime - currentPlayingAd.start) / 1000);
-                let remainingSecs = currentPlayingAd.duration - elapsedSecs;
-                if (remainingSecs < 1) remainingSecs = 1;
-
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
-                    setTimeout(checkAndPlaySchedule, 1000);
+                    setTimeout(checkAndPlaySchedule, 500);
                 });
             } else {
                 billboardBox.innerHTML = '';
@@ -631,11 +597,14 @@ async function initLiveBillboardPlayer() {
                 if (nextUpcomingAd) {
                     let diffSecs = Math.floor((nextUpcomingAd.start - currentTime) / 1000);
                     if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs}s`;
-                } else {
-                    if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
-                }
 
-                setTimeout(checkAndPlaySchedule, 2000);
+                    // Intelligent short timeout to wake up precisely when next slot starts
+                    let timeoutMs = diffSecs > 5 ? 5000 : (diffSecs * 1000);
+                    setTimeout(checkAndPlaySchedule, timeoutMs);
+                } else {
+                    if (timerEl) timerEl.innerText = 'Queue Finished for Today';
+                    setTimeout(initLiveBillboardPlayer, 30000); // Re-fetch for next day
+                }
             }
         }
 
@@ -646,5 +615,6 @@ async function initLiveBillboardPlayer() {
         billboardBox.innerHTML = '';
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
+        setTimeout(initLiveBillboardPlayer, 10000);
     }
 }
