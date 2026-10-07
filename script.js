@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InF1ZXJ5IiwiaWF0IjoxNzkwMzM3MzQ0LCJleHAiOjIxMDU5MTMzNDR9.PlaceholderKey';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -13,7 +13,7 @@ window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
 
-    // Secure Admin Preview Check: Yeh sirf usi browser mein chalega jahan admin ne click kiya hai
+    // Isolated Admin Preview Check via sessionStorage
     let adminPreviewAdJson = sessionStorage.getItem('admin_preview_ad');
     if (adminPreviewAdJson) {
         try {
@@ -29,7 +29,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     loadMyActiveCampaign();
 
-    // Set Minimum Date for Calendar to Tomorrow (Today disabled)
+    // Set Minimum Date for Calendar to Tomorrow
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
         let tomorrow = new Date();
@@ -58,7 +58,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Terms Modal Management
+    // Terms Modal
     const termsModal = document.getElementById('termsModal');
     const openTermsBtn = document.getElementById('openTermsBtn');
     const closeTermsModal = document.getElementById('closeTermsModal');
@@ -76,7 +76,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- MY ACTIVE CAMPAIGN MODAL MANAGEMENT ---
+    // Active Campaign Modal
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
@@ -100,11 +100,10 @@ window.addEventListener('DOMContentLoaded', () => {
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // --- DYNAMIC FORM INPUTS FOR FREQUENCY (Max 10) & DAYS (Max 30) ---
+    // Dynamic Form Inputs for Frequency & Days
     const slotFormContainer = document.getElementById('slotForm');
     if (slotFormContainer && !document.getElementById('frequencyInput')) {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
-
         let campaignFieldsHTML = `
             <div class="form-group" style="margin-bottom: 15px;">
                 <label>Times per Day (Max 10):</label>
@@ -120,7 +119,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- INSTANT FILE VALIDATION & AUTO DURATION SELECTOR ---
+    // File Validation & Duration Selector
     const adFileInput = document.getElementById('adFile');
     const fileErrorMsg = document.getElementById('fileErrorMsg');
     const submitBtn = document.querySelector('#slotForm button[type="submit"]');
@@ -188,110 +187,9 @@ window.addEventListener('DOMContentLoaded', () => {
     if (durationInput) durationInput.addEventListener('input', updateCalculatedAmount);
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
-
-    // --- FORM SUBMISSION ---
-    const slotForm = document.getElementById('slotForm');
-    if (slotForm) {
-        slotForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const durationInputEl = document.getElementById('durationInput');
-            let duration = parseInt(durationInputEl ? durationInputEl.value : 10) || 10;
-            let frequency = document.getElementById('frequencyInput') ? parseInt(document.getElementById('frequencyInput').value) || 1 : 1;
-            if (frequency > 10) frequency = 10;
-            let campaignDays = document.getElementById('campaignDaysInput') ? parseInt(document.getElementById('campaignDaysInput').value) || 1 : 1;
-            if (campaignDays > 30) campaignDays = 30;
-
-            if (duration > 30) {
-                alert('Maximum 30 seconds allowed per slot.');
-                return;
-            }
-
-            const targetUrl = document.getElementById('targetUrl').value;
-            const adTitle = document.getElementById('adTitle').value;
-            const fileInput = document.getElementById('adFile');
-            const selectedDateVal = document.getElementById('bookingDateInput').value;
-
-            const submitBtnEl = slotForm.querySelector('button[type="submit"]');
-            let originalText = submitBtnEl ? submitBtnEl.innerText : 'Submit';
-            if (submitBtnEl) {
-                submitBtnEl.innerText = 'Submitting Campaign...';
-                submitBtnEl.disabled = true;
-            }
-
-            try {
-                let publicFileUrl = '';
-
-                if (fileInput && fileInput.files && fileInput.files[0]) {
-                    const file = fileInput.files[0];
-                    const fileExt = file.name.split('.').pop();
-                    const fileName = Date.now() + '_' + Math.random().toString(36).substring(2) + '.' + fileExt;
-
-                    let { error: uploadError } = await supabaseClient.storage
-                        .from('ad-videos')
-                        .upload(fileName, file, {
-                            cacheControl: '3600',
-                            upsert: false,
-                            contentType: file.type
-                        });
-
-                    if (uploadError) throw uploadError;
-
-                    const { data: publicUrlData } = supabaseClient.storage
-                        .from('ad-videos')
-                        .getPublicUrl(fileName);
-
-                    publicFileUrl = publicUrlData.publicUrl;
-                }
-
-                let baseParts = selectedDateVal.split('-');
-                let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
-                let endDate = new Date(startDate);
-                endDate.setDate(startDate.getDate() + (campaignDays - 1));
-
-                let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-                let startDateStr = startDate.toLocaleDateString('en-US', optionsCheck);
-                let endDateStr = endDate.toLocaleDateString('en-US', optionsCheck);
-
-                let { data: insertedData, error: insertError } = await supabaseClient
-                    .from('buysecond_records')
-                    .insert([
-                        {
-                            brand_name: adTitle,
-                            target_url: targetUrl,
-                            file_url: publicFileUrl,
-                            duration_second: duration,
-                            slot_time: `${startDateStr} to ${endDateStr} (${frequency}x/Day)`,
-                            status: 'pending',
-                            unified_token: null
-                        }
-                    ])
-                    .select();
-
-                if (insertError) throw insertError;
-
-                if (insertedData && insertedData.length > 0) {
-                    localStorage.setItem('my_latest_campaign_id', insertedData[0].id);
-                }
-
-                alert('✅ Campaign Submitted Successfully! Check "My Active Campaign" for status.');
-                slotForm.reset();
-                if (slotModal) slotModal.style.display = 'none';
-                loadMyActiveCampaign();
-
-            } catch (err) {
-                alert('Submission failed: ' + (err.message || err));
-                console.error(err);
-            } finally {
-                if (submitBtnEl) {
-                    submitBtnEl.innerText = originalText;
-                    submitBtnEl.disabled = false;
-                }
-            }
-        });
-    }
 });
 
-// --- ADMIN PREVIEW PLAYER FUNCTION (Isolated via sessionStorage) ---
+// --- ADMIN PREVIEW PLAYER WITH AUTOMATIC JUMP BACK ---
 function playAdminPreviewOnBillboard(ad) {
     const billboardBox = document.getElementById('billboardBox');
     let timerEl = getCountdownElement();
@@ -300,18 +198,10 @@ function playAdminPreviewOnBillboard(ad) {
     if (timerEl) timerEl.innerText = 'Admin Preview Mode 📺';
 
     renderAdOnBillboard(ad, () => {
-        billboardBox.innerHTML = `
-            <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; border-radius: 10px;">
-                <p style="color: #10b981; font-weight: bold; font-size: 16px;">Preview Finished ✅</p>
-                <button onclick="backToAdminPanel()" style="background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px;">← Back to Admin Panel</button>
-            </div>
-        `;
+        // Automatically jump back to admin panel when preview ends
+        sessionStorage.removeItem('admin_preview_ad');
+        window.location.href = 'admin.html';
     });
-}
-
-function backToAdminPanel() {
-    sessionStorage.removeItem('admin_preview_ad');
-    window.location.href = 'admin.html';
 }
 
 // --- LOAD USER'S SPECIFIC ACTIVE CAMPAIGN ---
@@ -426,7 +316,7 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (IMAGES & VIDEOS) ---
+// --- MEDIA RENDERING ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -512,7 +402,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- AUTONOMOUS REAL-TIME BILLBOARD SCHEDULER & DEFAULT BANNER FALLBACK ---
+// --- LIVE BILLBOARD PLAYER LOOP ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
