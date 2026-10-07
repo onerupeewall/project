@@ -13,7 +13,7 @@ window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
 
-    // Secure Admin Preview Check
+    // Secure Admin Preview Check: Yeh sirf usi browser mein chalega jahan admin ne click kiya hai
     let adminPreviewAdJson = sessionStorage.getItem('admin_preview_ad');
     if (adminPreviewAdJson) {
         try {
@@ -28,6 +28,18 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     loadMyActiveCampaign();
+
+    // Set Minimum Date for Calendar to Tomorrow (Today disabled)
+    const bookingDateInput = document.getElementById('bookingDateInput');
+    if (bookingDateInput) {
+        let tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        let tYear = tomorrow.getFullYear();
+        let tMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        let tDay = String(tomorrow.getDate()).padStart(2, '0');
+        bookingDateInput.min = `${tYear}-${tMonth}-${tDay}`;
+        bookingDateInput.value = `${tYear}-${tMonth}-${tDay}`;
+    }
 
     // --- MODAL MANAGEMENT ---
     const slotModal = document.getElementById('slotModal');
@@ -46,6 +58,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Terms Modal Management
     const termsModal = document.getElementById('termsModal');
     const openTermsBtn = document.getElementById('openTermsBtn');
     const closeTermsModal = document.getElementById('closeTermsModal');
@@ -63,6 +76,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- MY ACTIVE CAMPAIGN MODAL MANAGEMENT ---
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
@@ -86,15 +100,19 @@ window.addEventListener('DOMContentLoaded', () => {
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // --- FREQUENCY INPUT ADDITION IN FORM ---
+    // --- DYNAMIC FORM INPUTS FOR FREQUENCY (Max 10) & DAYS (Max 30) ---
     const slotFormContainer = document.getElementById('slotForm');
     if (slotFormContainer && !document.getElementById('frequencyInput')) {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
 
         let campaignFieldsHTML = `
             <div class="form-group" style="margin-bottom: 15px;">
-                <label>Din mein kitni baar chalana hai (Times per Day - Max 10):</label>
+                <label>Times per Day (Max 10):</label>
                 <input type="number" id="frequencyInput" value="1" min="1" max="10" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Number of Days (Max 30):</label>
+                <input type="number" id="campaignDaysInput" value="1" min="1" max="30" required>
             </div>
         `;
         if (durationGroup) {
@@ -102,11 +120,13 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- INSTANT FILE VALIDATION & AUTO DURATION SELECTOR ---
     const adFileInput = document.getElementById('adFile');
     const fileErrorMsg = document.getElementById('fileErrorMsg');
     const submitBtn = document.querySelector('#slotForm button[type="submit"]');
     const durationInput = document.getElementById('durationInput');
     const frequencyInput = document.getElementById('frequencyInput');
+    const campaignDaysInput = document.getElementById('campaignDaysInput');
     const totalAmount = document.getElementById('totalAmount');
 
     function updateCalculatedAmount() {
@@ -115,9 +135,12 @@ window.addEventListener('DOMContentLoaded', () => {
         let freq = frequencyInput ? parseInt(frequencyInput.value) || 1 : 1;
         if (freq > 10) freq = 10;
         if (freq < 1) freq = 1;
+        let days = campaignDaysInput ? parseInt(campaignDaysInput.value) || 1 : 1;
+        if (days > 30) days = 30;
+        if (days < 1) days = 1;
 
         let ratePerSec = 10;
-        let calculatedTotal = dur * freq * ratePerSec;
+        let calculatedTotal = dur * freq * days * ratePerSec;
         totalAmount.innerText = '₹' + calculatedTotal;
     }
 
@@ -164,6 +187,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (durationInput) durationInput.addEventListener('input', updateCalculatedAmount);
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
+    if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
     // --- FORM SUBMISSION ---
     const slotForm = document.getElementById('slotForm');
@@ -174,6 +198,8 @@ window.addEventListener('DOMContentLoaded', () => {
             let duration = parseInt(durationInputEl ? durationInputEl.value : 10) || 10;
             let frequency = document.getElementById('frequencyInput') ? parseInt(document.getElementById('frequencyInput').value) || 1 : 1;
             if (frequency > 10) frequency = 10;
+            let campaignDays = document.getElementById('campaignDaysInput') ? parseInt(document.getElementById('campaignDaysInput').value) || 1 : 1;
+            if (campaignDays > 30) campaignDays = 30;
 
             if (duration > 30) {
                 alert('Maximum 30 seconds allowed per slot.');
@@ -183,6 +209,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const targetUrl = document.getElementById('targetUrl').value;
             const adTitle = document.getElementById('adTitle').value;
             const fileInput = document.getElementById('adFile');
+            const selectedDateVal = document.getElementById('bookingDateInput').value;
 
             const submitBtnEl = slotForm.querySelector('button[type="submit"]');
             let originalText = submitBtnEl ? submitBtnEl.innerText : 'Submit';
@@ -216,6 +243,15 @@ window.addEventListener('DOMContentLoaded', () => {
                     publicFileUrl = publicUrlData.publicUrl;
                 }
 
+                let baseParts = selectedDateVal.split('-');
+                let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
+                let endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + (campaignDays - 1));
+
+                let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+                let startDateStr = startDate.toLocaleDateString('en-US', optionsCheck);
+                let endDateStr = endDate.toLocaleDateString('en-US', optionsCheck);
+
                 let { data: insertedData, error: insertError } = await supabaseClient
                     .from('buysecond_records')
                     .insert([
@@ -224,8 +260,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             target_url: targetUrl,
                             file_url: publicFileUrl,
                             duration_second: duration,
-                            frequency: frequency,
-                            slot_time: `${frequency} times/day`,
+                            slot_time: `${startDateStr} to ${endDateStr} (${frequency}x/Day)`,
                             status: 'pending',
                             unified_token: null
                         }
@@ -256,7 +291,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- ADMIN PREVIEW PLAYER ---
+// --- ADMIN PREVIEW PLAYER FUNCTION (Isolated via sessionStorage) ---
 function playAdminPreviewOnBillboard(ad) {
     const billboardBox = document.getElementById('billboardBox');
     let timerEl = getCountdownElement();
@@ -279,7 +314,7 @@ function backToAdminPanel() {
     window.location.href = 'admin.html';
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN ---
+// --- LOAD USER'S SPECIFIC ACTIVE CAMPAIGN ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
@@ -287,7 +322,7 @@ async function loadMyActiveCampaign() {
     let myCampaignId = localStorage.getItem('my_latest_campaign_id');
 
     if (!myCampaignId) {
-        searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapne is device se abhi tak koi campaign book nahi kiya hai.</span>';
+        searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapne is device se abhi tak koi campaign book nahi kiya hai. Kripya naya slot book karein.</span>';
         return;
     }
 
@@ -301,7 +336,7 @@ async function loadMyActiveCampaign() {
             .single();
 
         if (error || !data) {
-            searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapka active campaign nahi mila.</span>';
+            searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapka active campaign nahi mila ya admin dwara delete kar diya gaya hai.</span>';
             return;
         }
 
@@ -314,7 +349,7 @@ async function loadMyActiveCampaign() {
                     <p style="color: #10B981; font-weight: bold;">Status: Approved ✅</p>
                     <p><b>Token Number:</b> #${record.unified_token || record.id}</p>
                     <p><b>Brand Name:</b> ${record.brand_name}</p>
-                    <p><b>Frequency:</b> ${record.frequency || 1} times/day</p>
+                    <p><b>Schedule / Timing:</b> ${record.slot_time}</p>
                 </div>
             `;
         } else if (record.status === 'rejected') {
@@ -322,6 +357,7 @@ async function loadMyActiveCampaign() {
                 <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #ef4444; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
                     <p style="color: #ef4444; font-weight: bold;">Status: Rejected ❌</p>
                     <p><b>Brand Name:</b> ${record.brand_name}</p>
+                    <p style="color: #9ca3af; font-size: 12px;">Niyamion ke ullanghan ke karan yah campaign reject kar diya gaya hai.</p>
                 </div>
             `;
         } else {
@@ -329,6 +365,7 @@ async function loadMyActiveCampaign() {
                 <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
                     <p style="color: #f59e0b; font-weight: bold;">Status: Pending ⏳</p>
                     <p><b>Brand Name:</b> ${record.brand_name}</p>
+                    <p style="color: #9ca3af; font-size: 13px;">Admin dwara review kiya ja raha hai. Approval ke baad Token aur Timing yahin show hogi.</p>
                 </div>
             `;
         }
@@ -337,7 +374,7 @@ async function loadMyActiveCampaign() {
 
     } catch (err) {
         console.error(err);
-        searchResultArea.innerHTML = '<span style="color: #ef4444;">Error loading campaign.</span>';
+        searchResultArea.innerHTML = '<span style="color: #ef4444;">Campaign load karne mein error aayi hai.</span>';
     }
 }
 // --- HELPER FUNCTIONS ---
@@ -368,16 +405,12 @@ async function updateAvailableSecondsCounter() {
     try {
         let { data: records } = await supabaseClient
             .from('buysecond_records')
-            .select('duration_second, frequency, status')
+            .select('duration_second, status')
             .eq('status', 'approved');
 
         let bookedSeconds = 0;
         if (records && records.length > 0) {
-            bookedSeconds = records.reduce((total, rec) => {
-                let dur = parseInt(rec.duration_second) || 0;
-                let freq = parseInt(rec.frequency) || 1;
-                return total + (dur * freq);
-            }, 0);
+            bookedSeconds = records.reduce((total, rec) => total + (parseInt(rec.duration_second) || 0), 0);
         }
 
         let availableSeconds = TOTAL_DAILY_SECONDS - bookedSeconds;
@@ -393,12 +426,12 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- MEDIA RENDERING ---
-function renderAdOnBillboard(ad, onComplete, startOffsetMs = 0) {
+// --- INTELLIGENT MEDIA RENDERING (IMAGES & VIDEOS) ---
+function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
 
-    let totalDuration = parseInt(ad.duration_second) || 10;
+    let duration = parseInt(ad.duration_second) || 10;
     let fileUrl = ad.file_url || ad.video_url || '';
     let targetUrl = ad.target_url || '#';
 
@@ -418,8 +451,12 @@ function renderAdOnBillboard(ad, onComplete, startOffsetMs = 0) {
     } else {
         let tempImg = new Image();
         tempImg.src = fileUrl;
-        tempImg.onload = function () { buildBillboardMarkup(false); };
-        tempImg.onerror = function () { buildBillboardMarkup(false); };
+        tempImg.onload = function () {
+            buildBillboardMarkup(false);
+        };
+        tempImg.onerror = function () {
+            buildBillboardMarkup(false);
+        };
         setTimeout(() => {
             if (!billboardBox.querySelector('img') && !billboardBox.querySelector('video')) {
                 buildBillboardMarkup(false);
@@ -428,36 +465,41 @@ function renderAdOnBillboard(ad, onComplete, startOffsetMs = 0) {
     }
 
     function buildBillboardMarkup(isVid) {
-        let mediaTagHTML = isVid ?
-            `<video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>` :
-            `<img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">`;
+        let mediaTagHTML = '';
+
+        if (isVid) {
+            mediaTagHTML = `
+                <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
+                </div>
+            `;
+        } else {
+            mediaTagHTML = `
+                <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                </div>
+            `;
+        }
 
         billboardBox.innerHTML = `
-            <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                    ${mediaTagHTML}
-                </div>
+            <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden; cursor: pointer;">
+                ${mediaTagHTML}
             </div>
         `;
 
         if (isVid) {
             let mediaEl = document.getElementById('activeAdMedia');
             if (mediaEl) {
-                mediaEl.onloadedmetadata = function () {
-                    if (startOffsetMs > 0 && startOffsetMs < (totalDuration * 1000)) {
-                        mediaEl.currentTime = startOffsetMs / 1000;
-                    }
+                mediaEl.onended = function () {
+                    triggerComplete();
                 };
-                mediaEl.onended = function () { triggerComplete(); };
             }
         }
     }
 
-    let effectiveOffsetSec = Math.floor(startOffsetMs / 1000);
-    let timeLeft = totalDuration - effectiveOffsetSec;
-    if (timeLeft < 0) timeLeft = 0;
-
+    let timeLeft = duration;
     let timerEl = getCountdownElement();
+
     if (globalTimerInterval) clearInterval(globalTimerInterval);
 
     globalTimerInterval = setInterval(() => {
@@ -470,7 +512,7 @@ function renderAdOnBillboard(ad, onComplete, startOffsetMs = 0) {
     }, 1000);
 }
 
-// --- SMART SCHEDULER & PLAYBACK ENGINE ---
+// --- AUTONOMOUS REAL-TIME BILLBOARD SCHEDULER & DEFAULT BANNER FALLBACK ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -488,7 +530,7 @@ async function initLiveBillboardPlayer() {
             .from('buysecond_records')
             .select('*')
             .eq('status', 'approved')
-            .order('unified_token', { ascending: true });
+            .order('id', { ascending: true });
 
         if (error || !queueRecords || queueRecords.length === 0) {
             applyDefaultBanner();
@@ -497,30 +539,39 @@ async function initLiveBillboardPlayer() {
         }
 
         let now = new Date();
+        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
+
+        let todaysApprovedAds = queueRecords.filter(ad => {
+            return ad.slot_time && ad.slot_time.includes(todayDateStr);
+        });
+
+        if (todaysApprovedAds.length === 0) {
+            applyDefaultBanner();
+            setTimeout(initLiveBillboardPlayer, 15000);
+            return;
+        }
+
         let dayStart = new Date(now);
-        dayStart.setHours(8, 0, 0, 0); // Subah 8:00 AM se shuruwat
+        dayStart.setHours(8, 0, 0, 0);
 
         let scheduledAds = [];
         let accumulatedSeconds = 0;
 
-        // Har approved ad ko uski frequency ke mutabik sequence mein arrange karna
-        queueRecords.forEach(ad => {
-            let freq = parseInt(ad.frequency) || 1;
+        for (let ad of todaysApprovedAds) {
             let adDuration = parseInt(ad.duration_second) || 10;
-            for (let i = 0; i < freq; i++) {
-                let adStartTime = new Date(dayStart.getTime() + (accumulatedSeconds * 1000));
-                let adEndTime = new Date(adStartTime.getTime() + (adDuration * 1000));
+            let adStartTime = new Date(dayStart.getTime() + (accumulatedSeconds * 1000));
+            let adEndTime = new Date(adStartTime.getTime() + (adDuration * 1000));
 
-                scheduledAds.push({
-                    adRecord: ad,
-                    start: adStartTime,
-                    end: adEndTime,
-                    duration: adDuration
-                });
+            scheduledAds.push({
+                adRecord: ad,
+                start: adStartTime,
+                end: adEndTime,
+                duration: adDuration
+            });
 
-                accumulatedSeconds += adDuration;
-            }
-        });
+            accumulatedSeconds += adDuration;
+        }
 
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
@@ -528,12 +579,10 @@ async function initLiveBillboardPlayer() {
             let currentTime = new Date();
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
-            let offsetMs = 0;
 
             for (let item of scheduledAds) {
                 if (currentTime >= item.start && currentTime < item.end) {
                     currentPlayingAd = item;
-                    offsetMs = currentTime - item.start; // Mid-playback continuation support
                     break;
                 } else if (currentTime < item.start) {
                     if (!nextUpcomingAd) nextUpcomingAd = item;
@@ -545,7 +594,7 @@ async function initLiveBillboardPlayer() {
             if (currentPlayingAd) {
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
                     setTimeout(checkAndPlaySchedule, 500);
-                }, offsetMs);
+                });
             } else {
                 applyDefaultBanner();
 
