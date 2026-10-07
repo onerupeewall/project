@@ -1,10 +1,9 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InF1ZXJ5IiwiaWF0IjoxNzkwMzM3MzQ0LCJleHAiOjIxMDU5MTMzNDR9.PlaceholderKey';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM) = 50,400 Seconds
+const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM)
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
@@ -13,14 +12,13 @@ window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
 
-    // Isolated Admin Preview Check via sessionStorage
     let adminPreviewAdJson = sessionStorage.getItem('admin_preview_ad');
     if (adminPreviewAdJson) {
         try {
             let previewAd = JSON.parse(adminPreviewAdJson);
             playAdminPreviewOnBillboard(previewAd);
         } catch (e) {
-            console.error('Preview parse error:', e);
+            console.error('Preview error:', e);
             initLiveBillboardPlayer();
         }
     } else {
@@ -29,7 +27,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     loadMyActiveCampaign();
 
-    // Set Minimum Date for Calendar to Tomorrow
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
         let tomorrow = new Date();
@@ -41,58 +38,26 @@ window.addEventListener('DOMContentLoaded', () => {
         bookingDateInput.value = `${tYear}-${tMonth}-${tDay}`;
     }
 
-    // --- MODAL MANAGEMENT ---
     const slotModal = document.getElementById('slotModal');
     const openSlotModal = document.getElementById('openSlotModal');
     const closeSlotModal = document.getElementById('closeSlotModal');
 
-    if (openSlotModal && slotModal) {
-        openSlotModal.addEventListener('click', () => {
-            slotModal.style.display = 'block';
-        });
-    }
+    if (openSlotModal && slotModal) openSlotModal.addEventListener('click', () => slotModal.style.display = 'block');
+    if (closeSlotModal && slotModal) closeSlotModal.addEventListener('click', () => slotModal.style.display = 'none');
 
-    if (closeSlotModal && slotModal) {
-        closeSlotModal.addEventListener('click', () => {
-            slotModal.style.display = 'none';
-        });
-    }
-
-    // Terms Modal
     const termsModal = document.getElementById('termsModal');
     const openTermsBtn = document.getElementById('openTermsBtn');
     const closeTermsModal = document.getElementById('closeTermsModal');
 
-    if (openTermsBtn && termsModal) {
-        openTermsBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            termsModal.style.display = 'block';
-        });
-    }
+    if (openTermsBtn && termsModal) openTermsBtn.addEventListener('click', (e) => { e.preventDefault(); termsModal.style.display = 'block'; });
+    if (closeTermsModal && termsModal) closeTermsModal.addEventListener('click', () => termsModal.style.display = 'none');
 
-    if (closeTermsModal && termsModal) {
-        closeTermsModal.addEventListener('click', () => {
-            termsModal.style.display = 'none';
-        });
-    }
-
-    // Active Campaign Modal
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
 
-    if (checkRecordBtn && checkRecordModal) {
-        checkRecordBtn.addEventListener('click', () => {
-            checkRecordModal.style.display = 'block';
-            loadMyActiveCampaign();
-        });
-    }
-
-    if (closeCheckRecordModal && checkRecordModal) {
-        closeCheckRecordModal.addEventListener('click', () => {
-            checkRecordModal.style.display = 'none';
-        });
-    }
+    if (checkRecordBtn && checkRecordModal) checkRecordBtn.addEventListener('click', () => { checkRecordModal.style.display = 'block'; loadMyActiveCampaign(); });
+    if (closeCheckRecordModal && checkRecordModal) closeCheckRecordModal.addEventListener('click', () => checkRecordModal.style.display = 'none');
 
     window.addEventListener('click', (e) => {
         if (slotModal && e.target === slotModal) slotModal.style.display = 'none';
@@ -100,7 +65,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // Dynamic Form Inputs for Frequency & Days
     const slotFormContainer = document.getElementById('slotForm');
     if (slotFormContainer && !document.getElementById('frequencyInput')) {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
@@ -114,12 +78,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 <input type="number" id="campaignDaysInput" value="1" min="1" max="30" required>
             </div>
         `;
-        if (durationGroup) {
-            durationGroup.insertAdjacentHTML('afterend', campaignFieldsHTML);
-        }
+        if (durationGroup) durationGroup.insertAdjacentHTML('afterend', campaignFieldsHTML);
     }
 
-    // File Validation & Duration Selector
     const adFileInput = document.getElementById('adFile');
     const fileErrorMsg = document.getElementById('fileErrorMsg');
     const submitBtn = document.querySelector('#slotForm button[type="submit"]');
@@ -132,26 +93,15 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!durationInput || !totalAmount) return;
         let dur = parseInt(durationInput.value) || 10;
         let freq = frequencyInput ? parseInt(frequencyInput.value) || 1 : 1;
-        if (freq > 10) freq = 10;
-        if (freq < 1) freq = 1;
         let days = campaignDaysInput ? parseInt(campaignDaysInput.value) || 1 : 1;
-        if (days > 30) days = 30;
-        if (days < 1) days = 1;
-
-        let ratePerSec = 10;
-        let calculatedTotal = dur * freq * days * ratePerSec;
-        totalAmount.innerText = '₹' + calculatedTotal;
+        totalAmount.innerText = '₹' + (dur * freq * days * 10);
     }
 
     if (adFileInput) {
         adFileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
-            if (fileErrorMsg) {
-                fileErrorMsg.style.display = 'none';
-                fileErrorMsg.innerText = '';
-            }
+            if (fileErrorMsg) { fileErrorMsg.style.display = 'none'; fileErrorMsg.innerText = ''; }
             if (submitBtn) submitBtn.disabled = false;
-
             if (!file) return;
 
             if (file.type.startsWith('video/')) {
@@ -162,24 +112,19 @@ window.addEventListener('DOMContentLoaded', () => {
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
                         if (fileErrorMsg) {
-                            fileErrorMsg.innerText = '⚠️ Error: Video duration is ' + vDuration + 's. Maximum 30 seconds allowed!';
+                            fileErrorMsg.innerText = '⚠️ Error: Max 30 seconds allowed!';
                             fileErrorMsg.style.display = 'block';
                         }
                         if (submitBtn) submitBtn.disabled = true;
                         adFileInput.value = '';
-                    } else {
-                        if (durationInput) {
-                            durationInput.value = vDuration < 1 ? 1 : vDuration;
-                            updateCalculatedAmount();
-                        }
+                    } else if (durationInput) {
+                        durationInput.value = vDuration < 1 ? 1 : vDuration;
+                        updateCalculatedAmount();
                     }
                 }
                 videoElement.src = URL.createObjectURL(file);
             } else if (file.type.startsWith('image/')) {
-                if (durationInput) {
-                    durationInput.value = 10;
-                    updateCalculatedAmount();
-                }
+                if (durationInput) { durationInput.value = 10; updateCalculatedAmount(); }
             }
         });
     }
@@ -187,9 +132,82 @@ window.addEventListener('DOMContentLoaded', () => {
     if (durationInput) durationInput.addEventListener('input', updateCalculatedAmount);
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
+
+    if (slotFormContainer) {
+        slotFormContainer.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            let duration = parseInt(document.getElementById('durationInput')?.value) || 10;
+            let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
+            let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
+            const targetUrl = document.getElementById('targetUrl').value;
+            const adTitle = document.getElementById('adTitle').value;
+            const fileInput = document.getElementById('adFile');
+            const selectedDateVal = document.getElementById('bookingDateInput').value;
+
+            const submitBtnEl = slotFormContainer.querySelector('button[type="submit"]');
+            if (submitBtnEl) { submitBtnEl.innerText = 'Submitting...'; submitBtnEl.disabled = true; }
+
+            try {
+                let publicFileUrl = '';
+                if (fileInput && fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    const fileName = Date.now() + '_' + Math.random().toString(36).substring(2) + '.' + file.name.split('.').pop();
+                    let { error: uploadError } = await supabaseClient.storage.from('ad-videos').upload(fileName, file);
+                    if (uploadError) throw uploadError;
+                    let { data: publicUrlData } = supabaseClient.storage.from('ad-videos').getPublicUrl(fileName);
+                    publicFileUrl = publicUrlData.publicUrl;
+                }
+
+                let baseParts = selectedDateVal.split('-');
+                let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
+                let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+
+                let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
+                let intervalSpace = Math.floor(TOTAL_DAILY_SECONDS / frequency);
+
+                for (let d = 0; d < campaignDays; d++) {
+                    let currentDayDate = new Date(startDate);
+                    currentDayDate.setDate(startDate.getDate() + d);
+                    let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
+                    let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
+                    let dayBookedSecs = dayExisting.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
+
+                    for (let f = 0; f < frequency; f++) {
+                        let finalOffset = dayBookedSecs + (f * intervalSpace);
+                        let slotTimeObj = new Date(currentDayDate);
+                        slotTimeObj.setHours(8, 0, 0, 0);
+                        slotTimeObj.setSeconds(finalOffset);
+
+                        let formattedSlotStr = targetDateStr + ' at ' + slotTimeObj.toLocaleTimeString();
+
+                        let { error: insertError } = await supabaseClient.from('buysecond_records').insert([{
+                            brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
+                            target_url: targetUrl,
+                            file_url: publicFileUrl,
+                            duration_second: duration,
+                            slot_time: formattedSlotStr,
+                            status: 'pending',
+                            unified_token: null
+                        }]);
+                        if (insertError) throw insertError;
+                        dayBookedSecs += duration;
+                    }
+                }
+
+                alert('✅ Campaign Submitted Successfully!');
+                slotFormContainer.reset();
+                slotModal.style.display = 'none';
+                loadMyActiveCampaign();
+            } catch (err) {
+                alert('Submission failed: ' + err.message);
+            } finally {
+                if (submitBtnEl) { submitBtnEl.innerText = 'Submit'; submitBtnEl.disabled = false; }
+            }
+        });
+    }
 });
 
-// --- ADMIN PREVIEW PLAYER WITH AUTOMATIC JUMP BACK ---
+// --- ADMIN PREVIEW WITH AUTOMATIC JUMP BACK ---
 function playAdminPreviewOnBillboard(ad) {
     const billboardBox = document.getElementById('billboardBox');
     let timerEl = getCountdownElement();
@@ -198,125 +216,54 @@ function playAdminPreviewOnBillboard(ad) {
     if (timerEl) timerEl.innerText = 'Admin Preview Mode 📺';
 
     renderAdOnBillboard(ad, () => {
-        // Automatically jump back to admin panel when preview ends
         sessionStorage.removeItem('admin_preview_ad');
-        window.location.href = 'admin.html';
+        window.location.href = 'karan-rai-secret-website-admin-panel.html';
     });
 }
 
-// --- LOAD USER'S SPECIFIC ACTIVE CAMPAIGN ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
-
     let myCampaignId = localStorage.getItem('my_latest_campaign_id');
-
     if (!myCampaignId) {
-        searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapne is device se abhi tak koi campaign book nahi kiya hai. Kripya naya slot book karein.</span>';
+        searchResultArea.innerHTML = '<span style="color: #9ca3af;">No active campaign found.</span>';
         return;
     }
-
-    searchResultArea.innerHTML = 'Loading your active campaign status...';
-
     try {
-        let { data, error } = await supabaseClient
-            .from('buysecond_records')
-            .select('*')
-            .eq('id', myCampaignId)
-            .single();
-
-        if (error || !data) {
-            searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapka active campaign nahi mila ya admin dwara delete kar diya gaya hai.</span>';
-            return;
-        }
-
-        let record = data;
-        let statusHtml = '';
-
-        if (record.status === 'approved') {
-            statusHtml = `
-                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10b981; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
-                    <p style="color: #10B981; font-weight: bold;">Status: Approved ✅</p>
-                    <p><b>Token Number:</b> #${record.unified_token || record.id}</p>
-                    <p><b>Brand Name:</b> ${record.brand_name}</p>
-                    <p><b>Schedule / Timing:</b> ${record.slot_time}</p>
-                </div>
-            `;
-        } else if (record.status === 'rejected') {
-            statusHtml = `
-                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #ef4444; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
-                    <p style="color: #ef4444; font-weight: bold;">Status: Rejected ❌</p>
-                    <p><b>Brand Name:</b> ${record.brand_name}</p>
-                    <p style="color: #9ca3af; font-size: 12px;">Niyamion ke ullanghan ke karan yah campaign reject kar diya gaya hai.</p>
-                </div>
-            `;
-        } else {
-            statusHtml = `
-                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
-                    <p style="color: #f59e0b; font-weight: bold;">Status: Pending ⏳</p>
-                    <p><b>Brand Name:</b> ${record.brand_name}</p>
-                    <p style="color: #9ca3af; font-size: 13px;">Admin dwara review kiya ja raha hai. Approval ke baad Token aur Timing yahin show hogi.</p>
-                </div>
-            `;
-        }
-
-        searchResultArea.innerHTML = statusHtml;
-
-    } catch (err) {
-        console.error(err);
-        searchResultArea.innerHTML = '<span style="color: #ef4444;">Campaign load karne mein error aayi hai.</span>';
-    }
+        let { data, error } = await supabaseClient.from('buysecond_records').select('*').eq('id', myCampaignId).single();
+        if (error || !data) return;
+        searchResultArea.innerHTML = `
+            <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10b981; margin-top: 10px;">
+                <p style="color: #10B981; font-weight: bold;">Status: ${data.status.toUpperCase()} ✅</p>
+                <p><b>Token:</b> #${data.unified_token || data.id}</p>
+                <p><b>Brand:</b> ${data.brand_name}</p>
+                <p><b>Timing:</b> ${data.slot_time}</p>
+            </div>
+        `;
+    } catch (err) { console.error(err); }
 }
-// --- HELPER FUNCTIONS ---
+
 async function initVisitorCounter() {
     let visitorEl = document.getElementById('totalGlobalCount');
     if (!visitorEl) return;
-
-    let { data } = await supabaseClient
-        .from('site_analytics')
-        .select('count')
-        .eq('id', 1)
-        .single();
-
-    let currentCount = data ? data.count : 120;
-    currentCount += 1;
-
-    await supabaseClient
-        .from('site_analytics')
-        .upsert({ id: 1, count: currentCount });
-
-    visitorEl.innerText = currentCount;
+    let { data } = await supabaseClient.from('site_analytics').select('count').eq('id', 1).single();
+    let count = (data ? data.count : 120) + 1;
+    await supabaseClient.from('site_analytics').upsert({ id: 1, count: count });
+    visitorEl.innerText = count;
 }
 
 async function updateAvailableSecondsCounter() {
     let remainingEl = document.getElementById('remainingSecondsCount');
     if (!remainingEl) return;
-
-    try {
-        let { data: records } = await supabaseClient
-            .from('buysecond_records')
-            .select('duration_second, status')
-            .eq('status', 'approved');
-
-        let bookedSeconds = 0;
-        if (records && records.length > 0) {
-            bookedSeconds = records.reduce((total, rec) => total + (parseInt(rec.duration_second) || 0), 0);
-        }
-
-        let availableSeconds = TOTAL_DAILY_SECONDS - bookedSeconds;
-        if (availableSeconds < 0) availableSeconds = 0;
-
-        remainingEl.innerText = availableSeconds;
-    } catch (err) {
-        console.error('Error updating available seconds:', err);
-    }
+    let { data: records } = await supabaseClient.from('buysecond_records').select('duration_second').eq('status', 'approved');
+    let booked = records ? records.reduce((t, r) => t + (parseInt(r.duration_second) || 0), 0) : 0;
+    let avail = TOTAL_DAILY_SECONDS - booked;
+    remainingEl.innerText = avail < 0 ? 0 : avail;
 }
 
-function getCountdownElement() {
-    return document.getElementById('timer-text');
-}
+function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING ---
+// --- INSTANT MEDIA RENDERING (NO LAG) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -337,59 +284,26 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        buildBillboardMarkup(true);
-    } else {
-        let tempImg = new Image();
-        tempImg.src = fileUrl;
-        tempImg.onload = function () {
-            buildBillboardMarkup(false);
-        };
-        tempImg.onerror = function () {
-            buildBillboardMarkup(false);
-        };
-        setTimeout(() => {
-            if (!billboardBox.querySelector('img') && !billboardBox.querySelector('video')) {
-                buildBillboardMarkup(false);
-            }
-        }, 400);
-    }
-
-    function buildBillboardMarkup(isVid) {
-        let mediaTagHTML = '';
-
-        if (isVid) {
-            mediaTagHTML = `
-                <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
-                </div>
-            `;
-        } else {
-            mediaTagHTML = `
-                <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                    <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
-                </div>
-            `;
-        }
-
         billboardBox.innerHTML = `
-            <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0px; text-align: center; border-radius: 10px; box-sizing: border-box; position: relative; overflow: hidden; cursor: pointer;">
-                ${mediaTagHTML}
+            <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
+                <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
             </div>
         `;
-
-        if (isVid) {
-            let mediaEl = document.getElementById('activeAdMedia');
-            if (mediaEl) {
-                mediaEl.onended = function () {
-                    triggerComplete();
-                };
-            }
+        let mediaEl = document.getElementById('activeAdMedia');
+        if (mediaEl) {
+            mediaEl.onended = triggerComplete;
+            mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
         }
+    } else {
+        billboardBox.innerHTML = `
+            <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
+                <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+            </div>
+        `;
     }
 
     let timeLeft = duration;
     let timerEl = getCountdownElement();
-
     if (globalTimerInterval) clearInterval(globalTimerInterval);
 
     globalTimerInterval = setInterval(() => {
@@ -402,7 +316,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- LIVE BILLBOARD PLAYER LOOP ---
+// --- AUTONOMOUS SCHEDULER & DEFAULT BANNER ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -416,13 +330,8 @@ async function initLiveBillboardPlayer() {
     }
 
     try {
-        let { data: queueRecords, error } = await supabaseClient
-            .from('buysecond_records')
-            .select('*')
-            .eq('status', 'approved')
-            .order('id', { ascending: true });
-
-        if (error || !queueRecords || queueRecords.length === 0) {
+        let { data: queueRecords } = await supabaseClient.from('buysecond_records').select('*').eq('status', 'approved').order('id', { ascending: true });
+        if (!queueRecords || queueRecords.length === 0) {
             applyDefaultBanner();
             setTimeout(initLiveBillboardPlayer, 10000);
             return;
@@ -431,10 +340,7 @@ async function initLiveBillboardPlayer() {
         let now = new Date();
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
-
-        let todaysApprovedAds = queueRecords.filter(ad => {
-            return ad.slot_time && ad.slot_time.includes(todayDateStr);
-        });
+        let todaysApprovedAds = queueRecords.filter(ad => ad.slot_time && ad.slot_time.includes(todayDateStr));
 
         if (todaysApprovedAds.length === 0) {
             applyDefaultBanner();
@@ -452,20 +358,12 @@ async function initLiveBillboardPlayer() {
             let adDuration = parseInt(ad.duration_second) || 10;
             let adStartTime = new Date(dayStart.getTime() + (accumulatedSeconds * 1000));
             let adEndTime = new Date(adStartTime.getTime() + (adDuration * 1000));
-
-            scheduledAds.push({
-                adRecord: ad,
-                start: adStartTime,
-                end: adEndTime,
-                duration: adDuration
-            });
-
+            scheduledAds.push({ adRecord: ad, start: adStartTime, end: adEndTime, duration: adDuration });
             accumulatedSeconds += adDuration;
         }
 
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
-
             let currentTime = new Date();
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
@@ -480,30 +378,24 @@ async function initLiveBillboardPlayer() {
             }
 
             let timerEl = getCountdownElement();
-
             if (currentPlayingAd) {
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
                     setTimeout(checkAndPlaySchedule, 500);
                 });
             } else {
                 applyDefaultBanner();
-
                 if (nextUpcomingAd) {
                     let diffSecs = Math.floor((nextUpcomingAd.start - currentTime) / 1000);
                     if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs}s`;
-                    let timeoutMs = diffSecs > 5 ? 5000 : (diffSecs * 1000);
-                    setTimeout(checkAndPlaySchedule, timeoutMs);
+                    setTimeout(checkAndPlaySchedule, diffSecs > 5 ? 5000 : (diffSecs * 1000));
                 } else {
                     if (timerEl) timerEl.innerText = 'Queue Finished for Today';
                     setTimeout(initLiveBillboardPlayer, 30000);
                 }
             }
         }
-
         checkAndPlaySchedule();
-
     } catch (err) {
-        console.error('Billboard Player Error:', err);
         applyDefaultBanner();
         setTimeout(initLiveBillboardPlayer, 15000);
     }
