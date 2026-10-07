@@ -12,7 +12,16 @@ let globalTimerInterval = null;
 window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
     updateAvailableSecondsCounter();
-    initLiveBillboardPlayer();
+
+    // Check if Admin requested Billboard Preview
+    let adminPreviewAdJson = localStorage.getItem('admin_preview_ad');
+    if (adminPreviewAdJson) {
+        let previewAd = JSON.parse(adminPreviewAdJson);
+        playAdminPreviewOnBillboard(previewAd);
+    } else {
+        initLiveBillboardPlayer();
+    }
+
     loadMyActiveCampaign();
 
     // Set Minimum Date for Calendar to Tomorrow (Today disabled)
@@ -175,7 +184,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
-    // --- FORM SUBMISSION (Saves as Pending Campaign & Links to User Browser) ---
+    // --- FORM SUBMISSION ---
     const slotForm = document.getElementById('slotForm');
     if (slotForm) {
         slotForm.addEventListener('submit', async (e) => {
@@ -236,7 +245,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 let startDateStr = startDate.toLocaleDateString('en-US', optionsCheck);
                 let endDateStr = endDate.toLocaleDateString('en-US', optionsCheck);
 
-                // Insert into Supabase and fetch the newly created record ID
                 let { data: insertedData, error: insertError } = await supabaseClient
                     .from('buysecond_records')
                     .insert([
@@ -255,7 +263,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (insertError) throw insertError;
 
                 if (insertedData && insertedData.length > 0) {
-                    // Save this specific campaign ID in the user's browser local storage so ONLY this user sees it
                     localStorage.setItem('my_latest_campaign_id', insertedData[0].id);
                 }
 
@@ -275,7 +282,31 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- LOAD USER'S SPECIFIC ACTIVE CAMPAIGN FROM LOCALSTORAGE ---
+// --- ADMIN PREVIEW PLAYER FUNCTION ---
+function playAdminPreviewOnBillboard(ad) {
+    const billboardBox = document.getElementById('billboardBox');
+    let timerEl = getCountdownElement();
+    if (!billboardBox) return;
+
+    if (timerEl) timerEl.innerText = 'Admin Preview Mode 📺';
+
+    renderAdOnBillboard(ad, () => {
+        // When preview finishes, show Back to Admin button on billboard
+        billboardBox.innerHTML = `
+            <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; border-radius: 10px;">
+                <p style="color: #10b981; font-weight: bold; font-size: 16px;">Preview Finished ✅</p>
+                <button onclick="backToAdminPanel()" style="background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px;">← Back to Admin Panel</button>
+            </div>
+        `;
+    });
+}
+
+function backToAdminPanel() {
+    localStorage.removeItem('admin_preview_ad');
+    window.location.href = 'admin.html';
+}
+
+// --- LOAD USER'S SPECIFIC ACTIVE CAMPAIGN ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
