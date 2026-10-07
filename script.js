@@ -260,6 +260,9 @@ window.addEventListener('DOMContentLoaded', () => {
                             target_url: targetUrl,
                             file_url: publicFileUrl,
                             duration_second: duration,
+                            frequency: frequency,
+                            start_date: startDateStr,
+                            end_date: endDateStr,
                             slot_time: `${startDateStr} to ${endDateStr} (${frequency}x/Day)`,
                             status: 'pending',
                             unified_token: null
@@ -426,12 +429,12 @@ function getCountdownElement() {
     return document.getElementById('timer-text');
 }
 
-// --- INTELLIGENT MEDIA RENDERING (IMAGES & VIDEOS) ---
-function renderAdOnBillboard(ad, onComplete) {
+// --- INTELLIGENT MEDIA RENDERING (IMAGES & VIDEOS FIX) ---
+function renderAdOnBillboard(ad, onComplete, startOffsetMs = 0) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
 
-    let duration = parseInt(ad.duration_second) || 10;
+    let totalDuration = parseInt(ad.duration_second) || 10;
     let fileUrl = ad.file_url || ad.video_url || '';
     let targetUrl = ad.target_url || '#';
 
@@ -490,6 +493,11 @@ function renderAdOnBillboard(ad, onComplete) {
         if (isVid) {
             let mediaEl = document.getElementById('activeAdMedia');
             if (mediaEl) {
+                mediaEl.onloadedmetadata = function () {
+                    if (startOffsetMs > 0 && startOffsetMs < (totalDuration * 1000)) {
+                        mediaEl.currentTime = startOffsetMs / 1000;
+                    }
+                };
                 mediaEl.onended = function () {
                     triggerComplete();
                 };
@@ -497,7 +505,10 @@ function renderAdOnBillboard(ad, onComplete) {
         }
     }
 
-    let timeLeft = duration;
+    let effectiveOffsetSec = Math.floor(startOffsetMs / 1000);
+    let timeLeft = totalDuration - effectiveOffsetSec;
+    if (timeLeft < 0) timeLeft = 0;
+
     let timerEl = getCountdownElement();
 
     if (globalTimerInterval) clearInterval(globalTimerInterval);
@@ -512,7 +523,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- AUTONOMOUS REAL-TIME BILLBOARD SCHEDULER & DEFAULT BANNER FALLBACK ---
+// --- AUTONOMOUS REAL-TIME BILLBOARD SCHEDULER & LIVE CONTINUOUS PLAY ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -558,20 +569,24 @@ async function initLiveBillboardPlayer() {
         let scheduledAds = [];
         let accumulatedSeconds = 0;
 
-        for (let ad of todaysApprovedAds) {
+        // Expanded schedule based on frequency
+        todaysApprovedAds.forEach(ad => {
+            let freq = parseInt(ad.frequency) || 1;
             let adDuration = parseInt(ad.duration_second) || 10;
-            let adStartTime = new Date(dayStart.getTime() + (accumulatedSeconds * 1000));
-            let adEndTime = new Date(adStartTime.getTime() + (adDuration * 1000));
+            for (let i = 0; i < freq; i++) {
+                let adStartTime = new Date(dayStart.getTime() + (accumulatedSeconds * 1000));
+                let adEndTime = new Date(adStartTime.getTime() + (adDuration * 1000));
 
-            scheduledAds.push({
-                adRecord: ad,
-                start: adStartTime,
-                end: adEndTime,
-                duration: adDuration
-            });
+                scheduledAds.push({
+                    adRecord: ad,
+                    start: adStartTime,
+                    end: adEndTime,
+                    duration: adDuration
+                });
 
-            accumulatedSeconds += adDuration;
-        }
+                accumulatedSeconds += adDuration;
+            }
+        });
 
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
@@ -579,10 +594,12 @@ async function initLiveBillboardPlayer() {
             let currentTime = new Date();
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
+            let offsetMs = 0;
 
             for (let item of scheduledAds) {
                 if (currentTime >= item.start && currentTime < item.end) {
                     currentPlayingAd = item;
+                    offsetMs = currentTime - item.start; // Mid-playback continuation support
                     break;
                 } else if (currentTime < item.start) {
                     if (!nextUpcomingAd) nextUpcomingAd = item;
@@ -594,7 +611,7 @@ async function initLiveBillboardPlayer() {
             if (currentPlayingAd) {
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
                     setTimeout(checkAndPlaySchedule, 500);
-                });
+                }, offsetMs);
             } else {
                 applyDefaultBanner();
 
