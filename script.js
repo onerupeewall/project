@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM) = 50,400 Seconds
@@ -161,20 +161,16 @@ window.addEventListener('DOMContentLoaded', () => {
                 let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
                 let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
 
-                let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
+                let blockInterval = Math.floor(TOTAL_DAILY_SECONDS / frequency);
 
                 for (let d = 0; d < campaignDays; d++) {
                     let currentDayDate = new Date(startDate);
                     currentDayDate.setDate(startDate.getDate() + d);
                     let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
 
-                    let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
-                    let dayBookedSecs = dayExisting.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
-
-                    let blockInterval = Math.floor(TOTAL_DAILY_SECONDS / frequency);
-
                     for (let f = 0; f < frequency; f++) {
-                        let offsetSeconds = (f * blockInterval) + (dayBookedSecs % blockInterval);
+                        // Har din ka pehla run exact 8:00 AM se start hoga, baaki evenly spread honge
+                        let offsetSeconds = f * blockInterval;
                         if (offsetSeconds >= TOTAL_DAILY_SECONDS) offsetSeconds = TOTAL_DAILY_SECONDS - duration;
 
                         let slotTimeObj = new Date(currentDayDate);
@@ -229,7 +225,7 @@ function playAdminPreviewOnBillboard(ad) {
     });
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN WITH STRICT PENDING / APPROVED CHECK ---
+// --- LOAD USER'S ACTIVE CAMPAIGN (Clean 1-Day Schedule View) ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
@@ -279,18 +275,23 @@ async function loadMyActiveCampaign() {
 
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
+        // Filter runs to show only ONE single day's routine so the list isn't cluttered
+        let firstDayDateStr = runsList[0].slot_time.split(' at ')[0];
+        let singleDayRuns = runsList.filter(run => run.slot_time.includes(firstDayDateStr));
+
         let html = `
             <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 260px; overflow-y: auto;">
                 <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                 <p><b>Token Number:</b> ${tokenDisplay}</p>
                 <p><b>Brand Name:</b> ${cleanBrand}</p>
-                <p><b>Total Runs:</b> ${runsList.length} Runs Total</p>
+                <p><b>Campaign Duration:</b> ${runsList.length / singleDayRuns.length} Days Total</p>
                 <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
-                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Exact Screen Timings (Repeats Daily):</p>
+                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Daily Screen Timings (Repeats Every Day):</p>
         `;
 
-        runsList.forEach((run, idx) => {
-            html += `<p style="font-size: 12px; color: #9ca3af;">↳ Run ${idx + 1}: ${run.slot_time}</p>`;
+        singleDayRuns.forEach((run, idx) => {
+            let timeOnly = run.slot_time.split(' at ')[1];
+            html += `<p style="font-size: 13px; color: #9ca3af;">↳ Run ${idx + 1}: ${timeOnly}</p>`;
         });
 
         html += `</div>`;
