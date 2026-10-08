@@ -1,8 +1,9 @@
+// --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const TOTAL_DAILY_SECONDS = 50400; // 8 AM to 10 PM
+const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM) = 50,400 Seconds
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
@@ -170,10 +171,16 @@ window.addEventListener('DOMContentLoaded', () => {
                     let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
                     let dayBookedSecs = dayExisting.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
 
+                    // Evenly distribute frequency runs across the 50,400s daily window (8 AM to 10 PM)
+                    let blockInterval = Math.floor(TOTAL_DAILY_SECONDS / frequency);
+
                     for (let f = 0; f < frequency; f++) {
+                        let offsetSeconds = (f * blockInterval) + (dayBookedSecs % blockInterval);
+                        if (offsetSeconds >= TOTAL_DAILY_SECONDS) offsetSeconds = TOTAL_DAILY_SECONDS - duration;
+
                         let slotTimeObj = new Date(currentDayDate);
                         slotTimeObj.setHours(8, 0, 0, 0);
-                        slotTimeObj.setSeconds(dayBookedSecs);
+                        slotTimeObj.setSeconds(offsetSeconds);
 
                         let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
                         let formattedSlotStr = `${targetDateStr} at ${timeString}`;
@@ -188,11 +195,9 @@ window.addEventListener('DOMContentLoaded', () => {
                             unified_token: null
                         }]);
                         if (insertError) throw insertError;
-                        dayBookedSecs += duration;
                     }
                 }
 
-                // Save latest inserted record ID for tracking active campaign status
                 let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').order('id', { ascending: false }).limit(1);
                 if (latestRecord && latestRecord.length > 0) {
                     localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
@@ -225,7 +230,7 @@ function playAdminPreviewOnBillboard(ad) {
     });
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN WITH ALL RUNS ---
+// --- LOAD USER'S ACTIVE CAMPAIGN WITH STRICT PENDING / APPROVED CHECK ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
@@ -243,28 +248,48 @@ async function loadMyActiveCampaign() {
             return;
         }
 
-        // Fetch all runs belonging to this campaign cluster (same brand & file_url)
         let cleanBrand = singleRecord.brand_name.replace(/\s*\(Run \d+\/\d+\)/g, '').trim();
         let { data: allRuns } = await supabaseClient
             .from('buysecond_records')
             .select('*')
-            .eq('brand_name.ilike', `%${cleanBrand}%`)
+            .ilike('brand_name', `%${cleanBrand}%`)
             .eq('file_url', singleRecord.file_url);
 
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
 
-        let statusColor = master.status === 'approved' ? '#10B981' : (master.status === 'rejected' ? '#ef4444' : '#f59e0b');
-        let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Pending Assignment';
+        // STRICT PENDING CHECK: Before admin approval, show pending notice only
+        if (master.status === 'pending') {
+            searchResultArea.innerHTML = `
+                <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
+                    <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
+                    <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Owner dwara approval milne ke baad aapke active campaign ki saari details, Token Number aur exact screen timings yahin show hongi.</p>
+                </div>
+            `;
+            return;
+        }
+
+        if (master.status === 'rejected') {
+            searchResultArea.innerHTML = `
+                <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #ef4444; margin-top: 10px; text-align: center;">
+                    <p style="color: #ef4444; font-weight: bold; font-size: 15px; margin-bottom: 6px;">❌ Campaign Rejected</p>
+                    <p style="color: #9ca3af; font-size: 13px;">Yah campaign admin dwara reject kar diya gaya hai.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // APPROVED STATE: Show token, status, and scheduled runs breakdown
+        let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
         let html = `
-            <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid ${statusColor}; margin-top: 10px; max-height: 250px; overflow-y: auto;">
-                <p style="color: ${statusColor}; font-weight: bold; font-size: 15px;">Status: ${master.status.toUpperCase()} ✅</p>
+            <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 260px; overflow-y: auto;">
+                <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                 <p><b>Token Number:</b> ${tokenDisplay}</p>
                 <p><b>Brand Name:</b> ${cleanBrand}</p>
                 <p><b>Total Runs:</b> ${runsList.length} Runs Total</p>
                 <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
-                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Scheduled Slots:</p>
+                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Exact Screen Timings (Repeats Daily):</p>
         `;
 
         runsList.forEach((run, idx) => {
