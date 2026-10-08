@@ -147,14 +147,25 @@ window.addEventListener('DOMContentLoaded', () => {
             if (submitBtnEl) { submitBtnEl.innerText = 'Submitting...'; submitBtnEl.disabled = true; }
 
             try {
-                let publicFileUrl = '';
+                let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
+
                 if (fileInput && fileInput.files && fileInput.files[0]) {
                     const file = fileInput.files[0];
-                    const fileName = Date.now() + '_' + Math.random().toString(36).substring(2) + '.' + file.name.split('.').pop();
-                    let { error: uploadError } = await supabaseClient.storage.from('ad-videos').upload(fileName, file);
-                    if (uploadError) throw uploadError;
-                    let { data: publicUrlData } = supabaseClient.storage.from('ad-videos').getPublicUrl(fileName);
-                    publicFileUrl = publicUrlData.publicUrl;
+                    const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+
+                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                        .from('ad-videos')
+                        .upload(fileName, file, { upsert: true });
+
+                    if (!uploadError) {
+                        let { data: publicUrlData } = supabaseClient.storage.from('ad-videos').getPublicUrl(fileName);
+                        if (publicUrlData && publicUrlData.publicUrl) {
+                            publicFileUrl = publicUrlData.publicUrl;
+                        }
+                    } else {
+                        console.warn("Storage upload warning, using object URL fallback:", uploadError.message);
+                        publicFileUrl = URL.createObjectURL(file);
+                    }
                 }
 
                 let baseParts = selectedDateVal.split('-');
@@ -169,7 +180,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
 
                     for (let f = 0; f < frequency; f++) {
-                        // Har din ka pehla run exact 8:00 AM se start hoga, baaki evenly spread honge
                         let offsetSeconds = f * blockInterval;
                         if (offsetSeconds >= TOTAL_DAILY_SECONDS) offsetSeconds = TOTAL_DAILY_SECONDS - duration;
 
@@ -275,7 +285,6 @@ async function loadMyActiveCampaign() {
 
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
-        // Filter runs to show only ONE single day's routine so the list isn't cluttered
         let firstDayDateStr = runsList[0].slot_time.split(' at ')[0];
         let singleDayRuns = runsList.filter(run => run.slot_time.includes(firstDayDateStr));
 
@@ -375,7 +384,6 @@ function renderAdOnBillboard(ad, onComplete) {
         }
     }, 1000);
 }
-
 // --- AUTONOMOUS CHRONOLOGICAL SCHEDULER & DEFAULT BANNER ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
