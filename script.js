@@ -163,7 +163,6 @@ window.addEventListener('DOMContentLoaded', () => {
                             publicFileUrl = publicUrlData.publicUrl;
                         }
                     } else {
-                        console.warn("Storage upload warning, using object URL fallback:", uploadError.message);
                         publicFileUrl = URL.createObjectURL(file);
                     }
                 }
@@ -172,6 +171,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
                 let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
 
+                let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
                 let blockInterval = Math.floor(TOTAL_DAILY_SECONDS / frequency);
 
                 for (let d = 0; d < campaignDays; d++) {
@@ -179,13 +179,17 @@ window.addEventListener('DOMContentLoaded', () => {
                     currentDayDate.setDate(startDate.getDate() + d);
                     let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
 
+                    let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
+                    let dayBookedSecs = dayExisting.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
+
                     for (let f = 0; f < frequency; f++) {
-                        let offsetSeconds = f * blockInterval;
-                        if (offsetSeconds >= TOTAL_DAILY_SECONDS) offsetSeconds = TOTAL_DAILY_SECONDS - duration;
+                        let idealOffset = (f * blockInterval) + (dayBookedSecs % blockInterval);
+                        let finalOffset = idealOffset;
+                        if (finalOffset >= TOTAL_DAILY_SECONDS) finalOffset = TOTAL_DAILY_SECONDS - duration;
 
                         let slotTimeObj = new Date(currentDayDate);
                         slotTimeObj.setHours(8, 0, 0, 0);
-                        slotTimeObj.setSeconds(offsetSeconds);
+                        slotTimeObj.setSeconds(finalOffset);
 
                         let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
                         let formattedSlotStr = `${targetDateStr} at ${timeString}`;
@@ -200,6 +204,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             unified_token: null
                         }]);
                         if (insertError) throw insertError;
+                        dayBookedSecs += duration;
                     }
                 }
 
@@ -329,7 +334,6 @@ async function updateAvailableSecondsCounter() {
     let avail = TOTAL_DAILY_SECONDS - booked;
     remainingEl.innerText = avail < 0 ? 0 : avail;
 }
-
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
 // --- INSTANT MEDIA RENDERING (NO LAG) ---
@@ -384,6 +388,7 @@ function renderAdOnBillboard(ad, onComplete) {
         }
     }, 1000);
 }
+
 // --- AUTONOMOUS CHRONOLOGICAL SCHEDULER & DEFAULT BANNER ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
@@ -448,7 +453,7 @@ async function initLiveBillboardPlayer() {
             let timerEl = getCountdownElement();
             if (currentPlayingAd) {
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
-                    setTimeout(checkAndPlaySchedule, 500);
+                    setTimeout(checkAndPaySchedule, 500);
                 });
             } else {
                 applyDefaultBanner();
