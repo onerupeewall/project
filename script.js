@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM) = 50,400 Seconds
@@ -171,7 +171,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
                     let dayBookedSecs = dayExisting.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
 
-                    // Evenly distribute frequency runs across the 50,400s daily window (8 AM to 10 PM)
                     let blockInterval = Math.floor(TOTAL_DAILY_SECONDS / frequency);
 
                     for (let f = 0; f < frequency; f++) {
@@ -258,7 +257,6 @@ async function loadMyActiveCampaign() {
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
 
-        // STRICT PENDING CHECK: Before admin approval, show pending notice only
         if (master.status === 'pending') {
             searchResultArea.innerHTML = `
                 <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
@@ -279,7 +277,6 @@ async function loadMyActiveCampaign() {
             return;
         }
 
-        // APPROVED STATE: Show token, status, and scheduled runs breakdown
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
         let html = `
