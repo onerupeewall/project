@@ -98,6 +98,19 @@ window.addEventListener('DOMContentLoaded', () => {
         totalAmount.innerText = '₹' + (dur * freq * days * 10);
     }
 
+    if (frequencyInput) {
+        frequencyInput.addEventListener('input', function () {
+            let val = parseInt(this.value) || 1;
+            if (val > 7) {
+                this.style.borderColor = '#ef4444';
+                this.style.color = '#ef4444';
+            } else {
+                this.style.borderColor = '#1f293d';
+                this.style.color = '#fff';
+            }
+        });
+    }
+
     if (adFileInput) {
         adFileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
@@ -140,6 +153,16 @@ window.addEventListener('DOMContentLoaded', () => {
             let duration = parseInt(document.getElementById('durationInput')?.value) || 10;
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
+
+            if (frequency > 7) {
+                alert('⚠️ Frequency cannot be more than 7 per day!');
+                if (frequencyInput) {
+                    frequencyInput.style.borderColor = '#ef4444';
+                    frequencyInput.style.color = '#ef4444';
+                }
+                return;
+            }
+
             const targetUrl = document.getElementById('targetUrl').value;
             const adTitle = document.getElementById('adTitle').value;
             const fileInput = document.getElementById('adFile');
@@ -174,6 +197,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
 
                 let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
+                let recordsToInsert = [];
 
                 for (let d = 0; d < campaignDays; d++) {
                     let currentDayDate = new Date(startDate);
@@ -232,11 +256,15 @@ window.addEventListener('DOMContentLoaded', () => {
                             unified_token: null
                         };
 
-                        let { error: insertError } = await supabaseClient.from('buysecond_records').insert([newRecordObj]);
-                        if (insertError) throw insertError;
-
+                        recordsToInsert.push(newRecordObj);
                         dayExisting.push(newRecordObj);
                     }
+                }
+
+                // BULK INSERT FOR LIGHTNING FAST SUBMISSION (2-4 SECONDS)
+                if (recordsToInsert.length > 0) {
+                    let { error: insertError } = await supabaseClient.from('buysecond_records').insert(recordsToInsert);
+                    if (insertError) throw insertError;
                 }
 
                 let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').order('id', { ascending: false }).limit(1);
@@ -270,7 +298,7 @@ function playAdminPreviewOnBillboard(ad) {
     });
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN (Real-Time Today's Schedule View) ---
+// --- LOAD USER'S ACTIVE CAMPAIGN ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
@@ -379,7 +407,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- FIXED INSTANT MEDIA RENDERING (SUPPORTS BOTH VIDEOS & IMAGES PERFECTLY) ---
+// --- MEDIA RENDERING (VIDEOS & IMAGES) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -432,7 +460,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- FIXED AUTONOMOUS CHRONOLOGICAL SCHEDULER & REAL-TIME SYNC ---
+// --- AUTONOMOUS SCHEDULER & AUTO SYNC AT MIDNIGHT ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -465,7 +493,7 @@ async function initLiveBillboardPlayer() {
         }
 
         let scheduledAds = [];
-        let baseParts = todayDateStr.split(' '); // e.g. ["October", "11,", "2026"]
+        let baseParts = todayDateStr.split(' ');
         let targetMonthName = baseParts[0];
         let targetDay = parseInt(baseParts[1]);
         let targetYear = parseInt(baseParts[2]);
@@ -494,6 +522,14 @@ async function initLiveBillboardPlayer() {
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
             let currentTime = new Date();
+
+            // Midnight rollover check: if day changed, restart player to load next day's schedule automatically
+            let newNowStr = currentTime.toLocaleDateString('en-US', optionsCheck);
+            if (newNowStr !== todayDateStr) {
+                initLiveBillboardPlayer();
+                return;
+            }
+
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
 
