@@ -379,7 +379,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- INSTANT MEDIA RENDERING (NO LAG) ---
+// --- FIXED INSTANT MEDIA RENDERING (SUPPORTS BOTH VIDEOS & IMAGES PERFECTLY) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -413,7 +413,7 @@ function renderAdOnBillboard(ad, onComplete) {
     } else {
         billboardBox.innerHTML = `
             <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                <img src="${fileUrl}" alt="Ad" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
             </div>
         `;
     }
@@ -432,7 +432,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- AUTONOMOUS CHRONOLOGICAL SCHEDULER & DEFAULT BANNER ---
+// --- FIXED AUTONOMOUS CHRONOLOGICAL SCHEDULER & REAL-TIME SYNC ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -464,19 +464,32 @@ async function initLiveBillboardPlayer() {
             return;
         }
 
-        let dayStart = new Date(now);
-        dayStart.setHours(8, 0, 0, 0);
-
         let scheduledAds = [];
-        let accumulatedSeconds = 0;
+        let baseParts = todayDateStr.split(' '); // e.g. ["October", "11,", "2026"]
+        let targetMonthName = baseParts[0];
+        let targetDay = parseInt(baseParts[1]);
+        let targetYear = parseInt(baseParts[2]);
 
-        for (let ad of todaysApprovedAds) {
-            let adDuration = parseInt(ad.duration_second) || 10;
-            let adStartTime = new Date(dayStart.getTime() + (accumulatedSeconds * 1000));
-            let adEndTime = new Date(adStartTime.getTime() + (adDuration * 1000));
-            scheduledAds.push({ adRecord: ad, start: adStartTime, end: adEndTime, duration: adDuration });
-            accumulatedSeconds += adDuration;
-        }
+        const monthsMap = {
+            "January": 0, "February": 1, "March": 2, "April": 3, "May": 4, "June": 5,
+            "July": 6, "August": 7, "September": 8, "October": 9, "November": 10, "December": 11
+        };
+        let mIndex = monthsMap[targetMonthName] !== undefined ? monthsMap[targetMonthName] : now.getMonth();
+
+        todaysApprovedAds.forEach(ad => {
+            let timePart = ad.slot_time.split(' at ')[1];
+            if (!timePart) return;
+            let [timeStr, modifier] = timePart.split(' ');
+            let [hrs, mins, secs] = timeStr.split(':').map(Number);
+            if (modifier === 'PM' && hrs < 12) hrs += 12;
+            if (modifier === 'AM' && hrs === 12) hrs = 0;
+
+            let adStart = new Date(targetYear, mIndex, targetDay, hrs, mins, secs);
+            let dur = parseInt(ad.duration_second) || 10;
+            let adEnd = new Date(adStart.getTime() + (dur * 1000));
+
+            scheduledAds.push({ adRecord: ad, start: adStart, end: adEnd, duration: dur });
+        });
 
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
@@ -502,8 +515,8 @@ async function initLiveBillboardPlayer() {
                 applyDefaultBanner();
                 if (nextUpcomingAd) {
                     let diffSecs = Math.floor((nextUpcomingAd.start - currentTime) / 1000);
-                    if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs}s`;
-                    setTimeout(checkAndPlaySchedule, diffSecs > 5 ? 5000 : (diffSecs * 1000));
+                    if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs > 0 ? diffSecs : 0}s`;
+                    setTimeout(checkAndPlaySchedule, diffSecs > 5 ? 5000 : (diffSecs > 0 ? diffSecs * 1000 : 1000));
                 } else {
                     if (timerEl) timerEl.innerText = 'Queue Finished for Today';
                     setTimeout(initLiveBillboardPlayer, 30000);
@@ -512,6 +525,7 @@ async function initLiveBillboardPlayer() {
         }
         checkAndPlaySchedule();
     } catch (err) {
+        console.error(err);
         applyDefaultBanner();
         setTimeout(initLiveBillboardPlayer, 15000);
     }
