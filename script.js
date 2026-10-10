@@ -141,7 +141,7 @@ window.addEventListener('DOMContentLoaded', () => {
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
             const targetUrl = document.getElementById('targetUrl').value;
-            const adTitle = document.getElementById('adTitle'].value;
+            const adTitle = document.getElementById('adTitle').value;
             const fileInput = document.getElementById('adFile');
             const selectedDateVal = document.getElementById('bookingDateInput').value;
 
@@ -256,7 +256,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
 // --- ADMIN PREVIEW WITH AUTOMATIC JUMP BACK ---
 function playAdminPreviewOnBillboard(ad) {
     const billboardBox = document.getElementById('billboardBox');
@@ -321,13 +320,12 @@ async function loadMyActiveCampaign() {
 
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
-        // Real-Time Today's Date Filter
         let now = new Date();
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
         let todaysRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
-        let displayRuns = todaysRuns.length > 0 ? todaysRuns : runsList.slice(0, 7); // Fallback to first batch if today has passed
+        let displayRuns = todaysRuns.length > 0 ? todaysRuns : runsList.slice(0, 7);
 
         let firstDayDateStr = runsList[0].slot_time.split(' at ')[0];
         let singleDayCount = runsList.filter(run => run.slot_time.includes(firstDayDateStr)).length;
