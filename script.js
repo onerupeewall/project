@@ -4,6 +4,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM) = 50,400 Seconds
+const NUM_DEPARTS = 7;             // Exactly 7 departs of 2 hours each (7,200 seconds per depart)
+const DEPART_DURATION = 7200;
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
@@ -69,8 +71,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
         let campaignFieldsHTML = `
             <div class="form-group" style="margin-bottom: 15px;">
-                <label>Times per Day (Max 10):</label>
-                <input type="number" id="frequencyInput" value="1" min="1" max="10" required>
+                <label>Times per Day (Max 7 Departs):</label>
+                <input type="number" id="frequencyInput" value="1" min="1" max="7" required>
             </div>
             <div class="form-group" style="margin-bottom: 15px;">
                 <label>Number of Days (Max 30):</label>
@@ -139,7 +141,7 @@ window.addEventListener('DOMContentLoaded', () => {
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
             const targetUrl = document.getElementById('targetUrl').value;
-            const adTitle = document.getElementById('adTitle').value;
+            const adTitle = document.getElementById('adTitle'].value;
             const fileInput = document.getElementById('adFile');
             const selectedDateVal = document.getElementById('bookingDateInput').value;
 
@@ -172,7 +174,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
 
                 let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
-                let blockInterval = Math.floor(TOTAL_DAILY_SECONDS / frequency);
 
                 for (let d = 0; d < campaignDays; d++) {
                     let currentDayDate = new Date(startDate);
@@ -180,21 +181,48 @@ window.addEventListener('DOMContentLoaded', () => {
                     let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
 
                     let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
-                    let dayBookedSecs = dayExisting.reduce((sum, rec) => sum + (parseInt(rec.duration_second) || 0), 0);
 
                     for (let f = 0; f < frequency; f++) {
-                        let idealOffset = (f * blockInterval) + (dayBookedSecs % blockInterval);
-                        let finalOffset = idealOffset;
-                        if (finalOffset >= TOTAL_DAILY_SECONDS) finalOffset = TOTAL_DAILY_SECONDS - duration;
+                        let departStartSec = f * DEPART_DURATION;
+                        let departEndSec = departStartSec + DEPART_DURATION;
+
+                        let slotsInThisDepart = dayExisting.filter(rec => {
+                            let timePart = rec.slot_time.split(' at ')[1];
+                            if (!timePart) return false;
+                            let [timeStr, modifier] = timePart.split(' ');
+                            let [hrs, mins, secs] = timeStr.split(':').map(Number);
+                            if (modifier === 'PM' && hrs < 12) hrs += 12;
+                            if (modifier === 'AM' && hrs === 12) hrs = 0;
+                            let totalSecsFrom8AM = ((hrs - 8) * 3600) + (mins * 60) + secs;
+                            return totalSecsFrom8AM >= departStartSec && totalSecsFrom8AM < departEndSec;
+                        });
+
+                        let targetOffset = departStartSec;
+                        if (slotsInThisDepart.length > 0) {
+                            let lastSlot = slotsInThisDepart[slotsInThisDepart.length - 1];
+                            let timePart = lastSlot.slot_time.split(' at ')[1];
+                            let [timeStr, modifier] = timePart.split(' ');
+                            let [hrs, mins, secs] = timeStr.split(':').map(Number);
+                            if (modifier === 'PM' && hrs < 12) hrs += 12;
+                            if (modifier === 'AM' && hrs === 12) hrs = 0;
+                            let lastStartSec = ((hrs - 8) * 3600) + (mins * 60) + secs;
+                            let lastDur = parseInt(lastSlot.duration_second) || 10;
+                            targetOffset = lastStartSec + lastDur;
+                        }
+
+                        if (targetOffset >= departEndSec) {
+                            targetOffset = departEndSec - duration;
+                            if (targetOffset < departStartSec) targetOffset = departStartSec;
+                        }
 
                         let slotTimeObj = new Date(currentDayDate);
                         slotTimeObj.setHours(8, 0, 0, 0);
-                        slotTimeObj.setSeconds(finalOffset);
+                        slotTimeObj.setSeconds(targetOffset);
 
                         let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
                         let formattedSlotStr = `${targetDateStr} at ${timeString}`;
 
-                        let { error: insertError } = await supabaseClient.from('buysecond_records').insert([{
+                        let newRecordObj = {
                             brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
                             target_url: targetUrl,
                             file_url: publicFileUrl,
@@ -202,9 +230,12 @@ window.addEventListener('DOMContentLoaded', () => {
                             slot_time: formattedSlotStr,
                             status: 'pending',
                             unified_token: null
-                        }]);
+                        };
+
+                        let { error: insertError } = await supabaseClient.from('buysecond_records').insert([newRecordObj]);
                         if (insertError) throw insertError;
-                        dayBookedSecs += duration;
+
+                        dayExisting.push(newRecordObj);
                     }
                 }
 
@@ -240,7 +271,7 @@ function playAdminPreviewOnBillboard(ad) {
     });
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN (Clean 1-Day Schedule View) ---
+// --- LOAD USER'S ACTIVE CAMPAIGN (Real-Time Today's Schedule View) ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
@@ -290,23 +321,36 @@ async function loadMyActiveCampaign() {
 
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
+        // Real-Time Today's Date Filter
+        let now = new Date();
+        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
+
+        let todaysRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
+        let displayRuns = todaysRuns.length > 0 ? todaysRuns : runsList.slice(0, 7); // Fallback to first batch if today has passed
+
         let firstDayDateStr = runsList[0].slot_time.split(' at ')[0];
-        let singleDayRuns = runsList.filter(run => run.slot_time.includes(firstDayDateStr));
+        let singleDayCount = runsList.filter(run => run.slot_time.includes(firstDayDateStr)).length;
+        let totalDays = Math.round(runsList.length / singleDayCount);
 
         let html = `
             <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 260px; overflow-y: auto;">
                 <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                 <p><b>Token Number:</b> ${tokenDisplay}</p>
                 <p><b>Brand Name:</b> ${cleanBrand}</p>
-                <p><b>Campaign Duration:</b> ${runsList.length / singleDayRuns.length} Days Total</p>
+                <p><b>Campaign Duration:</b> ${totalDays} Days Total (${firstDayDateStr} onwards)</p>
                 <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
-                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Daily Screen Timings (Repeats Every Day):</p>
+                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Live Screen Timings (${todayDateStr}):</p>
         `;
 
-        singleDayRuns.forEach((run, idx) => {
-            let timeOnly = run.slot_time.split(' at ')[1];
-            html += `<p style="font-size: 13px; color: #9ca3af;">↳ Run ${idx + 1}: ${timeOnly}</p>`;
-        });
+        if (todaysRuns.length === 0) {
+            html += `<p style="font-size: 12px; color: #f59e0b;"> Aaj ka schedule poora ho chuka hai ya agle din ka active hoga.</p>`;
+        } else {
+            displayRuns.forEach((run, idx) => {
+                let timeOnly = run.slot_time.split(' at ')[1];
+                html += `<p style="font-size: 13px; color: #9ca3af;">↳ Run ${idx + 1}: ${timeOnly}</p>`;
+            });
+        }
 
         html += `</div>`;
         searchResultArea.innerHTML = html;
@@ -334,6 +378,7 @@ async function updateAvailableSecondsCounter() {
     let avail = TOTAL_DAILY_SECONDS - booked;
     remainingEl.innerText = avail < 0 ? 0 : avail;
 }
+
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
 // --- INSTANT MEDIA RENDERING (NO LAG) ---
@@ -453,7 +498,7 @@ async function initLiveBillboardPlayer() {
             let timerEl = getCountdownElement();
             if (currentPlayingAd) {
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
-                    setTimeout(checkAndPaySchedule, 500);
+                    setTimeout(checkAndPlaySchedule, 500);
                 });
             } else {
                 applyDefaultBanner();
