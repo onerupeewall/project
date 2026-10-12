@@ -2,518 +2,149 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buy Second - Admin Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background-color: #000;
-            color: #fff;
-            padding: 15px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #1f293d;
-            padding-bottom: 15px;
-        }
-
-        .logo {
-            font-size: 20px;
-            font-weight: bold;
-            color: #38bdf8;
-        }
-
-        .back-btn {
-            background: #2563eb;
-            color: white;
-            padding: 8px 14px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-        .tabs-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            overflow-x: auto;
-            white-space: nowrap;
-            padding-bottom: 5px;
-        }
-
-        .tab-btn {
-            background: #121824;
-            color: #9ca3af;
-            border: 1px solid #1f293d;
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 13px;
-            flex-shrink: 0;
-        }
-
-            .tab-btn.active {
-                background: #2563eb;
-                color: white;
-                border-color: #2563eb;
-            }
-
-        .table-responsive {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            border: 1px solid #1f293d;
-        }
-
-        .campaign-card {
-            background: #0b0f17;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            overflow: hidden;
-            min-width: 850px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 12px 14px;
-            text-align: left;
-            border-bottom: 1px solid #1f293d;
-            font-size: 13px;
-            white-space: nowrap;
-        }
-
-        th {
-            background: #121824;
-            color: #f59e0b;
-            font-weight: bold;
-        }
-
-        .runs-scroll-box {
-            max-height: 220px;
-            overflow-y: auto;
-            background: #070a10;
-        }
-
-        .sub-row td {
-            background: #0d121d;
-            color: #9ca3af;
-            font-size: 13px;
-            border-bottom: 1px solid #161e2e;
-        }
-
-        .day-divider-line {
-            border: 0;
-            border-top: 1px solid #38bdf8;
-            margin: 8px 15px;
-        }
-
-        .status-approved {
-            color: #10B981;
-            font-weight: bold;
-        }
-
-        .status-pending {
-            color: #f59e0b;
-            font-weight: bold;
-        }
-
-        .status-rejected {
-            color: #ef4444;
-            font-weight: bold;
-        }
-
-        .btn-action {
-            padding: 6px 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 11px;
-            margin-right: 4px;
-        }
-
-        .btn-approve {
-            background: #10B981;
-            color: white;
-        }
-
-        .btn-reject {
-            background: #f59e0b;
-            color: white;
-        }
-
-        .btn-delete {
-            background: #ef4444;
-            color: white;
-        }
-
-        .btn-preview {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 11px;
-        }
-
-        .media-link {
-            color: #38bdf8;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Buy Second - buysecond.in</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <div class="header">
-        <div class="logo">🛠️ Buy Second Admin Dashboard</div>
-        <a href="index.html" class="back-btn">← Go to Website</a>
+    <header>
+        <div class="logo">Buy Second</div>
+        <a href="#" class="terms-link" id="openTermsBtn">Terms & Conditions</a>
+    </header>
+
+    <div class="main-container">
+
+        <div class="screen-time-banner">
+            Screen Time 24 Hours (Non-Stop Global Cycle)
+        </div>
+
+        <div class="warning-banner">
+            <span>Warning:</span> If your uploaded video or image violates our content guidelines (such as inappropriate or unsafe content), your advertisement will be rejected and no money will be refunded.
+        </div>
+
+        <!-- Billboard Box -->
+        <div class="billboard" id="billboardBox"></div>
+
+        <div class="screen-footer">
+            <span id="timer-text">Next Video in: 0 Sec</span>
+            <button class="check-record-btn" id="checkRecordBtn">
+                My Active Campaign
+            </button>
+        </div>
+
+        <div class="slot-action-container">
+            <button class="slot-btn" id="openSlotModal">
+                Buy Your Slot →
+            </button>
+        </div>
+
+        <!-- 📊 Live Visitor Counter -->
+        <div class="global-users-container">
+            <div class="global-header">
+                👥 TOTAL VISITORS: <span id="totalGlobalCount">2</span>
+            </div>
+            <div class="country-list" id="countryList">
+                🔴 Live Tracking Enabled
+            </div>
+        </div>
+
+        <!-- Token Display Section -->
+        <div class="status-token-section" id="userTokenSection" style="display: none;">
+            <div id="userTokenDisplay" class="token-display-box">
+                Token Number <span class="token-highlight" id="displayTokenVal">#1</span><br>
+                Date <span class="date-highlight" id="displayDateVal">02 October</span><br>
+                Ad Time <span class="time-highlight" id="displayTimeVal">12:30:10</span>
+            </div>
+            <div id="tokenReminderText" style="color: #ef4444; font-size: 13px; font-weight: 700; margin-top: 6px; text-transform: uppercase; display: none;">
+                Please remember your token number
+            </div>
+        </div>
+
+        <!-- Total Available Seconds Seat Display -->
+        <div class="total-seats-main-display">
+            Total Available Second Seat: <span id="remainingSecondsCount">86400</span>
+        </div>
+
     </div>
 
-    <div class="tabs-container">
-        <button class="tab-btn active" id="pendingTabBtn" onclick="switchTab('pending')">Pending Requests ⏳</button>
-        <button class="tab-btn" id="campaignsTabBtn" onclick="switchTab('campaigns')">Campaign Details ✅</button>
-        <button class="tab-btn" id="livePlayTabBtn" onclick="switchTab('livePlay')">Live Screen Play 📺</button>
+    <!-- Buy Slot Modal Form -->
+    <div id="slotModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeSlotModal">&times;</span>
+            <h2 class="modal-main-title">Book Your Advertising Slot</h2>
+
+            <form id="slotForm" class="modal-form">
+                <div class="form-group">
+                    <label>1. Select Booking Date (Tomorrow or future date):</label>
+                    <input type="date" id="bookingDateInput" required style="background-color: #121824; border: 1px solid #1f293d; padding: 9px 12px; border-radius: 6px; color: #ffffff; font-size: 14px; outline: none; width: 100%;">
+                </div>
+
+                <div class="form-group">
+                    <label>2. Upload Advertisement File (Video / Image File - Max 30s):</label>
+                    <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required>
+                    <small>Only .mp4, .jpg, or .png files are accepted. (Maximum 30 seconds)</small>
+                    <div id="fileErrorMsg" style="color: #ef4444; font-size: 12px; font-weight: 600; display: none; margin-top: 4px;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>3. Destination Link (Target URL):</label>
+                    <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>4. Advertisement Duration & Price (₹10/sec):</label>
+                    <input type="number" id="durationInput" min="1" max="30" value="10" placeholder="Enter duration in seconds (Max 30)..." required>
+                    <div class="price-display">Total Amount: <span id="totalAmount">₹100</span></div>
+                </div>
+
+                <div class="form-group">
+                    <label>5. Ad Title / Brand Name:</label>
+                    <input type="text" id="adTitle" placeholder="e.g. Enter your company or brand name" required>
+                </div>
+
+                <div class="form-group checkbox-group-box">
+                    <input type="checkbox" id="warningCheckbox" required>
+                    <label for="warningCheckbox">
+                        I understand that if my video is rejected due to policy violations, my payment will be forfeited with no refunds.
+                    </label>
+                </div>
+
+                <button type="submit" class="slot-btn" style="margin-top: 5px;">
+                    Proceed to Secure Payment & Submit
+                </button>
+            </form>
+        </div>
     </div>
 
-    <div id="tableContainer">
-        <!-- Dynamic Loaded Campaigns -->
+    <!-- My Active Campaign Modal -->
+    <div id="checkRecordModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeCheckRecordModal">&times;</span>
+            <h2 class="modal-main-title">My Active Campaign Status</h2>
+            <div id="searchResultArea" style="margin-top: 15px; color: #d1d5db; font-size: 14px;">
+                Loading campaign status...
+            </div>
+        </div>
     </div>
 
-    <script>
-                // @ts-nocheck
-                const ADMIN_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-                const ADMIN_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+    <!-- Terms & Conditions Modal -->
+    <div id="termsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeTermsModal">&times;</span>
+            <h2 class="modal-main-title">Terms & Conditions for Advertisers</h2>
+            <div style="font-size: 13px; line-height: 1.6; display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
+                <p><b>1. Content Guidelines & Standards:</b> Every video or image uploaded to buysecond.in must comply with safety and quality standards (No nudity, no violence).</p>
+                <p><b>2. Manual Owner Review:</b> Every uploaded media file will undergo strict manual review and approval directly by the platform owner before going live on the billboard.</p>
+                <p><b>3. Final Owner Approval:</b> Final publication rights and scheduling are entirely managed and approved by the platform owner.</p>
+                <p><b>4. Strict Zero Refund Policy:</b> If any content is rejected due to violations, the ad will be canceled and no money will be refunded.</p>
+                <p><b>5. Advertiser Responsibility:</b> The advertiser is solely responsible for the target URL and brand name provided; the platform holds no liability.</p>
+            </div>
+        </div>
+    </div>
 
-                const adminClient = window.supabase ? window.supabase.createClient(ADMIN_URL, ADMIN_KEY) : null;
-                let adminCurrentTab = 'pending';
-
-                function formatUtcToLocalAdmin(utcString) {
-                    if (!utcString || !utcString.includes('T')) return utcString;
-                    try {
-                        let dateObj = new Date(utcString);
-                        return dateObj.toLocaleString('en-US', {
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: true
-                        });
-                    } catch (e) {
-                        return utcString;
-                    }
-                }
-
-                function switchTab(tabName) {
-                    adminCurrentTab = tabName;
-                    document.getElementById('pendingTabBtn').className = tabName === 'pending' ? 'tab-btn active' : 'tab-btn';
-                    document.getElementById('campaignsTabBtn').className = tabName === 'campaigns' ? 'tab-btn active' : 'tab-btn';
-                    document.getElementById('livePlayTabBtn').className = tabName === 'livePlay' ? 'tab-btn active' : 'tab-btn';
-                    loadAdminRecords();
-                }
-
-                async function loadAdminRecords() {
-                    const container = document.getElementById('tableContainer');
-                    if (!container) return;
-                    container.innerHTML = '<p style="color: #9ca3af; text-align: center;">Loading campaigns...</p>';
-
-                    if (adminCurrentTab === 'livePlay') {
-                        loadLiveScreenPlayView(container);
-                        return;
-                    }
-
-                    let statusQuery = adminCurrentTab === 'pending' ? 'pending' : 'approved';
-                    let { data, error } = await adminClient
-                        .from('buysecond_records')
-                        .select('*')
-                        .eq('status', statusQuery)
-                        .order('id', { ascending: true });
-
-                    if (error) {
-                        container.innerHTML = `<p style="color: #ef4444; text-align: center;">Error: ${error.message}</p>`;
-                        return;
-                    }
-
-                    if (!data || data.length === 0) {
-                        container.innerHTML = `<p style="color: #9ca3af; text-align: center;">No ${adminCurrentTab} campaigns found.</p>`;
-                        return;
-                    }
-
-                    let campaignGroups = {};
-                    data.forEach(record => {
-                        let cleanBrand = (record.brand_name || '').replace(/\s*\(Run \d+\/\d+\)/g, '').trim();
-                        let key = cleanBrand + '_' + (record.file_url || record.video_url || '');
-                        if (!campaignGroups[key]) campaignGroups[key] = [];
-                        campaignGroups[key].push(record);
-                    });
-
-                    let html = '';
-                    let groupIndex = 1;
-
-                    for (let key in campaignGroups) {
-                        let slots = campaignGroups[key];
-                        let masterRecord = slots[0];
-                        let displayToken = masterRecord.unified_token ? `#${masterRecord.unified_token}` : `#${groupIndex}`;
-                        let statusClass = masterRecord.status === 'approved' ? 'status-approved' : 'status-pending';
-                        let statusText = masterRecord.status === 'approved' ? 'APPROVED' : 'PENDING';
-
-                        let firstDateStr = slots[0].slot_time.split('T')[0];
-                        let lastDateStr = slots[slots.length - 1].slot_time.split('T')[0];
-                        let freqCount = slots.filter(s => s.slot_time.startsWith(firstDateStr)).length;
-                        let scheduleInfo = (firstDateStr === lastDateStr) ? `${firstDateStr} (${freqCount}x/day)` : `${firstDateStr} to ${lastDateStr} (${freqCount}x/day)`;
-
-                        let thirdColumnHeader = adminCurrentTab === 'pending' ? 'Schedule (Date Range & Freq)' : 'Total Runs';
-                        let thirdColumnValue = adminCurrentTab === 'pending' ? scheduleInfo : `${slots.length} Runs Total`;
-
-                        let actionButtons = adminCurrentTab === 'pending' ? `
-                            <button class="btn-action btn-approve" onclick="approveCampaignGroup(${JSON.stringify(slots.map(s => s.id))})">Approve</button>
-                            <button class="btn-action btn-reject" onclick="updateGroupStatus(${JSON.stringify(slots.map(s => s.id))}, 'rejected')">Reject</button>
-                            <button class="btn-action btn-delete" onclick="deleteCampaignGroup(${JSON.stringify(slots.map(s => s.id))}, '${masterRecord.file_url || ''}')">Delete</button>
-                        ` : `
-                            <button class="btn-action btn-reject" onclick="updateGroupStatus(${JSON.stringify(slots.map(s => s.id))}, 'rejected')">Reject</button>
-                            <button class="btn-action btn-delete" onclick="deleteCampaignGroup(${JSON.stringify(slots.map(s => s.id))}, '${masterRecord.file_url || ''}')">Delete</button>
-                        `;
-
-                        let recordJson = encodeURIComponent(JSON.stringify(masterRecord));
-
-                        html += `
-                            <div class="table-responsive">
-                                <div class="campaign-card">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Token (#ID)</th>
-                                                <th>Brand / Title</th>
-                                                <th>${thirdColumnHeader}</th>
-                                                <th>Duration</th>
-                                                <th>Target URL</th>
-                                                <th>Media File</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td><b>${displayToken}</b></td>
-                                                <td>${masterRecord.brand_name.replace(/\s*\(Run \d+\/\d+\)/g, '')}</td>
-                                                <td>${thirdColumnValue}</td>
-                                                <td>${masterRecord.duration_second}s</td>
-                                                <td><a href="${masterRecord.target_url}" target="_blank" class="media-link">Visit Link</a></td>
-                                                <td><button class="btn-preview" onclick="previewOnBillboard('${recordJson}')">View Media 📺</button></td>
-                                                <td><span class="${statusClass}">${statusText}</span></td>
-                                                <td>${actionButtons}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                        `;
-
-                        if (adminCurrentTab === 'campaigns') {
-                            html += `
-                                    <div class="runs-scroll-box">
-                                        <table>
-                                            <tbody>
-                            `;
-
-                            let lastDateRow = '';
-                            slots.forEach((slot, idx) => {
-                                let datePart = slot.slot_time.split('T')[0];
-                                if (datePart !== lastDateRow) {
-                                    if (lastDateRow !== '') {
-                                        html += `<tr><td colspan="8" style="padding:0;"><hr class="day-divider-line"></td></tr>`;
-                                    }
-                                    html += `
-                                        <tr class="sub-row">
-                                            <td colspan="8" style="color: #38bdf8; font-weight: bold; background: #090d16;">📅 Date: ${datePart}</td>
-                                        </tr>
-                                    `;
-                                    lastDateRow = datePart;
-                                }
-                                let localTimeFormatted = formatUtcToLocalAdmin(slot.slot_time);
-                                html += `
-                                    <tr class="sub-row">
-                                        <td colspan="2" style="padding-left: 25px; color: #10B981;">✅ Run ${idx + 1} of ${slots.length}</td>
-                                        <td colspan="6"><b>Timing:</b> ${localTimeFormatted}</td>
-                                    </tr>
-                                `;
-                            });
-
-                            html += `
-                                            </tbody>
-                                        </table>
-                                    </div>
-                            `;
-                        }
-
-                        html += `
-                                </div>
-                            </div>
-                        `;
-                        groupIndex++;
-                    }
-
-                    container.innerHTML = html;
-                }
-async function loadLiveScreenPlayView(container) {
-                    let { data: approvedRecords, error } = await adminClient
-                        .from('buysecond_records')
-                        .select('*')
-                        .eq('status', 'approved')
-                        .order('id', { ascending: true });
-
-                    if (error || !approvedRecords || approvedRecords.length === 0) {
-                        container.innerHTML = `<p style="color: #9ca3af; text-align: center;">No active live screen play records found.</p>`;
-                        return;
-                    }
-
-                    let now = new Date();
-                    let todayDateStr = now.toISOString().split('T')[0];
-
-                    let todayAds = approvedRecords.filter(rec => rec.slot_time && rec.slot_time.startsWith(todayDateStr));
-                    if (todayAds.length === 0) {
-                        container.innerHTML = `<p style="color: #f59e0b; text-align: center;">No approved ads scheduled for today (${todayDateStr}).</p>`;
-                        return;
-                    }
-
-                    let timelineItems = [];
-                    todayAds.forEach(ad => {
-                        let adStart = new Date(ad.slot_time);
-                        let dur = parseInt(ad.duration_second) || 10;
-                        let adEnd = new Date(adStart.getTime() + (dur * 1000));
-                        timelineItems.push({ record: ad, start: adStart, end: adEnd, duration: dur });
-                    });
-
-                    let currentTime = new Date();
-                    let html = `
-                        <div class="table-responsive">
-                            <div class="campaign-card">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Token</th>
-                                            <th>Brand Name</th>
-                                            <th>Scheduled Time</th>
-                                            <th>Duration</th>
-                                            <th>Live Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                    `;
-
-                    let activeFound = false;
-                    timelineItems.forEach((item) => {
-                        let cleanBrand = item.record.brand_name.replace(/\s*\(Run \d+\/\d+\)/g, '');
-                        let token = item.record.unified_token ? `#${item.record.unified_token}` : `#${item.record.id}`;
-                        let timeOnly = formatUtcToLocalAdmin(item.record.slot_time);
-
-                        if (currentTime > item.end) return;
-
-                        let statusBadge = '';
-                        if (!activeFound && currentTime >= item.start && currentTime <= item.end) {
-                            statusBadge = `<span style="background: #10B981; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px;">📺 PLAYING NOW</span>`;
-                            activeFound = true;
-                        } else if (!activeFound) {
-                            statusBadge = `<span style="background: #3b82f6; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px;">NEXT UP ⏳</span>`;
-                            activeFound = true;
-                        } else {
-                            statusBadge = `<span style="color: #9ca3af; font-size: 12px;">Upcoming</span>`;
-                        }
-
-                        html += `
-                            <tr>
-                                <td><b>${token}</b></td>
-                                <td>${cleanBrand}</td>
-                                <td>${timeOnly}</td>
-                                <td>${item.duration}s</td>
-                                <td>${statusBadge}</td>
-                            </tr>
-                        `;
-                    });
-
-                    html += `
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        `;
-                    container.innerHTML = html;
-                }
-
-                function previewOnBillboard(encodedJson) {
-                    let record = JSON.parse(decodeURIComponent(encodedJson));
-                    sessionStorage.setItem('admin_preview_ad', JSON.stringify(record));
-                    window.location.href = 'index.html';
-                }
-
-                async function approveCampaignGroup(idsArray) {
-                    try {
-                        let { data: approvedRecords } = await adminClient.from('buysecond_records').select('unified_token').eq('status', 'approved');
-                        let maxToken = 0;
-                        if (approvedRecords && approvedRecords.length > 0) {
-                            approvedRecords.forEach(r => {
-                                let t = parseInt(r.unified_token) || 0;
-                                if (t > maxToken) maxToken = t;
-                            });
-                        }
-                        let nextToken = maxToken + 1;
-
-                        let { error } = await adminClient.from('buysecond_records').update({ status: 'approved', unified_token: nextToken }).in('id', idsArray);
-                        if (error) throw error;
-
-                        alert(`Campaign successfully approved with Token #${nextToken}!`);
-                        loadAdminRecords();
-                    } catch (err) {
-                        alert('Approval failed: ' + err.message);
-                    }
-                }
-
-                async function updateGroupStatus(idsArray, newStatus) {
-                    let { error } = await adminClient.from('buysecond_records').update({ status: newStatus }).in('id', idsArray);
-                    if (error) alert('Error: ' + error.message);
-                    else loadAdminRecords();
-                }
-
-                async function deleteCampaignGroup(idsArray, fileUrl) {
-                    if (!confirm('Are you sure you want to delete this campaign?')) return;
-                    try {
-                        if (fileUrl && fileUrl.includes('/storage/v1/object/public/ad-videos/')) {
-                            let filePath = fileUrl.split('/storage/v1/object/public/ad-videos/')[1];
-                            if (filePath) await adminClient.storage.from('ad-videos').remove([decodeURIComponent(filePath)]);
-                        }
-                        let { error } = await adminClient.from('buysecond_records').delete().in('id', idsArray);
-                        if (error) throw error;
-                        loadAdminRecords();
-                    } catch (err) {
-                        alert('Delete failed: ' + err.message);
-                    }
-                }
-
-                window.addEventListener('DOMContentLoaded', loadAdminRecords);
-                setInterval(() => {
-                    if (adminCurrentTab === 'livePlay') loadAdminRecords();
-                }, 5000);
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
