@@ -3,8 +3,8 @@ const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const TOTAL_DAILY_SECONDS = 50400; // 14 Hours (8 AM to 10 PM) = 50,400 Seconds
-const NUM_DEPARTS = 7;             // Exactly 7 departs of 2 hours each (7,200 seconds per depart)
+const TOTAL_DAILY_SECONDS = 86400; // 24 Hours = 86,400 Seconds
+const NUM_DEPARTS = 12;            // Exactly 12 departs of 2 hours each (7,200 seconds per depart)
 const DEPART_DURATION = 7200;
 
 let isPlayingPastRecord = false;
@@ -71,8 +71,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
         let campaignFieldsHTML = `
             <div class="form-group" style="margin-bottom: 15px;">
-                <label>Times per Day (Max 7 Departs):</label>
-                <input type="number" id="frequencyInput" value="1" min="1" max="7" required>
+                <label>Times per Day (Max 12 Departs):</label>
+                <input type="number" id="frequencyInput" value="1" min="1" max="12" required>
             </div>
             <div class="form-group" style="margin-bottom: 15px;">
                 <label>Number of Days (Max 30):</label>
@@ -101,7 +101,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (frequencyInput) {
         frequencyInput.addEventListener('input', function () {
             let val = parseInt(this.value) || 1;
-            if (val > 7) {
+            if (val > 12) {
                 this.style.borderColor = '#ef4444';
                 this.style.color = '#ef4444';
             } else {
@@ -154,8 +154,8 @@ window.addEventListener('DOMContentLoaded', () => {
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
 
-            if (frequency > 7) {
-                alert('⚠️ Frequency cannot be more than 7 per day!');
+            if (frequency > 12) {
+                alert('⚠️ Frequency cannot be more than 12 per day!');
                 if (frequencyInput) {
                     frequencyInput.style.borderColor = '#ef4444';
                     frequencyInput.style.color = '#ef4444';
@@ -217,8 +217,8 @@ window.addEventListener('DOMContentLoaded', () => {
                             let [hrs, mins, secs] = timeStr.split(':').map(Number);
                             if (modifier === 'PM' && hrs < 12) hrs += 12;
                             if (modifier === 'AM' && hrs === 12) hrs = 0;
-                            let totalSecsFrom8AM = ((hrs - 8) * 3600) + (mins * 60) + secs;
-                            return totalSecsFrom8AM >= departStartSec && totalSecsFrom8AM < departEndSec;
+                            let totalSecsFromMidnight = (hrs * 3600) + (mins * 60) + secs;
+                            return totalSecsFromMidnight >= departStartSec && totalSecsFromMidnight < departEndSec;
                         });
 
                         let targetOffset = departStartSec;
@@ -229,7 +229,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             let [hrs, mins, secs] = timeStr.split(':').map(Number);
                             if (modifier === 'PM' && hrs < 12) hrs += 12;
                             if (modifier === 'AM' && hrs === 12) hrs = 0;
-                            let lastStartSec = ((hrs - 8) * 3600) + (mins * 60) + secs;
+                            let lastStartSec = (hrs * 3600) + (mins * 60) + secs;
                             let lastDur = parseInt(lastSlot.duration_second) || 10;
                             targetOffset = lastStartSec + lastDur;
                         }
@@ -240,18 +240,18 @@ window.addEventListener('DOMContentLoaded', () => {
                         }
 
                         let slotTimeObj = new Date(currentDayDate);
-                        slotTimeObj.setHours(8, 0, 0, 0);
+                        slotTimeObj.setHours(0, 0, 0, 0);
                         slotTimeObj.setSeconds(targetOffset);
 
-                        let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
-                        let formattedSlotStr = `${targetDateStr} at ${timeString}`;
+                        // Convert to UTC for universal database storage
+                        let utcString = slotTimeObj.toISOString();
 
                         let newRecordObj = {
                             brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
                             target_url: targetUrl,
                             file_url: publicFileUrl,
                             duration_second: duration,
-                            slot_time: formattedSlotStr,
+                            slot_time: utcString, // Storing in UTC format
                             status: 'pending',
                             unified_token: null
                         };
@@ -261,7 +261,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // BULK INSERT FOR LIGHTNING FAST SUBMISSION (2-4 SECONDS)
                 if (recordsToInsert.length > 0) {
                     let { error: insertError } = await supabaseClient.from('buysecond_records').insert(recordsToInsert);
                     if (insertError) throw insertError;
@@ -284,7 +283,26 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// --- ADMIN PREVIEW WITH AUTOMATIC JUMP BACK ---
+// Helper function to convert UTC database timestamp to User's Local Timezone string
+function formatUtcToLocal(utcString) {
+    if (!utcString || !utcString.includes('T')) return utcString;
+    try {
+        let dateObj = new Date(utcString);
+        return dateObj.toLocaleString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+    } catch (e) {
+        return utcString;
+    }
+}
+
+// --- ADMIN PREVIEW ---
 function playAdminPreviewOnBillboard(ad) {
     const billboardBox = document.getElementById('billboardBox');
     let timerEl = getCountdownElement();
@@ -294,18 +312,18 @@ function playAdminPreviewOnBillboard(ad) {
 
     renderAdOnBillboard(ad, () => {
         sessionStorage.removeItem('admin_preview_ad');
-        window.location.href = 'karan-rai-secret-website-admin-panel.html';
+        window.location.href = 'admin.html';
     });
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN ---
+// --- LOAD USER'S ACTIVE CAMPAIGN WITH LOCAL TIMEZONE ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
 
     let myCampaignId = localStorage.getItem('my_latest_campaign_id');
     if (!myCampaignId) {
-        searchResultArea.innerHTML = '<span style="color: #9ca3af;">Aapne is device se abhi tak koi campaign book nahi kiya hai.</span>';
+        searchResultArea.innerHTML = '<span style="color: #9ca3af;">You have not booked any campaign from this device yet.</span>';
         return;
     }
 
@@ -330,7 +348,7 @@ async function loadMyActiveCampaign() {
             searchResultArea.innerHTML = `
                 <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
                     <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
-                    <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Owner dwara approval milne ke baad aapke active campaign ki saari details, Token Number aur exact screen timings yahin show hongi.</p>
+                    <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your campaign details, token number, and exact local timings will be shown here.</p>
                 </div>
             `;
             return;
@@ -340,7 +358,7 @@ async function loadMyActiveCampaign() {
             searchResultArea.innerHTML = `
                 <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #ef4444; margin-top: 10px; text-align: center;">
                     <p style="color: #ef4444; font-weight: bold; font-size: 15px; margin-bottom: 6px;">❌ Campaign Rejected</p>
-                    <p style="color: #9ca3af; font-size: 13px;">Yah campaign admin dwara reject kar diya gaya hai.</p>
+                    <p style="color: #9ca3af; font-size: 13px;">This campaign has been rejected by the admin.</p>
                 </div>
             `;
             return;
@@ -349,32 +367,34 @@ async function loadMyActiveCampaign() {
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
         let now = new Date();
-        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
+        let todayDateStr = now.toISOString().split('T')[0];
 
-        let todaysRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
-        let displayRuns = todaysRuns.length > 0 ? todaysRuns : runsList.slice(0, 7);
+        let todaysRuns = runsList.filter(run => run.slot_time && run.slot_time.startsWith(todayDateStr));
+        let displayRuns = todaysRuns.length > 0 ? todaysRuns : runsList.slice(0, 12);
 
-        let firstDayDateStr = runsList[0].slot_time.split(' at ')[0];
-        let singleDayCount = runsList.filter(run => run.slot_time.includes(firstDayDateStr)).length;
+        let firstDateOnly = runsList[0].slot_time.split('T')[0];
+        let singleDayCount = runsList.filter(run => run.slot_time.startsWith(firstDateOnly)).length;
         let totalDays = Math.round(runsList.length / singleDayCount);
+
+        let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
         let html = `
             <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 260px; overflow-y: auto;">
                 <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                 <p><b>Token Number:</b> ${tokenDisplay}</p>
                 <p><b>Brand Name:</b> ${cleanBrand}</p>
-                <p><b>Campaign Duration:</b> ${totalDays} Days Total (${firstDayDateStr} onwards)</p>
+                <p><b>Total Duration:</b> ${totalDays} Days (${firstDateOnly} onwards)</p>
+                <p style="font-size: 11px; color: #38bdf8;">Your Timezone: ${userTimezone}</p>
                 <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
-                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Live Screen Timings (${todayDateStr}):</p>
+                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Local Screen Timings:</p>
         `;
 
         if (todaysRuns.length === 0) {
-            html += `<p style="font-size: 12px; color: #f59e0b;"> Aaj ka schedule poora ho chuka hai ya agle din ka active hoga.</p>`;
+            html += `<p style="font-size: 12px; color: #f59e0b;"> Today's schedule is completed or active on upcoming days.</p>`;
         } else {
             displayRuns.forEach((run, idx) => {
-                let timeOnly = run.slot_time.split(' at ')[1];
-                html += `<p style="font-size: 13px; color: #9ca3af;">↳ Run ${idx + 1}: ${timeOnly}</p>`;
+                let localFormatted = formatUtcToLocal(run.slot_time);
+                html += `<p style="font-size: 13px; color: #9ca3af;">↳ Run ${idx + 1}: ${localFormatted}</p>`;
             });
         }
 
@@ -407,7 +427,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING (VIDEOS & IMAGES) ---
+// --- MEDIA RENDERING ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -460,7 +480,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- AUTONOMOUS SCHEDULER & AUTO SYNC AT MIDNIGHT ---
+// --- 24-HOUR AUTONOMOUS SCHEDULER ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -482,9 +502,8 @@ async function initLiveBillboardPlayer() {
         }
 
         let now = new Date();
-        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
-        let todaysApprovedAds = queueRecords.filter(ad => ad.slot_time && ad.slot_time.includes(todayDateStr));
+        let todayDateStr = now.toISOString().split('T')[0];
+        let todaysApprovedAds = queueRecords.filter(ad => ad.slot_time && ad.slot_time.startsWith(todayDateStr));
 
         if (todaysApprovedAds.length === 0) {
             applyDefaultBanner();
@@ -493,39 +512,18 @@ async function initLiveBillboardPlayer() {
         }
 
         let scheduledAds = [];
-        let baseParts = todayDateStr.split(' ');
-        let targetMonthName = baseParts[0];
-        let targetDay = parseInt(baseParts[1]);
-        let targetYear = parseInt(baseParts[2]);
-
-        const monthsMap = {
-            "January": 0, "February": 1, "March": 2, "April": 3, "May": 4, "June": 5,
-            "July": 6, "August": 7, "September": 8, "October": 9, "November": 10, "December": 11
-        };
-        let mIndex = monthsMap[targetMonthName] !== undefined ? monthsMap[targetMonthName] : now.getMonth();
-
         todaysApprovedAds.forEach(ad => {
-            let timePart = ad.slot_time.split(' at ')[1];
-            if (!timePart) return;
-            let [timeStr, modifier] = timePart.split(' ');
-            let [hrs, mins, secs] = timeStr.split(':').map(Number);
-            if (modifier === 'PM' && hrs < 12) hrs += 12;
-            if (modifier === 'AM' && hrs === 12) hrs = 0;
-
-            let adStart = new Date(targetYear, mIndex, targetDay, hrs, mins, secs);
+            let adStart = new Date(ad.slot_time);
             let dur = parseInt(ad.duration_second) || 10;
             let adEnd = new Date(adStart.getTime() + (dur * 1000));
-
             scheduledAds.push({ adRecord: ad, start: adStart, end: adEnd, duration: dur });
         });
 
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
             let currentTime = new Date();
-
-            // Midnight rollover check: if day changed, restart player to load next day's schedule automatically
-            let newNowStr = currentTime.toLocaleDateString('en-US', optionsCheck);
-            if (newNowStr !== todayDateStr) {
+            let newDateStr = currentTime.toISOString().split('T')[0];
+            if (newDateStr !== todayDateStr) {
                 initLiveBillboardPlayer();
                 return;
             }
