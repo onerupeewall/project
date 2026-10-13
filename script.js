@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TOTAL_DAILY_SECONDS = 86400; // 24 Hours = 86,400 Seconds
-const NUM_DEPARTS = 12;            // Exactly 12 departs of 2 hours each (7,200 seconds per depart)
+const NUM_DEPARTS = 12;            // Exactly 12 departs of 2 hours each
 const DEPART_DURATION = 7200;
 
 let isPlayingPastRecord = false;
@@ -243,15 +243,15 @@ window.addEventListener('DOMContentLoaded', () => {
                         slotTimeObj.setHours(0, 0, 0, 0);
                         slotTimeObj.setSeconds(targetOffset);
 
-                        // Convert to UTC for universal database storage
-                        let utcString = slotTimeObj.toISOString();
+                        let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                        let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
 
                         let newRecordObj = {
                             brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
                             target_url: targetUrl,
                             file_url: publicFileUrl,
                             duration_second: duration,
-                            slot_time: utcString, // Storing in UTC format
+                            slot_time: finalSlotTimeFormatted, // Storing strictly in IST format
                             status: 'pending',
                             unified_token: null
                         };
@@ -283,25 +283,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// Helper function to convert UTC database timestamp to User's Local Timezone string
-function formatUtcToLocal(utcString) {
-    if (!utcString || !utcString.includes('T')) return utcString;
-    try {
-        let dateObj = new Date(utcString);
-        return dateObj.toLocaleString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        });
-    } catch (e) {
-        return utcString;
-    }
-}
-
 // --- ADMIN PREVIEW ---
 function playAdminPreviewOnBillboard(ad) {
     const billboardBox = document.getElementById('billboardBox');
@@ -316,7 +297,27 @@ function playAdminPreviewOnBillboard(ad) {
     });
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN WITH LOCAL TIMEZONE ---
+// --- PARSE IST STRING TO DATE OBJECT ---
+function parseIstSlotTimeToDate(slotTimeStr) {
+    try {
+        let cleanStr = slotTimeStr.replace(' (IST)', '');
+        let parts = cleanStr.split(' at ');
+        if (parts.length < 2) return new Date(NaN);
+        let datePart = parts[0];
+        let timePart = parts[1];
+        let dateObj = new Date(datePart);
+        let [timeStr, modifier] = timePart.split(' ');
+        let [hrs, mins, secs] = timeStr.split(':').map(Number);
+        if (modifier === 'PM' && hrs < 12) hrs += 12;
+        if (modifier === 'AM' && hrs === 12) hrs = 0;
+        dateObj.setHours(hrs, mins, secs, 0);
+        return dateObj;
+    } catch (e) {
+        return new Date(NaN);
+    }
+}
+
+// --- LOAD USER'S ACTIVE CAMPAIGN WITH COUNTDOWN & IST FORMAT ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
@@ -348,7 +349,7 @@ async function loadMyActiveCampaign() {
             searchResultArea.innerHTML = `
                 <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
                     <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
-                    <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your campaign details, token number, and exact local timings will be shown here.</p>
+                    <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your campaign details, token number, and scheduled IST timings will be shown here.</p>
                 </div>
             `;
             return;
@@ -367,34 +368,55 @@ async function loadMyActiveCampaign() {
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
         let now = new Date();
-        let todayDateStr = now.toISOString().split('T')[0];
+        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
-        let todaysRuns = runsList.filter(run => run.slot_time && run.slot_time.startsWith(todayDateStr));
+        let todaysRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
         let displayRuns = todaysRuns.length > 0 ? todaysRuns : runsList.slice(0, 12);
 
-        let firstDateOnly = runsList[0].slot_time.split('T')[0];
-        let singleDayCount = runsList.filter(run => run.slot_time.startsWith(firstDateOnly)).length;
+        let firstDateOnly = runsList[0].slot_time.split(' at ')[0];
+        let singleDayCount = runsList.filter(run => run.slot_time.includes(firstDateOnly)).length;
         let totalDays = Math.round(runsList.length / singleDayCount);
 
-        let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        // Find next upcoming run for countdown
+        let nextRunItem = runsList.find(run => {
+            let runDateObj = parseIstSlotTimeToDate(run.slot_time);
+            return runDateObj > now;
+        });
+
+        let countdownHtml = '';
+        if (nextRunItem) {
+            let targetTime = parseIstSlotTimeToDate(nextRunItem.slot_time);
+            let diffSecs = Math.floor((targetTime - now) / 1000);
+            if (diffSecs > 0) {
+                let hrs = Math.floor(diffSecs / 3600);
+                let mins = Math.floor((diffSecs % 3600) / 60);
+                let secs = diffSecs % 60;
+                countdownHtml = `
+                    <div style="background: #070a10; border: 1px solid #38bdf8; padding: 10px; border-radius: 6px; margin-bottom: 10px; text-align: center;">
+                        <p style="color: #38bdf8; font-size: 12px; font-weight: bold;">⏳ Next Ad Countdown:</p>
+                        <p style="color: #f59e0b; font-size: 14px; font-weight: bold;">${hrs} Hours : ${mins} Minutes : ${secs} Seconds</p>
+                    </div>
+                `;
+            }
+        }
 
         let html = `
-            <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 260px; overflow-y: auto;">
+            <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 280px; overflow-y: auto;">
                 <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                 <p><b>Token Number:</b> ${tokenDisplay}</p>
                 <p><b>Brand Name:</b> ${cleanBrand}</p>
                 <p><b>Total Duration:</b> ${totalDays} Days (${firstDateOnly} onwards)</p>
-                <p style="font-size: 11px; color: #38bdf8;">Your Timezone: ${userTimezone}</p>
                 <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
-                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Local Screen Timings:</p>
+                ${countdownHtml}
+                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Screen Timings (IST):</p>
         `;
 
         if (todaysRuns.length === 0) {
             html += `<p style="font-size: 12px; color: #f59e0b;"> Today's schedule is completed or active on upcoming days.</p>`;
         } else {
             displayRuns.forEach((run, idx) => {
-                let localFormatted = formatUtcToLocal(run.slot_time);
-                html += `<p style="font-size: 13px; color: #9ca3af;">↳ Run ${idx + 1}: ${localFormatted}</p>`;
+                html += `<p style="font-size: 13px; color: #9ca3af;">↳ Run ${idx + 1}: ${run.slot_time}</p>`;
             });
         }
 
@@ -502,8 +524,9 @@ async function initLiveBillboardPlayer() {
         }
 
         let now = new Date();
-        let todayDateStr = now.toISOString().split('T')[0];
-        let todaysApprovedAds = queueRecords.filter(ad => ad.slot_time && ad.slot_time.startsWith(todayDateStr));
+        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
+        let todaysApprovedAds = queueRecords.filter(ad => ad.slot_time && ad.slot_time.includes(todayDateStr));
 
         if (todaysApprovedAds.length === 0) {
             applyDefaultBanner();
@@ -513,7 +536,7 @@ async function initLiveBillboardPlayer() {
 
         let scheduledAds = [];
         todaysApprovedAds.forEach(ad => {
-            let adStart = new Date(ad.slot_time);
+            let adStart = parseIstSlotTimeToDate(ad.slot_time);
             let dur = parseInt(ad.duration_second) || 10;
             let adEnd = new Date(adStart.getTime() + (dur * 1000));
             scheduledAds.push({ adRecord: ad, start: adStart, end: adEnd, duration: dur });
@@ -522,7 +545,7 @@ async function initLiveBillboardPlayer() {
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
             let currentTime = new Date();
-            let newDateStr = currentTime.toISOString().split('T')[0];
+            let newDateStr = currentTime.toLocaleDateString('en-US', optionsCheck);
             if (newDateStr !== todayDateStr) {
                 initLiveBillboardPlayer();
                 return;
