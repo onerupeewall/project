@@ -18,7 +18,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (adminPreviewAdJson) {
         try {
             let previewAd = JSON.parse(adminPreviewAdJson);
-            playAdminPreviewOnBillboard(previewAd);
+            playAdminPreviewOnBillboard(previewAd, true); // Flag to return to admin on complete
         } catch (e) {
             initLiveBillboardPlayer();
         }
@@ -251,7 +251,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             target_url: targetUrl,
                             file_url: publicFileUrl,
                             duration_second: duration,
-                            slot_time: finalSlotTimeFormatted, // Storing strictly in IST format
+                            slot_time: finalSlotTimeFormatted,
                             status: 'pending',
                             unified_token: null
                         };
@@ -283,8 +283,8 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// --- ADMIN PREVIEW ---
-function playAdminPreviewOnBillboard(ad) {
+// --- ADMIN PREVIEW WITH SAFE RETURN ---
+function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
     const billboardBox = document.getElementById('billboardBox');
     let timerEl = getCountdownElement();
     if (!billboardBox) return;
@@ -293,7 +293,9 @@ function playAdminPreviewOnBillboard(ad) {
 
     renderAdOnBillboard(ad, () => {
         sessionStorage.removeItem('admin_preview_ad');
-        window.location.href = 'admin.html';
+        if (fromAdmin) {
+            window.location.href = 'admin.html';
+        }
     });
 }
 
@@ -317,7 +319,7 @@ function parseIstSlotTimeToDate(slotTimeStr) {
     }
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN WITH COUNTDOWN & IST FORMAT ---
+// --- LOAD USER'S ACTIVE CAMPAIGN WITH EXACT SLOTS, TOTAL RUNS & LIVE COUNTDOWN ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     if (!searchResultArea) return;
@@ -349,7 +351,7 @@ async function loadMyActiveCampaign() {
             searchResultArea.innerHTML = `
                 <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
                     <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
-                    <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your campaign details, token number, and scheduled IST timings will be shown here.</p>
+                    <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your campaign details, token number, and exact IST timings will be shown here.</p>
                 </div>
             `;
             return;
@@ -371,18 +373,18 @@ async function loadMyActiveCampaign() {
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
-        let todaysRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
-        let displayRuns = todaysRuns.length > 0 ? todaysRuns : runsList.slice(0, 12);
-
         let firstDateOnly = runsList[0].slot_time.split(' at ')[0];
         let singleDayCount = runsList.filter(run => run.slot_time.includes(firstDateOnly)).length;
         let totalDays = Math.round(runsList.length / singleDayCount);
 
-        // Find next upcoming run for countdown
-        let nextRunItem = runsList.find(run => {
+        // Filter out past runs for today so they are removed as requested
+        let upcomingTodayRuns = runsList.filter(run => {
             let runDateObj = parseIstSlotTimeToDate(run.slot_time);
-            return runDateObj > now;
+            return runDateObj >= now;
         });
+
+        // Find next run for live countdown
+        let nextRunItem = upcomingTodayRuns.length > 0 ? upcomingTodayRuns[0] : runsList.find(run => parseIstSlotTimeToDate(run.slot_time) > now);
 
         let countdownHtml = '';
         if (nextRunItem) {
@@ -394,7 +396,7 @@ async function loadMyActiveCampaign() {
                 let secs = diffSecs % 60;
                 countdownHtml = `
                     <div style="background: #070a10; border: 1px solid #38bdf8; padding: 10px; border-radius: 6px; margin-bottom: 10px; text-align: center;">
-                        <p style="color: #38bdf8; font-size: 12px; font-weight: bold;">⏳ Next Ad Countdown:</p>
+                        <p style="color: #38bdf8; font-size: 12px; font-weight: bold;">⏳ Live Countdown to Next Run:</p>
                         <p style="color: #f59e0b; font-size: 14px; font-weight: bold;">${hrs} Hours : ${mins} Minutes : ${secs} Seconds</p>
                     </div>
                 `;
@@ -406,17 +408,20 @@ async function loadMyActiveCampaign() {
                 <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                 <p><b>Token Number:</b> ${tokenDisplay}</p>
                 <p><b>Brand Name:</b> ${cleanBrand}</p>
+                <p><b>Total Runs:</b> ${singleDayCount} Runs per Day (${singleDayCount * totalDays} Total Runs)</p>
                 <p><b>Total Duration:</b> ${totalDays} Days (${firstDateOnly} onwards)</p>
                 <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
                 ${countdownHtml}
-                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Screen Timings (IST):</p>
+                <p style="font-size: 11px; color: #38bdf8; margin-bottom: 4px;">Note: Slots on future dates are adjusted to exact available timings automatically.</p>
+                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Exact Slot Timings (IST):</p>
         `;
 
-        if (todaysRuns.length === 0) {
-            html += `<p style="font-size: 12px; color: #f59e0b;"> Today's schedule is completed or active on upcoming days.</p>`;
+        if (upcomingTodayRuns.length === 0) {
+            html += `<p style="font-size: 12px; color: #f59e0b;"> Today's schedule runs are completed. Fresh slots will refresh tomorrow.</p>`;
         } else {
-            displayRuns.forEach((run, idx) => {
-                html += `<p style="font-size: 13px; color: #9ca3af;">↳ Run ${idx + 1}: ${run.slot_time}</p>`;
+            upcomingTodayRuns.forEach((run, idx) => {
+                let timeOnlyStr = run.slot_time.split(' at ')[1] || run.slot_time;
+                html += `<p style="font-size: 13px; color: #9ca3af;">↳ Slot ${idx + 1}: ${timeOnlyStr}</p>`;
             });
         }
 
