@@ -10,6 +10,7 @@ const DEPART_DURATION = 7200;
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
 let isAudioUnmuted = false; // Muted by default
+let deferredPrompt = null;
 
 window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
@@ -28,7 +29,29 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     loadMyActiveCampaign();
-    checkAndDisplayHomeScreenBanner();
+
+    // PWA Install Prompt Listener
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        let installBanner = document.getElementById('installAppBanner');
+        if (installBanner) installBanner.style.display = 'block';
+    });
+
+    const installAppBtn = document.getElementById('installAppBtn');
+    if (installAppBtn) {
+        installAppBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            let { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            }
+            deferredPrompt = null;
+            let installBanner = document.getElementById('installAppBanner');
+            if (installBanner) installBanner.style.display = 'none';
+        });
+    }
 
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
@@ -212,7 +235,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         let departStartSec = f * DEPART_DURATION;
                         let departEndSec = departStartSec + DEPART_DURATION;
 
-                        let slotsInThisDepart = dayExisting.fetch ? [] : dayExisting.filter(rec => {
+                        let slotsInThisDepart = dayExisting.filter(rec => {
                             let timePart = rec.slot_time.split(' at ')[1];
                             if (!timePart) return false;
                             let [timeStr, modifier] = timePart.split(' ');
@@ -277,7 +300,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 slotFormContainer.reset();
                 slotModal.style.display = 'none';
                 loadMyActiveCampaign();
-                checkAndDisplayHomeScreenBanner();
             } catch (err) {
                 alert('Submission failed: ' + err.message);
             } finally {
@@ -286,27 +308,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// --- ADD TO HOME SCREEN BANNER PROMPT ---
-function checkAndDisplayHomeScreenBanner() {
-    let myCampaignId = localStorage.getItem('my_latest_campaign_id');
-    if (!myCampaignId) return;
-
-    let existingBanner = document.getElementById('pwaInstallBanner');
-    if (existingBanner) return;
-
-    let banner = document.createElement('div');
-    banner.id = 'pwaInstallBanner';
-    banner.style.cssText = 'background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; text-align: center; box-shadow: 0 4px 15px rgba(37,99,235,0.4);';
-    banner.innerHTML = `
-        <p style="font-weight: bold; font-size: 14px; margin-bottom: 6px;">📲 Add Billboard to Home Screen</p>
-        <p style="font-size: 12px; margin-bottom: 10px; color: #e0e7ff;">Tap your browser menu (⋮ or ⇧) and select <b>"Add to Home Screen"</b> for a full-screen app experience!</p>
-        <button onclick="this.parentElement.remove()" style="background: rgba(0,0,0,0.3); border: none; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Got It</button>
-    `;
-
-    const container = document.querySelector('.main-container');
-    if (container) container.insertBefore(banner, container.firstChild);
-}
-
 // --- ADMIN PREVIEW WITH SAFE RETURN ---
 function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
     const billboardBox = document.getElementById('billboardBox');
@@ -401,7 +402,6 @@ async function loadMyActiveCampaign() {
 
         let now = new Date();
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
         let firstDateOnly = runsList[0].slot_time.split(' at ')[0];
         let singleDayCount = runsList.filter(run => run.slot_time.includes(firstDateOnly)).length;
