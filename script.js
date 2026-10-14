@@ -10,7 +10,6 @@ const DEPART_DURATION = 7200;
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
 let isAudioUnmuted = false; // Muted by default
-let deferredPrompt = null;
 
 window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
@@ -29,29 +28,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     loadMyActiveCampaign();
-
-    // PWA Install Prompt Listener
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        let installBanner = document.getElementById('installAppBanner');
-        if (installBanner) installBanner.style.display = 'block';
-    });
-
-    const installAppBtn = document.getElementById('installAppBtn');
-    if (installAppBtn) {
-        installAppBtn.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            let { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                console.log('User accepted the install prompt');
-            }
-            deferredPrompt = null;
-            let installBanner = document.getElementById('installAppBanner');
-            if (installBanner) installBanner.style.display = 'none';
-        });
-    }
 
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
