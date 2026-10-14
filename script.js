@@ -9,6 +9,7 @@ const DEPART_DURATION = 7200;
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
+let isAudioUnmuted = false; // Muted by default
 
 window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
@@ -18,7 +19,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (adminPreviewAdJson) {
         try {
             let previewAd = JSON.parse(adminPreviewAdJson);
-            playAdminPreviewOnBillboard(previewAd, true); // Flag to return to admin on complete
+            playAdminPreviewOnBillboard(previewAd, true);
         } catch (e) {
             initLiveBillboardPlayer();
         }
@@ -27,6 +28,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     loadMyActiveCampaign();
+    checkAndDisplayHomeScreenBanner();
 
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
@@ -210,7 +212,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         let departStartSec = f * DEPART_DURATION;
                         let departEndSec = departStartSec + DEPART_DURATION;
 
-                        let slotsInThisDepart = dayExisting.filter(rec => {
+                        let slotsInThisDepart = dayExisting.fetch ? [] : dayExisting.filter(rec => {
                             let timePart = rec.slot_time.split(' at ')[1];
                             if (!timePart) return false;
                             let [timeStr, modifier] = timePart.split(' ');
@@ -275,6 +277,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 slotFormContainer.reset();
                 slotModal.style.display = 'none';
                 loadMyActiveCampaign();
+                checkAndDisplayHomeScreenBanner();
             } catch (err) {
                 alert('Submission failed: ' + err.message);
             } finally {
@@ -283,6 +286,27 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+// --- ADD TO HOME SCREEN BANNER PROMPT ---
+function checkAndDisplayHomeScreenBanner() {
+    let myCampaignId = localStorage.getItem('my_latest_campaign_id');
+    if (!myCampaignId) return;
+
+    let existingBanner = document.getElementById('pwaInstallBanner');
+    if (existingBanner) return;
+
+    let banner = document.createElement('div');
+    banner.id = 'pwaInstallBanner';
+    banner.style.cssText = 'background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; text-align: center; box-shadow: 0 4px 15px rgba(37,99,235,0.4);';
+    banner.innerHTML = `
+        <p style="font-weight: bold; font-size: 14px; margin-bottom: 6px;">📲 Add Billboard to Home Screen</p>
+        <p style="font-size: 12px; margin-bottom: 10px; color: #e0e7ff;">Tap your browser menu (⋮ or ⇧) and select <b>"Add to Home Screen"</b> for a full-screen app experience!</p>
+        <button onclick="this.parentElement.remove()" style="background: rgba(0,0,0,0.3); border: none; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Got It</button>
+    `;
+
+    const container = document.querySelector('.main-container');
+    if (container) container.insertBefore(banner, container.firstChild);
+}
+
 // --- ADMIN PREVIEW WITH SAFE RETURN ---
 function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
     const billboardBox = document.getElementById('billboardBox');
@@ -319,21 +343,24 @@ function parseIstSlotTimeToDate(slotTimeStr) {
     }
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN WITH EXACT SLOTS, TOTAL RUNS & LIVE COUNTDOWN ---
+// --- LOAD USER'S ACTIVE CAMPAIGN & UPDATE BILLBOARD STATUS BOX ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
-    if (!searchResultArea) return;
+    const statusBox = document.getElementById('billboardStatusBox');
+    const statusText = document.getElementById('billboardStatusText');
+    const countdownText = document.getElementById('billboardCountdownText');
 
     let myCampaignId = localStorage.getItem('my_latest_campaign_id');
     if (!myCampaignId) {
-        searchResultArea.innerHTML = '<span style="color: #9ca3af;">You have not booked any campaign from this device yet.</span>';
+        if (statusBox) statusBox.style.display = 'none';
+        if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #9ca3af;">You have not booked any campaign from this device yet.</span>';
         return;
     }
 
     try {
         let { data: singleRecord, error } = await supabaseClient.from('buysecond_records').select('*').eq('id', myCampaignId).single();
         if (error || !singleRecord) {
-            searchResultArea.innerHTML = '<span style="color: #9ca3af;">Campaign not found.</span>';
+            if (statusBox) statusBox.style.display = 'none';
             return;
         }
 
@@ -347,23 +374,26 @@ async function loadMyActiveCampaign() {
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
 
+        if (statusBox) statusBox.style.display = 'block';
+
         if (master.status === 'pending') {
-            searchResultArea.innerHTML = `
-                <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
-                    <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
-                    <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your campaign details, token number, and exact IST timings will be shown here.</p>
-                </div>
-            `;
+            if (statusText) statusText.innerText = `⏳ Waiting for Owner's Approval (${cleanBrand})`;
+            if (countdownText) countdownText.innerText = 'Your ad is under review. Live countdown will start after approval.';
+
+            if (searchResultArea) {
+                searchResultArea.innerHTML = `
+                    <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
+                        <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
+                        <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your live countdown and schedule will appear here.</p>
+                    </div>
+                `;
+            }
             return;
         }
 
         if (master.status === 'rejected') {
-            searchResultArea.innerHTML = `
-                <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #ef4444; margin-top: 10px; text-align: center;">
-                    <p style="color: #ef4444; font-weight: bold; font-size: 15px; margin-bottom: 6px;">❌ Campaign Rejected</p>
-                    <p style="color: #9ca3af; font-size: 13px;">This campaign has been rejected by the admin.</p>
-                </div>
-            `;
+            if (statusText) statusText.innerText = `❌ Campaign Rejected (${cleanBrand})`;
+            if (countdownText) countdownText.innerText = 'This campaign has been rejected by the admin.';
             return;
         }
 
@@ -377,16 +407,13 @@ async function loadMyActiveCampaign() {
         let singleDayCount = runsList.filter(run => run.slot_time.includes(firstDateOnly)).length;
         let totalDays = Math.round(runsList.length / singleDayCount);
 
-        // Filter out past runs for today so they are removed as requested
         let upcomingTodayRuns = runsList.filter(run => {
             let runDateObj = parseIstSlotTimeToDate(run.slot_time);
             return runDateObj >= now;
         });
 
-        // Find next run for live countdown
         let nextRunItem = upcomingTodayRuns.length > 0 ? upcomingTodayRuns[0] : runsList.find(run => parseIstSlotTimeToDate(run.slot_time) > now);
 
-        let countdownHtml = '';
         if (nextRunItem) {
             let targetTime = parseIstSlotTimeToDate(nextRunItem.slot_time);
             let diffSecs = Math.floor((targetTime - now) / 1000);
@@ -394,43 +421,45 @@ async function loadMyActiveCampaign() {
                 let hrs = Math.floor(diffSecs / 3600);
                 let mins = Math.floor((diffSecs % 3600) / 60);
                 let secs = diffSecs % 60;
-                countdownHtml = `
-                    <div style="background: #070a10; border: 1px solid #38bdf8; padding: 10px; border-radius: 6px; margin-bottom: 10px; text-align: center;">
-                        <p style="color: #38bdf8; font-size: 12px; font-weight: bold;">⏳ Live Countdown to Next Run:</p>
-                        <p style="color: #f59e0b; font-size: 14px; font-weight: bold;">${hrs} Hours : ${mins} Minutes : ${secs} Seconds</p>
-                    </div>
-                `;
+                if (statusText) statusText.innerText = `🟢 Approved Campaign: ${cleanBrand} (Token #${tokenDisplay})`;
+                if (countdownText) countdownText.innerText = `⏳ Next Ad Live in: ${hrs} Hours : ${mins} Minutes : ${secs} Seconds`;
+            } else {
+                if (statusText) statusText.innerText = `📺 Your Ad is Playing or Completed for Today!`;
+                if (countdownText) countdownText.innerText = `Token: #${tokenDisplay} | Total Runs: ${singleDayCount}/day`;
             }
-        }
-
-        let html = `
-            <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 280px; overflow-y: auto;">
-                <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
-                <p><b>Token Number:</b> ${tokenDisplay}</p>
-                <p><b>Brand Name:</b> ${cleanBrand}</p>
-                <p><b>Total Runs:</b> ${singleDayCount} Runs per Day (${singleDayCount * totalDays} Total Runs)</p>
-                <p><b>Total Duration:</b> ${totalDays} Days (${firstDateOnly} onwards)</p>
-                <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
-                ${countdownHtml}
-                <p style="font-size: 11px; color: #38bdf8; margin-bottom: 4px;">Note: Slots on future dates are adjusted to exact available timings automatically.</p>
-                <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Exact Slot Timings (IST):</p>
-        `;
-
-        if (upcomingTodayRuns.length === 0) {
-            html += `<p style="font-size: 12px; color: #f59e0b;"> Today's schedule runs are completed. Fresh slots will refresh tomorrow.</p>`;
         } else {
-            upcomingTodayRuns.forEach((run, idx) => {
-                let timeOnlyStr = run.slot_time.split(' at ')[1] || run.slot_time;
-                html += `<p style="font-size: 13px; color: #9ca3af;">↳ Slot ${idx + 1}: ${timeOnlyStr}</p>`;
-            });
+            if (statusText) statusText.innerText = `✅ Campaign Approved (${cleanBrand})`;
+            if (countdownText) countdownText.innerText = `All today's runs completed. Next session tomorrow.`;
         }
 
-        html += `</div>`;
-        searchResultArea.innerHTML = html;
+        if (searchResultArea) {
+            let html = `
+                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 280px; overflow-y: auto;">
+                    <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
+                    <p><b>Token Number:</b> ${tokenDisplay}</p>
+                    <p><b>Brand Name:</b> ${cleanBrand}</p>
+                    <p><b>Total Runs:</b> ${singleDayCount} Runs per Day (${singleDayCount * totalDays} Total Runs)</p>
+                    <p><b>Total Duration:</b> ${totalDays} Days (${firstDateOnly} onwards)</p>
+                    <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
+                    <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Exact Slot Timings (IST):</p>
+            `;
+
+            if (upcomingTodayRuns.length === 0) {
+                html += `<p style="font-size: 12px; color: #f59e0b;"> Today's schedule runs are completed. Fresh slots refresh tomorrow.</p>`;
+            } else {
+                upcomingTodayRuns.forEach((run, idx) => {
+                    let timeOnlyStr = run.slot_time.split(' at ')[1] || run.slot_time;
+                    html += `<p style="font-size: 13px; color: #9ca3af;">↳ Slot ${idx + 1}: ${timeOnlyStr}</p>`;
+                });
+            }
+
+            html += `</div>`;
+            searchResultArea.innerHTML = html;
+        }
 
     } catch (err) {
         console.error(err);
-        searchResultArea.innerHTML = '<span style="color: #ef4444;">Error loading campaign status.</span>';
+        if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #ef4444;">Error loading campaign status.</span>';
     }
 }
 
@@ -454,7 +483,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING ---
+// --- MEDIA RENDERING (MUTED BY DEFAULT WITH UNMUTE BUTTON) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -474,10 +503,17 @@ function renderAdOnBillboard(ad, onComplete) {
         if (typeof onComplete === 'function') onComplete();
     }
 
+    let audioButtonHtml = isVideo ? `
+        <button id="unmuteBtn" onclick="toggleAudio(event)" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; border: 1px solid #38bdf8; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; z-index: 20;">
+            🔇 Unmute
+        </button>
+    ` : '';
+
     if (isVideo) {
         billboardBox.innerHTML = `
-            <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;"></video>
+            <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                <video id="activeAdMedia" src="${fileUrl}" autoplay muted preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                ${audioButtonHtml}
             </div>
         `;
         let mediaEl = document.getElementById('activeAdMedia');
@@ -505,6 +541,23 @@ function renderAdOnBillboard(ad, onComplete) {
             triggerComplete();
         }
     }, 1000);
+}
+
+// --- TOGGLE AUDIO UNMUTE FUNCTION ---
+function toggleAudio(event) {
+    event.stopPropagation();
+    let videoEl = document.getElementById('activeAdMedia');
+    let btn = document.getElementById('unmuteBtn');
+    if (!videoEl) return;
+
+    isAudioUnmuted = !isAudioUnmuted;
+    videoEl.muted = !isAudioUnmuted;
+
+    if (isAudioUnmuted) {
+        if (btn) btn.innerText = '🔊 Mute Audio';
+    } else {
+        if (btn) btn.innerText = '🔇 Unmute';
+    }
 }
 
 // --- 24-HOUR AUTONOMOUS SCHEDULER ---
