@@ -283,7 +283,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// --- ADMIN PREVIEW WITH SAFE RETURN TO CORRECT FILENAME ---
+// --- ADMIN PREVIEW WITH SAFE RETURN ---
 function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
     const billboardBox = document.getElementById('billboardBox');
     let timerEl = getCountdownElement();
@@ -319,7 +319,19 @@ function parseIstSlotTimeToDate(slotTimeStr) {
     }
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN & REAL-TIME COUNTDOWN ---
+// --- CONVERT IST DATE OBJECT TO USER'S LOCAL TIMEZONE STRING ---
+function formatDateTimeToLocalUserTime(istDateObj) {
+    if (isNaN(istDateObj)) return '';
+    return istDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) +
+        ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
+}
+
+function formatDateOnlyToLocalUserTime(istDateObj) {
+    if (isNaN(istDateObj)) return '';
+    return istDateObj.toLocaleDateString([], { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+// --- LOAD USER'S ACTIVE CAMPAIGN & LOCAL TIME CONVERSION ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -355,13 +367,13 @@ async function loadMyActiveCampaign() {
 
         if (master.status === 'pending') {
             if (statusText) statusText.innerText = `⏳ Waiting for Owner's Approval (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = 'Your ad is under review. Live countdown will start after approval.';
+            if (countdownText) countdownText.innerText = 'Your ad is under review. Countdown starts instantly after approval.';
 
             if (searchResultArea) {
                 searchResultArea.innerHTML = `
                     <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
                         <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
-                        <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your live countdown and schedule will appear here.</p>
+                        <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your live countdown and schedule will appear here instantly.</p>
                     </div>
                 `;
             }
@@ -380,8 +392,8 @@ async function loadMyActiveCampaign() {
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
+        // Filter today's runs in IST
         let todayOnlyRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
-        let upcomingTodayRuns = todayOnlyRuns.filter(run => parseIstSlotTimeToDate(run.slot_time) >= now);
 
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
@@ -389,6 +401,7 @@ async function loadMyActiveCampaign() {
             let currentTime = new Date();
             let currentTodayStr = currentTime.toLocaleDateString('en-US', optionsCheck);
 
+            // Midnight refresh trigger
             if (currentTodayStr !== todayDateStr) {
                 loadMyActiveCampaign();
                 return;
@@ -413,7 +426,7 @@ async function loadMyActiveCampaign() {
                 }
             } else {
                 if (statusText) statusText.innerText = `✅ Campaign Approved (${cleanBrand})`;
-                if (countdownText) countdownText.innerText = `All today's runs completed. Fresh slots refresh at midnight.`;
+                if (countdownText) countdownText.innerText = `All today's runs completed. Refreshes at midnight.`;
             }
         }
 
@@ -426,19 +439,19 @@ async function loadMyActiveCampaign() {
                     <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                     <p><b>Token Number:</b> ${tokenDisplay}</p>
                     <p><b>Brand Name:</b> ${cleanBrand}</p>
-                    <p style="font-weight: bold; color: #38bdf8; margin-top: 8px; margin-bottom: 4px;">📅 Today's Active Slots Only (IST):</p>
+                    <p style="font-weight: bold; color: #38bdf8; margin-top: 8px; margin-bottom: 4px;">📅 Today's Active Slots (Converted to Your Local Time):</p>
             `;
 
             if (todayOnlyRuns.length === 0) {
                 html += `<p style="font-size: 12px; color: #f59e0b;">No scheduled slots for today. Future dates will appear on their respective days.</p>`;
             } else {
                 todayOnlyRuns.forEach((run, idx) => {
-                    let timeOnlyStr = run.slot_time.split(' at ')[1] || run.slot_time;
                     let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
+                    let localFormattedTime = formatDateTimeToLocalUserTime(runTimeObj);
                     let isCompleted = runTimeObj < now;
                     let runStatusStyle = isCompleted ? 'color: #6b7280; text-decoration: line-through;' : 'color: #10B981; font-weight: bold;';
                     let runLabel = isCompleted ? 'Completed' : 'Upcoming';
-                    html += `<p style="font-size: 13px; ${runStatusStyle}">↳ Slot ${idx + 1}: ${timeOnlyStr} [${runLabel}]</p>`;
+                    html += `<p style="font-size: 13px; ${runStatusStyle}">↳ Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
                 });
             }
 
