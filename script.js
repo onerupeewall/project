@@ -326,11 +326,6 @@ function formatDateTimeToLocalUserTime(istDateObj) {
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
 
-function formatDateOnlyToLocalUserTime(istDateObj) {
-    if (isNaN(istDateObj)) return '';
-    return istDateObj.toLocaleDateString([], { day: '2-digit', month: 'long', year: 'numeric' });
-}
-
 // --- LOAD USER'S ACTIVE CAMPAIGN & LOCAL TIME CONVERSION ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
@@ -392,7 +387,6 @@ async function loadMyActiveCampaign() {
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
-        // Filter today's runs in IST
         let todayOnlyRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
 
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
@@ -401,7 +395,6 @@ async function loadMyActiveCampaign() {
             let currentTime = new Date();
             let currentTodayStr = currentTime.toLocaleDateString('en-US', optionsCheck);
 
-            // Midnight refresh trigger
             if (currentTodayStr !== todayDateStr) {
                 loadMyActiveCampaign();
                 return;
@@ -485,7 +478,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING ---
+// --- MEDIA RENDERING (FIXED FOR VERTICAL VIDEOS & IMAGES) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -495,7 +488,13 @@ function renderAdOnBillboard(ad, onComplete) {
     let targetUrl = ad.target_url || '#';
 
     let lowerUrl = fileUrl.toLowerCase();
-    let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm') || lowerUrl.includes('video/mp4');
+
+    // Robust check for media types (Video vs Image)
+    let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm') || lowerUrl.includes('video/mp4') || lowerUrl.includes('object/public/ad-videos');
+
+    // Extra check: if it explicitly ends with common image extensions, treat as image
+    let isImage = lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp') || lowerUrl.endsWith('.gif');
+    if (isImage) isVideo = false;
 
     let isCompletedCalled = false;
     function triggerComplete() {
@@ -506,9 +505,11 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
+        // Vertical video blur background effect logic
         billboardBox.innerHTML = `
-            <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
+            <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                <video src="${fileUrl}" autoplay muted playsinline style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
+                <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
             </div>
         `;
         let mediaEl = document.getElementById('activeAdMedia');
@@ -517,9 +518,10 @@ function renderAdOnBillboard(ad, onComplete) {
             mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
         }
     } else {
+        // Image display handling
         billboardBox.innerHTML = `
             <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                <img src="${fileUrl}" alt="Ad Image" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px;">
             </div>
         `;
     }
@@ -587,6 +589,7 @@ async function initLiveBillboardPlayer() {
                 return;
             }
 
+            let currentPlaying, nextUpcoming;
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
 
