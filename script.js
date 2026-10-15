@@ -4,12 +4,11 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TOTAL_DAILY_SECONDS = 86400; // 24 Hours = 86,400 Seconds
-const NUM_DEPARTS = 12;            // Exactly 12 departs of 2 hours each
 const DEPART_DURATION = 7200;
 
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
-let isAudioUnmuted = false; // Muted by default
+let activeCountdownInterval = null;
 
 window.addEventListener('DOMContentLoaded', () => {
     initVisitorCounter();
@@ -284,7 +283,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// --- ADMIN PREVIEW WITH SAFE RETURN ---
+// --- ADMIN PREVIEW WITH SAFE RETURN TO CORRECT FILENAME ---
 function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
     const billboardBox = document.getElementById('billboardBox');
     let timerEl = getCountdownElement();
@@ -295,7 +294,7 @@ function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
     renderAdOnBillboard(ad, () => {
         sessionStorage.removeItem('admin_preview_ad');
         if (fromAdmin) {
-            window.location.href = 'admin.html';
+            window.location.href = './karan-rai-secret-website-admin-panel.html';
         }
     });
 }
@@ -320,7 +319,7 @@ function parseIstSlotTimeToDate(slotTimeStr) {
     }
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN & UPDATE BILLBOARD STATUS BOX ---
+// --- LOAD USER'S ACTIVE CAMPAIGN & REAL-TIME COUNTDOWN ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -331,6 +330,7 @@ async function loadMyActiveCampaign() {
     if (!myCampaignId) {
         if (statusBox) statusBox.style.display = 'none';
         if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #9ca3af;">You have not booked any campaign from this device yet.</span>';
+        if (activeCountdownInterval) clearInterval(activeCountdownInterval);
         return;
     }
 
@@ -378,35 +378,47 @@ async function loadMyActiveCampaign() {
 
         let now = new Date();
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
-        let firstDateOnly = runsList[0].slot_time.split(' at ')[0];
-        let singleDayCount = runsList.filter(run => run.slot_time.includes(firstDateOnly)).length;
-        let totalDays = Math.round(runsList.length / singleDayCount);
+        let todayOnlyRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
+        let upcomingTodayRuns = todayOnlyRuns.filter(run => parseIstSlotTimeToDate(run.slot_time) >= now);
 
-        let upcomingTodayRuns = runsList.filter(run => {
-            let runDateObj = parseIstSlotTimeToDate(run.slot_time);
-            return runDateObj >= now;
-        });
+        if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
-        let nextRunItem = upcomingTodayRuns.length > 0 ? upcomingTodayRuns[0] : runsList.find(run => parseIstSlotTimeToDate(run.slot_time) > now);
+        function updateLiveCountdownUI() {
+            let currentTime = new Date();
+            let currentTodayStr = currentTime.toLocaleDateString('en-US', optionsCheck);
 
-        if (nextRunItem) {
-            let targetTime = parseIstSlotTimeToDate(nextRunItem.slot_time);
-            let diffSecs = Math.floor((targetTime - now) / 1000);
-            if (diffSecs > 0) {
-                let hrs = Math.floor(diffSecs / 3600);
-                let mins = Math.floor((diffSecs % 3600) / 60);
-                let secs = diffSecs % 60;
-                if (statusText) statusText.innerText = `🟢 Approved Campaign: ${cleanBrand} (Token #${tokenDisplay})`;
-                if (countdownText) countdownText.innerText = `⏳ Next Ad Live in: ${hrs} Hours : ${mins} Minutes : ${secs} Seconds`;
-            } else {
-                if (statusText) statusText.innerText = `📺 Your Ad is Playing or Completed for Today!`;
-                if (countdownText) countdownText.innerText = `Token: #${tokenDisplay} | Total Runs: ${singleDayCount}/day`;
+            if (currentTodayStr !== todayDateStr) {
+                loadMyActiveCampaign();
+                return;
             }
-        } else {
-            if (statusText) statusText.innerText = `✅ Campaign Approved (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = `All today's runs completed. Next session tomorrow.`;
+
+            let currentUpcoming = runsList.filter(run => run.slot_time && run.slot_time.includes(currentTodayStr))
+                .filter(run => parseIstSlotTimeToDate(run.slot_time) >= currentTime);
+            let nextItem = currentUpcoming.length > 0 ? currentUpcoming[0] : null;
+
+            if (nextItem) {
+                let targetTime = parseIstSlotTimeToDate(nextItem.slot_time);
+                let diffSecs = Math.floor((targetTime - currentTime) / 1000);
+                if (diffSecs > 0) {
+                    let hrs = Math.floor(diffSecs / 3600);
+                    let mins = Math.floor((diffSecs % 3600) / 60);
+                    let secs = diffSecs % 60;
+                    if (statusText) statusText.innerText = `🟢 Approved Campaign: ${cleanBrand} (Token #${tokenDisplay})`;
+                    if (countdownText) countdownText.innerText = `⏳ Next Ad Live in: ${hrs}h : ${mins}m : ${secs}s`;
+                } else {
+                    if (statusText) statusText.innerText = `📺 Your Ad is Playing Now!`;
+                    if (countdownText) countdownText.innerText = `Token: #${tokenDisplay}`;
+                }
+            } else {
+                if (statusText) statusText.innerText = `✅ Campaign Approved (${cleanBrand})`;
+                if (countdownText) countdownText.innerText = `All today's runs completed. Fresh slots refresh at midnight.`;
+            }
         }
+
+        updateLiveCountdownUI();
+        activeCountdownInterval = setInterval(updateLiveCountdownUI, 1000);
 
         if (searchResultArea) {
             let html = `
@@ -414,18 +426,19 @@ async function loadMyActiveCampaign() {
                     <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                     <p><b>Token Number:</b> ${tokenDisplay}</p>
                     <p><b>Brand Name:</b> ${cleanBrand}</p>
-                    <p><b>Total Runs:</b> ${singleDayCount} Runs per Day (${singleDayCount * totalDays} Total Runs)</p>
-                    <p><b>Total Duration:</b> ${totalDays} Days (${firstDateOnly} onwards)</p>
-                    <hr style="border: 0; border-top: 1px solid #1f293d; margin: 8px 0;">
-                    <p style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">Today's Exact Slot Timings (IST):</p>
+                    <p style="font-weight: bold; color: #38bdf8; margin-top: 8px; margin-bottom: 4px;">📅 Today's Active Slots Only (IST):</p>
             `;
 
-            if (upcomingTodayRuns.length === 0) {
-                html += `<p style="font-size: 12px; color: #f59e0b;"> Today's schedule runs are completed. Fresh slots refresh tomorrow.</p>`;
+            if (todayOnlyRuns.length === 0) {
+                html += `<p style="font-size: 12px; color: #f59e0b;">No scheduled slots for today. Future dates will appear on their respective days.</p>`;
             } else {
-                upcomingTodayRuns.forEach((run, idx) => {
+                todayOnlyRuns.forEach((run, idx) => {
                     let timeOnlyStr = run.slot_time.split(' at ')[1] || run.slot_time;
-                    html += `<p style="font-size: 13px; color: #9ca3af;">↳ Slot ${idx + 1}: ${timeOnlyStr}</p>`;
+                    let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
+                    let isCompleted = runTimeObj < now;
+                    let runStatusStyle = isCompleted ? 'color: #6b7280; text-decoration: line-through;' : 'color: #10B981; font-weight: bold;';
+                    let runLabel = isCompleted ? 'Completed' : 'Upcoming';
+                    html += `<p style="font-size: 13px; ${runStatusStyle}">↳ Slot ${idx + 1}: ${timeOnlyStr} [${runLabel}]</p>`;
                 });
             }
 
@@ -459,7 +472,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING (MUTED BY DEFAULT WITH UNMUTE BUTTON) ---
+// --- MEDIA RENDERING ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -479,17 +492,10 @@ function renderAdOnBillboard(ad, onComplete) {
         if (typeof onComplete === 'function') onComplete();
     }
 
-    let audioButtonHtml = isVideo ? `
-        <button id="unmuteBtn" onclick="toggleAudio(event)" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; border: 1px solid #38bdf8; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; z-index: 20;">
-            🔇 Unmute
-        </button>
-    ` : '';
-
     if (isVideo) {
         billboardBox.innerHTML = `
             <div style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                <video id="activeAdMedia" src="${fileUrl}" autoplay muted preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
-                ${audioButtonHtml}
+                <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
             </div>
         `;
         let mediaEl = document.getElementById('activeAdMedia');
@@ -517,23 +523,6 @@ function renderAdOnBillboard(ad, onComplete) {
             triggerComplete();
         }
     }, 1000);
-}
-
-// --- TOGGLE AUDIO UNMUTE FUNCTION ---
-function toggleAudio(event) {
-    event.stopPropagation();
-    let videoEl = document.getElementById('activeAdMedia');
-    let btn = document.getElementById('unmuteBtn');
-    if (!videoEl) return;
-
-    isAudioUnmuted = !isAudioUnmuted;
-    videoEl.muted = !isAudioUnmuted;
-
-    if (isAudioUnmuted) {
-        if (btn) btn.innerText = '🔊 Mute Audio';
-    } else {
-        if (btn) btn.innerText = '🔇 Unmute';
-    }
 }
 
 // --- 24-HOUR AUTONOMOUS SCHEDULER ---
