@@ -387,7 +387,11 @@ async function loadMyActiveCampaign() {
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
+        // Flexible check: get today's runs or the very next upcoming runs if today's are passed
         let todayOnlyRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
+        if (todayOnlyRuns.length === 0 && runsList.length > 0) {
+            todayOnlyRuns = [runsList[0]]; // Fallback to first run so user sees active countdown instantly
+        }
 
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
@@ -395,14 +399,8 @@ async function loadMyActiveCampaign() {
             let currentTime = new Date();
             let currentTodayStr = currentTime.toLocaleDateString('en-US', optionsCheck);
 
-            if (currentTodayStr !== todayDateStr) {
-                loadMyActiveCampaign();
-                return;
-            }
-
-            let currentUpcoming = runsList.filter(run => run.slot_time && run.slot_time.includes(currentTodayStr))
-                .filter(run => parseIstSlotTimeToDate(run.slot_time) >= currentTime);
-            let nextItem = currentUpcoming.length > 0 ? currentUpcoming[0] : null;
+            let upcomingRuns = runsList.filter(run => parseIstSlotTimeToDate(run.slot_time) >= currentTime);
+            let nextItem = upcomingRuns.length > 0 ? upcomingRuns[0] : runsList[0];
 
             if (nextItem) {
                 let targetTime = parseIstSlotTimeToDate(nextItem.slot_time);
@@ -419,7 +417,7 @@ async function loadMyActiveCampaign() {
                 }
             } else {
                 if (statusText) statusText.innerText = `✅ Campaign Approved (${cleanBrand})`;
-                if (countdownText) countdownText.innerText = `All today's runs completed. Refreshes at midnight.`;
+                if (countdownText) countdownText.innerText = `All runs completed. Refreshes at midnight.`;
             }
         }
 
@@ -432,21 +430,17 @@ async function loadMyActiveCampaign() {
                     <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                     <p><b>Token Number:</b> ${tokenDisplay}</p>
                     <p><b>Brand Name:</b> ${cleanBrand}</p>
-                    <p style="font-weight: bold; color: #38bdf8; margin-top: 8px; margin-bottom: 4px;">📅 Today's Active Slots (Converted to Your Local Time):</p>
+                    <p style="font-weight: bold; color: #38bdf8; margin-top: 8px; margin-bottom: 4px;">📅 Active Slots (Converted to Your Local Time):</p>
             `;
 
-            if (todayOnlyRuns.length === 0) {
-                html += `<p style="font-size: 12px; color: #f59e0b;">No scheduled slots for today. Future dates will appear on their respective days.</p>`;
-            } else {
-                todayOnlyRuns.forEach((run, idx) => {
-                    let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
-                    let localFormattedTime = formatDateTimeToLocalUserTime(runTimeObj);
-                    let isCompleted = runTimeObj < now;
-                    let runStatusStyle = isCompleted ? 'color: #6b7280; text-decoration: line-through;' : 'color: #10B981; font-weight: bold;';
-                    let runLabel = isCompleted ? 'Completed' : 'Upcoming';
-                    html += `<p style="font-size: 13px; ${runStatusStyle}">↳ Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
-                });
-            }
+            runsList.forEach((run, idx) => {
+                let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
+                let localFormattedTime = formatDateTimeToLocalUserTime(runTimeObj);
+                let isCompleted = runTimeObj < now;
+                let runStatusStyle = isCompleted ? 'color: #6b7280; text-decoration: line-through;' : 'color: #10B981; font-weight: bold;';
+                let runLabel = isCompleted ? 'Completed' : 'Upcoming';
+                html += `<p style="font-size: 13px; ${runStatusStyle}">↳ Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
+            });
 
             html += `</div>`;
             searchResultArea.innerHTML = html;
@@ -478,7 +472,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING (FIXED FOR VERTICAL VIDEOS & IMAGES) ---
+// --- MEDIA RENDERING (FIXED FOR FULL HORIZONTAL & BLUR VERTICAL) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -488,11 +482,7 @@ function renderAdOnBillboard(ad, onComplete) {
     let targetUrl = ad.target_url || '#';
 
     let lowerUrl = fileUrl.toLowerCase();
-
-    // Robust check for media types (Video vs Image)
     let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm') || lowerUrl.includes('video/mp4') || lowerUrl.includes('object/public/ad-videos');
-
-    // Extra check: if it explicitly ends with common image extensions, treat as image
     let isImage = lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp') || lowerUrl.endsWith('.gif');
     if (isImage) isVideo = false;
 
@@ -505,11 +495,10 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        // Vertical video blur background effect logic
         billboardBox.innerHTML = `
             <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
                 <video src="${fileUrl}" autoplay muted playsinline style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
-                <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="position: relative; width: 100%; height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
             </div>
         `;
         let mediaEl = document.getElementById('activeAdMedia');
@@ -518,10 +507,9 @@ function renderAdOnBillboard(ad, onComplete) {
             mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
         }
     } else {
-        // Image display handling
         billboardBox.innerHTML = `
             <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                <img src="${fileUrl}" alt="Ad Image" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px;">
+                <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
             </div>
         `;
     }
@@ -567,9 +555,7 @@ async function initLiveBillboardPlayer() {
         let todaysApprovedAds = queueRecords.filter(ad => ad.slot_time && ad.slot_time.includes(todayDateStr));
 
         if (todaysApprovedAds.length === 0) {
-            applyDefaultBanner();
-            setTimeout(initLiveBillboardPlayer, 15000);
-            return;
+            todaysApprovedAds = queueRecords; // Fallback to queue if exact date string match misses
         }
 
         let scheduledAds = [];
@@ -583,13 +569,7 @@ async function initLiveBillboardPlayer() {
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
             let currentTime = new Date();
-            let newDateStr = currentTime.toLocaleDateString('en-US', optionsCheck);
-            if (newDateStr !== todayDateStr) {
-                initLiveBillboardPlayer();
-                return;
-            }
 
-            let currentPlaying, nextUpcoming;
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
 
