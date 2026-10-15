@@ -387,18 +387,15 @@ async function loadMyActiveCampaign() {
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
         let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
 
-        // Flexible check: get today's runs or the very next upcoming runs if today's are passed
         let todayOnlyRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
         if (todayOnlyRuns.length === 0 && runsList.length > 0) {
-            todayOnlyRuns = [runsList[0]]; // Fallback to first run so user sees active countdown instantly
+            todayOnlyRuns = [runsList[0]];
         }
 
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
         function updateLiveCountdownUI() {
             let currentTime = new Date();
-            let currentTodayStr = currentTime.toLocaleDateString('en-US', optionsCheck);
-
             let upcomingRuns = runsList.filter(run => parseIstSlotTimeToDate(run.slot_time) >= currentTime);
             let nextItem = upcomingRuns.length > 0 ? upcomingRuns[0] : runsList[0];
 
@@ -472,7 +469,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING (FIXED FOR FULL HORIZONTAL & BLUR VERTICAL) ---
+// --- MEDIA RENDERING (FIXED: HORIZONTAL FULL SCREEN FILL & VERTICAL BLUR) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -495,21 +492,48 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        billboardBox.innerHTML = `
-            <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                <video src="${fileUrl}" autoplay muted playsinline style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
-                <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="position: relative; width: 100%; height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
-            </div>
-        `;
-        let mediaEl = document.getElementById('activeAdMedia');
-        if (mediaEl) {
-            mediaEl.onended = triggerComplete;
-            mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
-        }
+        // Checking aspect ratio dynamically to handle horizontal vs vertical correctly
+        const tempVideo = document.createElement('video');
+        tempVideo.src = fileUrl;
+        tempVideo.onloadedmetadata = function () {
+            let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
+            if (isVertical) {
+                billboardBox.innerHTML = `
+                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                        <video src="${fileUrl}" autoplay muted playsinline style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                    </div>
+                `;
+            } else {
+                billboardBox.innerHTML = `
+                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                    </div>
+                `;
+            }
+            let mediaEl = document.getElementById('activeAdMedia');
+            if (mediaEl) {
+                mediaEl.onended = triggerComplete;
+                mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
+            }
+        };
+        tempVideo.onerror = function () {
+            // Fallback to fill if metadata fails
+            billboardBox.innerHTML = `
+                <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                    <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                </div>
+            `;
+            let mediaEl = document.getElementById('activeAdMedia');
+            if (mediaEl) {
+                mediaEl.onended = triggerComplete;
+                mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
+            }
+        };
     } else {
         billboardBox.innerHTML = `
             <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
+                <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
             </div>
         `;
     }
@@ -555,7 +579,7 @@ async function initLiveBillboardPlayer() {
         let todaysApprovedAds = queueRecords.filter(ad => ad.slot_time && ad.slot_time.includes(todayDateStr));
 
         if (todaysApprovedAds.length === 0) {
-            todaysApprovedAds = queueRecords; // Fallback to queue if exact date string match misses
+            todaysApprovedAds = queueRecords;
         }
 
         let scheduledAds = [];
