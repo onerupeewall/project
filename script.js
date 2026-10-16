@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TOTAL_DAILY_SECONDS = 86400; // 24 Hours = 86,400 Seconds
@@ -100,6 +100,10 @@ window.addEventListener('DOMContentLoaded', () => {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
         let campaignFieldsHTML = `
             <div class="form-group" style="margin-bottom: 15px;">
+                <label>Phone Number (for login & recovery):</label>
+                <input type="tel" id="userPhoneInput" placeholder="Enter mobile number" required style="width:100%; padding:10px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
                 <label>Times per Day (Max 12 Departs):</label>
                 <input type="number" id="frequencyInput" value="1" min="1" max="12" required>
             </div>
@@ -182,6 +186,12 @@ window.addEventListener('DOMContentLoaded', () => {
             let duration = parseInt(document.getElementById('durationInput')?.value) || 10;
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
+            let userPhone = document.getElementById('userPhoneInput')?.value.trim() || '';
+
+            if (!userPhone) {
+                alert('⚠️ Please enter your phone number!');
+                return;
+            }
 
             if (frequency > 12) {
                 alert('⚠️ Frequency cannot be more than 12 per day!');
@@ -282,7 +292,8 @@ window.addEventListener('DOMContentLoaded', () => {
                             duration_second: duration,
                             slot_time: finalSlotTimeFormatted,
                             status: 'pending',
-                            unified_token: null
+                            unified_token: null,
+                            user_phone: userPhone
                         };
 
                         recordsToInsert.push(newRecordObj);
@@ -295,9 +306,10 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (insertError) throw insertError;
                 }
 
-                let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').order('id', { ascending: false }).limit(1);
+                let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').eq('user_phone', userPhone).order('id', { ascending: false }).limit(1);
                 if (latestRecord && latestRecord.length > 0) {
                     localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
+                    localStorage.setItem('user_phone', userPhone);
                 }
 
                 alert('✅ Campaign Submitted Successfully!');
@@ -355,7 +367,7 @@ function formatDateTimeToLocalUserTime(istDateObj) {
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN ---
+// --- LOAD USER'S ACTIVE CAMPAIGN VIA PHONE / LOCALSTORAGE ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -363,7 +375,9 @@ async function loadMyActiveCampaign() {
     const countdownText = document.getElementById('billboardCountdownText');
 
     let myCampaignId = localStorage.getItem('my_latest_campaign_id');
-    if (!myCampaignId) {
+    let savedPhone = localStorage.getItem('user_phone');
+
+    if (!myCampaignId && !savedPhone) {
         if (statusBox) statusBox.style.display = 'none';
         if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #9ca3af;">You have not booked any campaign from this device yet.</span>';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
@@ -371,7 +385,14 @@ async function loadMyActiveCampaign() {
     }
 
     try {
-        let { data: singleRecord, error } = await supabaseClient.from('buysecond_records').select('*').eq('id', myCampaignId).single();
+        let query = supabaseClient.from('buysecond_records').select('*');
+        if (myCampaignId) {
+            query = query.eq('id', myCampaignId);
+        } else if (savedPhone) {
+            query = query.eq('user_phone', savedPhone).order('id', { ascending: false }).limit(1);
+        }
+
+        let { data: singleRecord, error } = await query.single();
         if (error || !singleRecord) {
             if (statusBox) statusBox.style.display = 'none';
             return;
