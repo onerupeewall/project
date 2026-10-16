@@ -34,8 +34,8 @@ window.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(styleTag);
 
-    document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-    document.addEventListener('dblclick', function(e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
 
     initVisitorCounter();
     updateAvailableSecondsCounter();
@@ -129,7 +129,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     if (frequencyInput) {
-        frequencyInput.addEventListener('input', function() {
+        frequencyInput.addEventListener('input', function () {
             let val = parseInt(this.value) || 1;
             if (val > 12) {
                 this.style.borderColor = '#ef4444';
@@ -142,7 +142,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     if (adFileInput) {
-        adFileInput.addEventListener('change', function(e) {
+        adFileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (fileErrorMsg) { fileErrorMsg.style.display = 'none'; fileErrorMsg.innerText = ''; }
             if (submitBtn) submitBtn.disabled = false;
@@ -151,7 +151,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (file.type.startsWith('video/')) {
                 const videoElement = document.createElement('video');
                 videoElement.preload = 'metadata';
-                videoElement.onloadedmetadata = function() {
+                videoElement.onloadedmetadata = function () {
                     window.URL.revokeObjectURL(videoElement.src);
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
@@ -208,23 +208,23 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- OTP & PHONE LOGIN MODAL FLOW ---
-function openOtpLoginModal() {
+// --- PERSISTENT & GENERATED OTP LOGIN MODAL FLOW ---
+async function openOtpLoginModal() {
     let existingModal = document.getElementById('otpLoginModal');
     if (existingModal) existingModal.remove();
 
     let modalHTML = `
         <div id="otpLoginModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:9999;">
             <div style="background:#121824; padding:24px; border-radius:10px; border:1px solid #1f293d; width:90%; max-width:400px; color:#fff; text-align:center;">
-                <h3>🔐 Mobile Verification / Login</h3>
-                <p style="font-size:13px; color:#9ca3af; margin-bottom:15px;">Enter your phone number to secure and link your campaign.</p>
+                <h3>🔐 Mobile Verification</h3>
+                <p style="font-size:13px; color:#9ca3af; margin-bottom:15px;">Enter your phone number to complete campaign booking.</p>
                 <div id="phoneStep">
                     <input type="tel" id="loginPhone" placeholder="Enter 10-digit Mobile Number" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" required>
-                    <button id="sendOtpBtn" style="width:100%; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Send OTP</button>
+                    <button id="sendOtpBtn" style="width:100%; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Continue</button>
                 </div>
                 <div id="otpStep" style="display:none;">
-                    <p id="otpSentMsg" style="font-size:13px; color:#10B981; margin-bottom:10px;"></p>
-                    <input type="text" id="loginOtp" placeholder="Enter 6-digit OTP (e.g. 123456)" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" maxlength="6">
+                    <p id="otpSentMsg" style="font-size:14px; color:#38bdf8; font-weight:bold; margin-bottom:12px;"></p>
+                    <input type="text" id="loginOtp" placeholder="Enter Your OTP" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" maxlength="6">
                     <button id="verifyOtpBtn" style="width:100%; padding:12px; background:#10B981; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Verify & Complete Booking</button>
                 </div>
                 <button onclick="document.getElementById('otpLoginModal').remove()" style="background:transparent; border:none; color:#9ca3af; margin-top:15px; cursor:pointer; font-size:13px;">Cancel</button>
@@ -233,35 +233,53 @@ function openOtpLoginModal() {
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-    document.getElementById('sendOtpBtn').addEventListener('click', () => {
+    let generatedOtp = '123456';
+
+    document.getElementById('sendOtpBtn').addEventListener('click', async () => {
         let phone = document.getElementById('loginPhone').value.trim();
         if (phone.length < 10) {
             alert('Please enter a valid mobile number.');
             return;
         }
+
+        // Check if user already has an OTP assigned in database or localStorage
+        let storedOtpKey = `user_otp_${phone}`;
+        if (localStorage.getItem(storedOtpKey)) {
+            generatedOtp = localStorage.getItem(storedOtpKey);
+        } else {
+            // Check in supabase records if this phone exists to retrieve its persistent OTP
+            let { data: existingUserRecs } = await supabaseClient.from('buysecond_records').select('*').eq('user_phone', phone).limit(1);
+            if (existingUserRecs && existingUserRecs.length > 0 && existingUserRecs[0].user_otp) {
+                generatedOtp = existingUserRecs[0].user_otp;
+            } else {
+                // Generate a random 6-digit OTP for new number
+                generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+            }
+            localStorage.setItem(storedOtpKey, generatedOtp);
+        }
+
         document.getElementById('phoneStep').style.display = 'none';
         document.getElementById('otpStep').style.display = 'block';
-        document.getElementById('otpSentMsg').innerText = `OTP sent to +91 ${phone} (Demo OTP: 123456)`;
+        document.getElementById('otpSentMsg').innerText = `Your OTP: ${generatedOtp}`;
     });
 
     document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
         let otp = document.getElementById('loginOtp').value.trim();
         let phone = document.getElementById('loginPhone').value.trim();
 
-        if (otp !== '123456' && otp !== '0000') {
-            alert('Invalid OTP! Please enter 123456');
+        if (otp !== generatedOtp) {
+            alert('Invalid OTP! Please enter the correct OTP.');
             return;
         }
 
         document.getElementById('otpLoginModal').remove();
         localStorage.setItem('user_phone', phone);
         if (pendingCampaignData) {
-            await finalizeCampaignSubmission(phone, pendingCampaignData);
+            await finalizeCampaignSubmission(phone, generatedOtp, pendingCampaignData);
         }
     });
 }
-
-async function finalizeCampaignSubmission(userPhone, data) {
+async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
         let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
 
@@ -345,13 +363,15 @@ async function finalizeCampaignSubmission(userPhone, data) {
                     slot_time: finalSlotTimeFormatted,
                     status: 'pending',
                     unified_token: null,
-                    user_phone: userPhone
+                    user_phone: userPhone,
+                    user_otp: userOtp
                 };
 
                 recordsToInsert.push(newRecordObj);
                 dayExisting.push(newRecordObj);
             }
         }
+
         if (recordsToInsert.length > 0) {
             let { error: insertError } = await supabaseClient.from('buysecond_records').insert(recordsToInsert);
             if (insertError) throw insertError;
@@ -362,7 +382,7 @@ async function finalizeCampaignSubmission(userPhone, data) {
             localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
         }
 
-        alert('✅ Campaign Submitted & Linked to Mobile Number Successfully!');
+        alert('✅ Campaign Submitted Successfully!');
         loadMyActiveCampaign();
     } catch (err) {
         alert('Submission failed: ' + err.message);
@@ -424,7 +444,7 @@ async function loadMyActiveCampaign() {
 
     if (!myCampaignId && !savedPhone) {
         if (statusBox) statusBox.style.display = 'none';
-        if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #9ca3af;">You have not booked any campaign from this device yet. <button onclick="openOtpLoginModal()" style="background:#2563eb; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; margin-left:5px;">Login via Phone</button></span>';
+        if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #9ca3af;">No active campaign found from this device. Book a campaign to view status here.</span>';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
         return;
     }
@@ -565,7 +585,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING WITH PRELOADING & CACHING ---
+// --- MEDIA RENDERING WITH BLUR BACKGROUND FOR VERTICAL MEDIA & PRELOADING ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -591,7 +611,7 @@ function renderAdOnBillboard(ad, onComplete) {
         const tempVideo = document.createElement('video');
         tempVideo.src = fileUrl;
         tempVideo.preload = 'auto';
-        tempVideo.onloadedmetadata = function() {
+        tempVideo.onloadedmetadata = function () {
             let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
             if (isVertical) {
                 billboardBox.innerHTML = `
@@ -613,7 +633,7 @@ function renderAdOnBillboard(ad, onComplete) {
                 mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
             }
         };
-        tempVideo.onerror = function() {
+        tempVideo.onerror = function () {
             billboardBox.innerHTML = `
                 <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
                     <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
@@ -626,11 +646,33 @@ function renderAdOnBillboard(ad, onComplete) {
             }
         };
     } else {
-        billboardBox.innerHTML = `
-            <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
-            </div>
-        `;
+        // Image rendering with vertical centering & blur background support
+        const tempImg = new Image();
+        tempImg.src = fileUrl;
+        tempImg.onload = function () {
+            let isVertical = tempImg.naturalHeight > tempImg.naturalWidth;
+            if (isVertical) {
+                billboardBox.innerHTML = `
+                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                        <img src="${fileUrl}" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;" alt="Blur BG">
+                        <img src="${fileUrl}" style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; z-index: 2; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')" alt="Ad Image">
+                    </div>
+                `;
+            } else {
+                billboardBox.innerHTML = `
+                    <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
+                        <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                    </div>
+                `;
+            }
+        };
+        tempImg.onerror = function () {
+            billboardBox.innerHTML = `
+                <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
+                    <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                </div>
+            `;
+        };
     }
 
     let timeLeft = duration;
