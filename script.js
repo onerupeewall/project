@@ -11,6 +11,15 @@ let globalTimerInterval = null;
 let activeCountdownInterval = null;
 
 window.addEventListener('DOMContentLoaded', () => {
+    // --- LOCK SCROLLING, ZOOMING & TEXT SELECTION ---
+    document.body.style.overflow = 'hidden';
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
+    document.body.style.msUserSelect = 'none';
+    document.body.style.MozUserSelect = 'none';
+    document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+    document.addEventListener('dblclick', function(e) { e.preventDefault(); }, { passive: false });
+
     initVisitorCounter();
     updateAvailableSecondsCounter();
 
@@ -43,21 +52,27 @@ window.addEventListener('DOMContentLoaded', () => {
     const openSlotModal = document.getElementById('openSlotModal');
     const closeSlotModal = document.getElementById('closeSlotModal');
 
-    if (openSlotModal && slotModal) openSlotModal.addEventListener('click', () => slotModal.style.display = 'block');
+    if (openSlotModal && slotModal) {
+        openSlotModal.addEventListener('click', () => {
+            slotModal.style.display = 'flex';
+            slotModal.style.transform = 'scale(1.02)';
+            setTimeout(() => { slotModal.style.transform = 'scale(1)'; }, 200);
+        });
+    }
     if (closeSlotModal && slotModal) closeSlotModal.addEventListener('click', () => slotModal.style.display = 'none');
 
     const termsModal = document.getElementById('termsModal');
     const openTermsBtn = document.getElementById('openTermsBtn');
     const closeTermsModal = document.getElementById('closeTermsModal');
 
-    if (openTermsBtn && termsModal) openTermsBtn.addEventListener('click', (e) => { e.preventDefault(); termsModal.style.display = 'block'; });
+    if (openTermsBtn && termsModal) openTermsBtn.addEventListener('click', (e) => { e.preventDefault(); termsModal.style.display = 'flex'; });
     if (closeTermsModal && termsModal) closeTermsModal.addEventListener('click', () => termsModal.style.display = 'none');
 
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
 
-    if (checkRecordBtn && checkRecordModal) checkRecordBtn.addEventListener('click', () => { checkRecordModal.style.display = 'block'; loadMyActiveCampaign(); });
+    if (checkRecordBtn && checkRecordModal) checkRecordBtn.addEventListener('click', () => { checkRecordModal.style.display = 'flex'; loadMyActiveCampaign(); });
     if (closeCheckRecordModal && checkRecordModal) closeCheckRecordModal.addEventListener('click', () => checkRecordModal.style.display = 'none');
 
     window.addEventListener('click', (e) => {
@@ -99,7 +114,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     if (frequencyInput) {
-        frequencyInput.addEventListener('input', function () {
+        frequencyInput.addEventListener('input', function() {
             let val = parseInt(this.value) || 1;
             if (val > 12) {
                 this.style.borderColor = '#ef4444';
@@ -112,7 +127,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     if (adFileInput) {
-        adFileInput.addEventListener('change', function (e) {
+        adFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (fileErrorMsg) { fileErrorMsg.style.display = 'none'; fileErrorMsg.innerText = ''; }
             if (submitBtn) submitBtn.disabled = false;
@@ -121,7 +136,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (file.type.startsWith('video/')) {
                 const videoElement = document.createElement('video');
                 videoElement.preload = 'metadata';
-                videoElement.onloadedmetadata = function () {
+                videoElement.onloadedmetadata = function() {
                     window.URL.revokeObjectURL(videoElement.src);
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
@@ -358,6 +373,18 @@ async function loadMyActiveCampaign() {
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
 
+        let now = new Date();
+
+        // Check if all campaign runs are completed
+        let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
+        if (allCompleted) {
+            if (statusBox) statusBox.style.display = 'none';
+            localStorage.removeItem('my_latest_campaign_id');
+            if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #10B981;">Your campaign has successfully completed all scheduled runs!</span>';
+            if (activeCountdownInterval) clearInterval(activeCountdownInterval);
+            return;
+        }
+
         if (statusBox) statusBox.style.display = 'block';
 
         if (master.status === 'pending') {
@@ -383,21 +410,12 @@ async function loadMyActiveCampaign() {
 
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
 
-        let now = new Date();
-        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
-
-        let todayOnlyRuns = runsList.filter(run => run.slot_time && run.slot_time.includes(todayDateStr));
-        if (todayOnlyRuns.length === 0 && runsList.length > 0) {
-            todayOnlyRuns = [runsList[0]];
-        }
-
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
         function updateLiveCountdownUI() {
             let currentTime = new Date();
             let upcomingRuns = runsList.filter(run => parseIstSlotTimeToDate(run.slot_time) >= currentTime);
-            let nextItem = upcomingRuns.length > 0 ? upcomingRuns[0] : runsList[0];
+            let nextItem = upcomingRuns.length > 0 ? upcomingRuns[0] : null;
 
             if (nextItem) {
                 let targetTime = parseIstSlotTimeToDate(nextItem.slot_time);
@@ -413,8 +431,7 @@ async function loadMyActiveCampaign() {
                     if (countdownText) countdownText.innerText = `Token: #${tokenDisplay}`;
                 }
             } else {
-                if (statusText) statusText.innerText = `✅ Campaign Approved (${cleanBrand})`;
-                if (countdownText) countdownText.innerText = `All runs completed. Refreshes at midnight.`;
+                if (statusBox) statusBox.style.display = 'none';
             }
         }
 
@@ -469,7 +486,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING (FIXED: HORIZONTAL FULL SCREEN FILL & VERTICAL BLUR) ---
+// --- MEDIA RENDERING WITH PRELOADING & CACHING FOR SLOW NETWORKS ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -492,15 +509,15 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        // Checking aspect ratio dynamically to handle horizontal vs vertical correctly
         const tempVideo = document.createElement('video');
         tempVideo.src = fileUrl;
-        tempVideo.onloadedmetadata = function () {
+        tempVideo.preload = 'auto'; // Preloading for slow network
+        tempVideo.onloadedmetadata = function() {
             let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
             if (isVertical) {
                 billboardBox.innerHTML = `
                     <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <video src="${fileUrl}" autoplay muted playsinline style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
+                        <video src="${fileUrl}" autoplay muted playsinline preload="auto" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
                         <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
                     </div>
                 `;
@@ -517,8 +534,7 @@ function renderAdOnBillboard(ad, onComplete) {
                 mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
             }
         };
-        tempVideo.onerror = function () {
-            // Fallback to fill if metadata fails
+        tempVideo.onerror = function() {
             billboardBox.innerHTML = `
                 <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
                     <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
@@ -552,7 +568,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- 24-HOUR AUTONOMOUS SCHEDULER ---
+// --- 24-HOUR AUTONOMOUS SCHEDULER WITH PRELOADING NEXT ADS ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -590,16 +606,32 @@ async function initLiveBillboardPlayer() {
             scheduledAds.push({ adRecord: ad, start: adStart, end: adEnd, duration: dur });
         });
 
+        // Background Preload next upcoming ad for slow network optimization
+        let nextPreloadIndex = 0;
+        function preloadNextAd(currentIndex) {
+            if (scheduledAds[currentIndex + 1]) {
+                let nextAdUrl = scheduledAds[currentIndex + 1].adRecord.file_url;
+                if (nextAdUrl && nextAdUrl.toLowerCase().endsWith('.mp4')) {
+                    const preloadVid = document.createElement('video');
+                    preloadVid.src = nextAdUrl;
+                    preloadVid.preload = 'auto';
+                }
+            }
+        }
+
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
             let currentTime = new Date();
 
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
+            let currentIndex = -1;
 
-            for (let item of scheduledAds) {
+            for (let i = 0; i < scheduledAds.length; i++) {
+                let item = scheduledAds[i];
                 if (currentTime >= item.start && currentTime < item.end) {
                     currentPlayingAd = item;
+                    currentIndex = i;
                     break;
                 } else if (currentTime < item.start) {
                     if (!nextUpcomingAd) nextUpcomingAd = item;
@@ -608,6 +640,7 @@ async function initLiveBillboardPlayer() {
 
             let timerEl = getCountdownElement();
             if (currentPlayingAd) {
+                preloadNextAd(currentIndex);
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
                     setTimeout(checkAndPlaySchedule, 500);
                 });
