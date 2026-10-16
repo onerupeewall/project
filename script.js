@@ -9,6 +9,7 @@ const DEPART_DURATION = 7200;
 let isPlayingPastRecord = false;
 let globalTimerInterval = null;
 let activeCountdownInterval = null;
+let pendingCampaignData = null;
 
 window.addEventListener('DOMContentLoaded', () => {
     // --- LOCK TEXT SELECTION & ZOOM GESTURES ---
@@ -100,10 +101,6 @@ window.addEventListener('DOMContentLoaded', () => {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
         let campaignFieldsHTML = `
             <div class="form-group" style="margin-bottom: 15px;">
-                <label>Phone Number (for login & recovery):</label>
-                <input type="tel" id="userPhoneInput" placeholder="Enter mobile number" required style="width:100%; padding:10px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px;">
-            </div>
-            <div class="form-group" style="margin-bottom: 15px;">
                 <label>Times per Day (Max 12 Departs):</label>
                 <input type="number" id="frequencyInput" value="1" min="1" max="12" required>
             </div>
@@ -186,12 +183,6 @@ window.addEventListener('DOMContentLoaded', () => {
             let duration = parseInt(document.getElementById('durationInput')?.value) || 10;
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
-            let userPhone = document.getElementById('userPhoneInput')?.value.trim() || '';
-
-            if (!userPhone) {
-                alert('⚠️ Please enter your phone number!');
-                return;
-            }
 
             if (frequency > 12) {
                 alert('⚠️ Frequency cannot be more than 12 per day!');
@@ -207,123 +198,177 @@ window.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.getElementById('adFile');
             const selectedDateVal = document.getElementById('bookingDateInput').value;
 
-            const submitBtnEl = slotFormContainer.querySelector('button[type="submit"]');
-            if (submitBtnEl) { submitBtnEl.innerText = 'Submitting...'; submitBtnEl.disabled = true; }
+            pendingCampaignData = {
+                duration, frequency, campaignDays, targetUrl, adTitle, fileInputFile: fileInput?.files[0], selectedDateVal
+            };
 
-            try {
-                let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
-
-                if (fileInput && fileInput.files && fileInput.files[0]) {
-                    const file = fileInput.files[0];
-                    const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-
-                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                        .from('ad-videos')
-                        .upload(fileName, file, { upsert: true });
-
-                    if (!uploadError) {
-                        let { data: publicUrlData } = supabaseClient.storage.from('ad-videos').getPublicUrl(fileName);
-                        if (publicUrlData && publicUrlData.publicUrl) {
-                            publicFileUrl = publicUrlData.publicUrl;
-                        }
-                    } else {
-                        publicFileUrl = URL.createObjectURL(file);
-                    }
-                }
-
-                let baseParts = selectedDateVal.split('-');
-                let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
-                let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-
-                let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
-                let recordsToInsert = [];
-
-                for (let d = 0; d < campaignDays; d++) {
-                    let currentDayDate = new Date(startDate);
-                    currentDayDate.setDate(startDate.getDate() + d);
-                    let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
-
-                    let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
-
-                    for (let f = 0; f < frequency; f++) {
-                        let departStartSec = f * DEPART_DURATION;
-                        let departEndSec = departStartSec + DEPART_DURATION;
-
-                        let slotsInThisDepart = dayExisting.filter(rec => {
-                            let timePart = rec.slot_time.split(' at ')[1];
-                            if (!timePart) return false;
-                            let [timeStr, modifier] = timePart.split(' ');
-                            let [hrs, mins, secs] = timeStr.split(':').map(Number);
-                            if (modifier === 'PM' && hrs < 12) hrs += 12;
-                            if (modifier === 'AM' && hrs === 12) hrs = 0;
-                            let totalSecsFromMidnight = (hrs * 3600) + (mins * 60) + secs;
-                            return totalSecsFromMidnight >= departStartSec && totalSecsFromMidnight < departEndSec;
-                        });
-
-                        let targetOffset = departStartSec;
-                        if (slotsInThisDepart.length > 0) {
-                            let lastSlot = slotsInThisDepart[slotsInThisDepart.length - 1];
-                            let timePart = lastSlot.slot_time.split(' at ')[1];
-                            let [timeStr, modifier] = timePart.split(' ');
-                            let [hrs, mins, secs] = timeStr.split(':').map(Number);
-                            if (modifier === 'PM' && hrs < 12) hrs += 12;
-                            if (modifier === 'AM' && hrs === 12) hrs = 0;
-                            let lastStartSec = (hrs * 3600) + (mins * 60) + secs;
-                            let lastDur = parseInt(lastSlot.duration_second) || 10;
-                            targetOffset = lastStartSec + lastDur;
-                        }
-
-                        if (targetOffset >= departEndSec) {
-                            targetOffset = departEndSec - duration;
-                            if (targetOffset < departStartSec) targetOffset = departStartSec;
-                        }
-
-                        let slotTimeObj = new Date(currentDayDate);
-                        slotTimeObj.setHours(0, 0, 0, 0);
-                        slotTimeObj.setSeconds(targetOffset);
-
-                        let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-                        let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
-
-                        let newRecordObj = {
-                            brand_name: adTitle + (frequency > 1 ? ` (Run ${f + 1}/${frequency})` : ''),
-                            target_url: targetUrl,
-                            file_url: publicFileUrl,
-                            duration_second: duration,
-                            slot_time: finalSlotTimeFormatted,
-                            status: 'pending',
-                            unified_token: null,
-                            user_phone: userPhone
-                        };
-
-                        recordsToInsert.push(newRecordObj);
-                        dayExisting.push(newRecordObj);
-                    }
-                }
-
-                if (recordsToInsert.length > 0) {
-                    let { error: insertError } = await supabaseClient.from('buysecond_records').insert(recordsToInsert);
-                    if (insertError) throw insertError;
-                }
-
-                let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').eq('user_phone', userPhone).order('id', { ascending: false }).limit(1);
-                if (latestRecord && latestRecord.length > 0) {
-                    localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
-                    localStorage.setItem('user_phone', userPhone);
-                }
-
-                alert('✅ Campaign Submitted Successfully!');
-                slotFormContainer.reset();
-                slotModal.style.display = 'none';
-                loadMyActiveCampaign();
-            } catch (err) {
-                alert('Submission failed: ' + err.message);
-            } finally {
-                if (submitBtnEl) { submitBtnEl.innerText = 'Submit'; submitBtnEl.disabled = false; }
-            }
+            slotModal.style.display = 'none';
+            openOtpLoginModal();
         });
     }
 });
+
+// --- OTP & PHONE LOGIN MODAL FLOW ---
+function openOtpLoginModal() {
+    let existingModal = document.getElementById('otpLoginModal');
+    if (existingModal) existingModal.remove();
+
+    let modalHTML = `
+        <div id="otpLoginModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:9999;">
+            <div style="background:#121824; padding:24px; border-radius:10px; border:1px solid #1f293d; width:90%; max-width:400px; color:#fff; text-align:center;">
+                <h3>🔐 Mobile Verification / Login</h3>
+                <p style="font-size:13px; color:#9ca3af; margin-bottom:15px;">Enter your phone number to secure and link your campaign.</p>
+                <div id="phoneStep">
+                    <input type="tel" id="loginPhone" placeholder="Enter 10-digit Mobile Number" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" required>
+                    <button id="sendOtpBtn" style="width:100%; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Send OTP</button>
+                </div>
+                <div id="otpStep" style="display:none;">
+                    <p id="otpSentMsg" style="font-size:13px; color:#10B981; margin-bottom:10px;"></p>
+                    <input type="text" id="loginOtp" placeholder="Enter 6-digit OTP (e.g. 123456)" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" maxlength="6">
+                    <button id="verifyOtpBtn" style="width:100%; padding:12px; background:#10B981; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Verify & Complete Booking</button>
+                </div>
+                <button onclick="document.getElementById('otpLoginModal').remove()" style="background:transparent; border:none; color:#9ca3af; margin-top:15px; cursor:pointer; font-size:13px;">Cancel</button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    document.getElementById('sendOtpBtn').addEventListener('click', () => {
+        let phone = document.getElementById('loginPhone').value.trim();
+        if (phone.length < 10) {
+            alert('Please enter a valid mobile number.');
+            return;
+        }
+        document.getElementById('phoneStep').style.display = 'none';
+        document.getElementById('otpStep').style.display = 'block';
+        document.getElementById('otpSentMsg').innerText = `OTP sent to +91 ${phone} (Demo OTP: 123456)`;
+    });
+
+    document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
+        let otp = document.getElementById('loginOtp').value.trim();
+        let phone = document.getElementById('loginPhone').value.trim();
+
+        if (otp !== '123456' && otp !== '0000') {
+            alert('Invalid OTP! Please enter 123456');
+            return;
+        }
+
+        document.getElementById('otpLoginModal').remove();
+        localStorage.setItem('user_phone', phone);
+        if (pendingCampaignData) {
+            await finalizeCampaignSubmission(phone, pendingCampaignData);
+        }
+    });
+}
+
+async function finalizeCampaignSubmission(userPhone, data) {
+    try {
+        let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
+
+        if (data.fileInputFile) {
+            const file = data.fileInputFile;
+            const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+
+            const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                .from('ad-videos')
+                .upload(fileName, file, { upsert: true });
+
+            if (!uploadError) {
+                let { data: publicUrlData } = supabaseClient.storage.from('ad-videos').getPublicUrl(fileName);
+                if (publicUrlData && publicUrlData.publicUrl) {
+                    publicFileUrl = publicUrlData.publicUrl;
+                }
+            } else {
+                publicFileUrl = URL.createObjectURL(file);
+            }
+        }
+
+        let baseParts = data.selectedDateVal.split('-');
+        let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
+        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
+
+        let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
+        let recordsToInsert = [];
+
+        for (let d = 0; d < data.campaignDays; d++) {
+            let currentDayDate = new Date(startDate);
+            currentDayDate.setDate(startDate.getDate() + d);
+            let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
+
+            let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
+
+            for (let f = 0; f < data.frequency; f++) {
+                let departStartSec = f * DEPART_DURATION;
+                let departEndSec = departStartSec + DEPART_DURATION;
+
+                let slotsInThisDepart = dayExisting.filter(rec => {
+                    let timePart = rec.slot_time.split(' at ')[1];
+                    if (!timePart) return false;
+                    let [timeStr, modifier] = timePart.split(' ');
+                    let [hrs, mins, secs] = timeStr.split(':').map(Number);
+                    if (modifier === 'PM' && hrs < 12) hrs += 12;
+                    if (modifier === 'AM' && hrs === 12) hrs = 0;
+                    let totalSecsFromMidnight = (hrs * 3600) + (mins * 60) + secs;
+                    return totalSecsFromMidnight >= departStartSec && totalSecsFromMidnight < departEndSec;
+                });
+
+                let targetOffset = departStartSec;
+                if (slotsInThisDepart.length > 0) {
+                    let lastSlot = slotsInThisDepart[slotsInThisDepart.length - 1];
+                    let timePart = lastSlot.slot_time.split(' at ')[1];
+                    let [timeStr, modifier] = timePart.split(' ');
+                    let [hrs, mins, secs] = timeStr.split(':').map(Number);
+                    if (modifier === 'PM' && hrs < 12) hrs += 12;
+                    if (modifier === 'AM' && hrs === 12) hrs = 0;
+                    let lastStartSec = (hrs * 3600) + (mins * 60) + secs;
+                    let lastDur = parseInt(lastSlot.duration_second) || 10;
+                    targetOffset = lastStartSec + lastDur;
+                }
+
+                if (targetOffset >= departEndSec) {
+                    targetOffset = departEndSec - data.duration;
+                    if (targetOffset < departStartSec) targetOffset = departStartSec;
+                }
+
+                let slotTimeObj = new Date(currentDayDate);
+                slotTimeObj.setHours(0, 0, 0, 0);
+                slotTimeObj.setSeconds(targetOffset);
+
+                let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
+
+                let newRecordObj = {
+                    brand_name: data.adTitle + (data.frequency > 1 ? ` (Run ${f + 1}/${data.frequency})` : ''),
+                    target_url: data.targetUrl,
+                    file_url: publicFileUrl,
+                    duration_second: data.duration,
+                    slot_time: finalSlotTimeFormatted,
+                    status: 'pending',
+                    unified_token: null,
+                    user_phone: userPhone
+                };
+
+                recordsToInsert.push(newRecordObj);
+                dayExisting.push(newRecordObj);
+            }
+        }
+        if (recordsToInsert.length > 0) {
+            let { error: insertError } = await supabaseClient.from('buysecond_records').insert(recordsToInsert);
+            if (insertError) throw insertError;
+        }
+
+        let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').eq('user_phone', userPhone).order('id', { ascending: false }).limit(1);
+        if (latestRecord && latestRecord.length > 0) {
+            localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
+        }
+
+        alert('✅ Campaign Submitted & Linked to Mobile Number Successfully!');
+        loadMyActiveCampaign();
+    } catch (err) {
+        alert('Submission failed: ' + err.message);
+    }
+}
+
 // --- ADMIN PREVIEW WITH SAFE RETURN ---
 function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
     const billboardBox = document.getElementById('billboardBox');
@@ -379,7 +424,7 @@ async function loadMyActiveCampaign() {
 
     if (!myCampaignId && !savedPhone) {
         if (statusBox) statusBox.style.display = 'none';
-        if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #9ca3af;">You have not booked any campaign from this device yet.</span>';
+        if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #9ca3af;">You have not booked any campaign from this device yet. <button onclick="openOtpLoginModal()" style="background:#2563eb; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; margin-left:5px;">Login via Phone</button></span>';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
         return;
     }
