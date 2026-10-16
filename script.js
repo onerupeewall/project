@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const TOTAL_DAILY_SECONDS = 86400; // 24 Hours = 86,400 Seconds
@@ -11,12 +11,28 @@ let globalTimerInterval = null;
 let activeCountdownInterval = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    // --- LOCK SCROLLING, ZOOMING & TEXT SELECTION ---
-    document.body.style.overflow = 'hidden';
-    document.body.style.userSelect = 'none';
-    document.body.style.webkitUserSelect = 'none';
-    document.body.style.msUserSelect = 'none';
-    document.body.style.MozUserSelect = 'none';
+    // --- LOCK TEXT SELECTION & ZOOM GESTURES ---
+    const styleTag = document.createElement('style');
+    styleTag.innerHTML = `
+        * {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
+        }
+        input, textarea {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+        }
+        body {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            touch-action: pan-y;
+        }
+    `;
+    document.head.appendChild(styleTag);
+
     document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
     document.addEventListener('dblclick', function(e) { e.preventDefault(); }, { passive: false });
 
@@ -55,8 +71,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (openSlotModal && slotModal) {
         openSlotModal.addEventListener('click', () => {
             slotModal.style.display = 'flex';
-            slotModal.style.transform = 'scale(1.02)';
-            setTimeout(() => { slotModal.style.transform = 'scale(1)'; }, 200);
         });
     }
     if (closeSlotModal && slotModal) closeSlotModal.addEventListener('click', () => slotModal.style.display = 'none');
@@ -341,7 +355,7 @@ function formatDateTimeToLocalUserTime(istDateObj) {
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN & LOCAL TIME CONVERSION ---
+// --- LOAD USER'S ACTIVE CAMPAIGN ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -375,7 +389,6 @@ async function loadMyActiveCampaign() {
 
         let now = new Date();
 
-        // Check if all campaign runs are completed
         let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
         if (allCompleted) {
             if (statusBox) statusBox.style.display = 'none';
@@ -486,7 +499,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING WITH PRELOADING & CACHING FOR SLOW NETWORKS ---
+// --- MEDIA RENDERING WITH PRELOADING & CACHING ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -511,7 +524,7 @@ function renderAdOnBillboard(ad, onComplete) {
     if (isVideo) {
         const tempVideo = document.createElement('video');
         tempVideo.src = fileUrl;
-        tempVideo.preload = 'auto'; // Preloading for slow network
+        tempVideo.preload = 'auto';
         tempVideo.onloadedmetadata = function() {
             let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
             if (isVertical) {
@@ -568,7 +581,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- 24-HOUR AUTONOMOUS SCHEDULER WITH PRELOADING NEXT ADS ---
+// --- 24-HOUR AUTONOMOUS SCHEDULER WITH PRELOADING ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -606,8 +619,6 @@ async function initLiveBillboardPlayer() {
             scheduledAds.push({ adRecord: ad, start: adStart, end: adEnd, duration: dur });
         });
 
-        // Background Preload next upcoming ad for slow network optimization
-        let nextPreloadIndex = 0;
         function preloadNextAd(currentIndex) {
             if (scheduledAds[currentIndex + 1]) {
                 let nextAdUrl = scheduledAds[currentIndex + 1].adRecord.file_url;
