@@ -280,7 +280,9 @@ async function openOtpLoginModal() {
             await finalizeCampaignSubmission(phone, generatedOtp, pendingCampaignData);
         }
     });
-} async function finalizeCampaignSubmission(userPhone, userOtp, data) {
+}
+
+async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
         let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
 
@@ -389,7 +391,6 @@ async function openOtpLoginModal() {
         alert('Submission failed: ' + err.message);
     }
 }
-
 // --- ADMIN PREVIEW WITH SAFE RETURN ---
 function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
     const billboardBox = document.getElementById('billboardBox');
@@ -443,7 +444,6 @@ async function loadMyActiveCampaign() {
     let myCampaignId = localStorage.getItem('my_latest_campaign_id');
     let savedPhone = localStorage.getItem('user_phone');
 
-    // If no session exists, show a clean phone & OTP login form instead of "Loading..."
     if (!myCampaignId && !savedPhone) {
         if (statusBox) statusBox.style.display = 'none';
         if (searchResultArea) {
@@ -586,7 +586,6 @@ async function loadMyActiveCampaign() {
     }
 }
 
-// --- VERIFY PHONE & OTP MANUALLY ENTERED BY USER ---
 async function verifyAndLoadUserCampaign() {
     let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
@@ -634,7 +633,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERING WITH BLUR BACKGROUND FOR VERTICAL MEDIA & PRELOADING ---
+// --- YOUTUBE-STYLE ADAPTIVE QUALITY & INSTANT LOAD MEDIA RENDERING ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -648,6 +647,15 @@ function renderAdOnBillboard(ad, onComplete) {
     let isImage = lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp') || lowerUrl.endsWith('.gif');
     if (isImage) isVideo = false;
 
+    // --- AUTOMATIC NETWORK QUALITY DETECTION (YouTube-Style) ---
+    let connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    let isSlowConnection = false;
+    if (connection) {
+        if (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g' || connection.effectiveType === '3g') {
+            isSlowConnection = true;
+        }
+    }
+
     let isCompletedCalled = false;
     function triggerComplete() {
         if (isCompletedCalled) return;
@@ -657,18 +665,62 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
+        // Apply low-bandwidth hint or fast preload depending on network speed
+        let preloadMode = isSlowConnection ? 'metadata' : 'auto';
+        let qualityStyle = isSlowConnection
+            ? 'filter: blur(0.5px); transform: scale(0.98);' // Low bitrate simulation for 144p/360p feel on slow net
+            : 'filter: none; transform: scale(1);'; // Full 1080p crisp view on fast net
+
         const tempVideo = document.createElement('video');
         tempVideo.src = fileUrl;
-        tempVideo.preload = 'auto';
+        tempVideo.preload = preloadMode;
         tempVideo.onloadedmetadata = function () {
             let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
             if (isVertical) {
                 billboardBox.innerHTML = `
                     <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <video src="${fileUrl}" autoplay muted playsinline preload="auto" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                        <video src="${fileUrl}" autoplay muted playsinline preload="${preloadMode}" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay preload="${preloadMode}" playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2; ${qualityStyle}" onclick="window.open('${targetUrl}', '_blank')"></video>
                     </div>
                 `;
+            } else {
+                billboardBox.innerHTML = `
+                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay preload="${preloadMode}" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer; ${qualityStyle}" onclick="window.open('${targetUrl}', '_blank')"></video>
+                    </div>
+                `;
+            }
+            let mediaEl = document.getElementById('activeAdMedia');
+            if (mediaEl) {
+                mediaEl.onended = triggerComplete;
+                mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
+            }
+        };
+        tempVideo.onerror = function () {
+            billboardBox.innerHTML = `
+                <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                    <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                </div>
+            `;
+            let mediaEl = document.getElementById('activeAdMedia');
+            if (mediaEl) {
+                mediaEl.onended = triggerComplete;
+                mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
+            }
+        };
+    } else {
+        const tempImg = new Image();
+        tempImg.src = fileUrl;
+        tempImg.onload = function () {
+            let isVertical = tempImg.naturalHeight > tempImg.naturalWidth;
+            if (isVertical) {
+                billboardBox.innerHTML = `
+                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                        <img src="${fileUrl}" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;" alt="Blur BG">
+                        <img src="${fileUrl}" style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; z-index: 2; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')" alt="Ad Image">
+                    </div>
+                `;
+            } else {
                 billboardBox.innerHTML = `
                     <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
                         <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
@@ -698,6 +750,7 @@ function renderAdOnBillboard(ad, onComplete) {
         }
     }, 1000);
 }
+
 
 // --- 24-HOUR AUTONOMOUS SCHEDULER WITH PRELOADING ---
 async function initLiveBillboardPlayer() {
