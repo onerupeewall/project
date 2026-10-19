@@ -3,7 +3,7 @@ const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const TOTAL_DAILY_SECONDS = 86400; // 24 Hours = 86,400 Seconds
+const TOTAL_DAILY_SECONDS = 86400;
 const DEPART_DURATION = 7200;
 
 let isPlayingPastRecord = false;
@@ -12,7 +12,6 @@ let activeCountdownInterval = null;
 let pendingCampaignData = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    // --- LOCK TEXT SELECTION & ZOOM GESTURES ---
     const styleTag = document.createElement('style');
     styleTag.innerHTML = `
         * {
@@ -39,19 +38,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     initVisitorCounter();
     updateAvailableSecondsCounter();
-
-    let adminPreviewAdJson = sessionStorage.getItem('admin_preview_ad');
-    if (adminPreviewAdJson) {
-        try {
-            let previewAd = JSON.parse(adminPreviewAdJson);
-            playAdminPreviewOnBillboard(previewAd, true);
-        } catch (e) {
-            initLiveBillboardPlayer();
-        }
-    } else {
-        initLiveBillboardPlayer();
-    }
-
+    initLiveBillboardPlayer();
     loadMyActiveCampaign();
 
     const bookingDateInput = document.getElementById('bookingDateInput');
@@ -70,9 +57,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const closeSlotModal = document.getElementById('closeSlotModal');
 
     if (openSlotModal && slotModal) {
-        openSlotModal.addEventListener('click', () => {
-            slotModal.style.display = 'flex';
-        });
+        openSlotModal.addEventListener('click', () => { slotModal.style.display = 'flex'; });
     }
     if (closeSlotModal && slotModal) closeSlotModal.addEventListener('click', () => slotModal.style.display = 'none');
 
@@ -133,19 +118,6 @@ window.addEventListener('DOMContentLoaded', () => {
         totalAmount.innerText = '₹' + (dur * freq * days * 10);
     }
 
-    if (frequencyInput) {
-        frequencyInput.addEventListener('input', function () {
-            let val = parseInt(this.value) || 1;
-            if (val > 12) {
-                this.style.borderColor = '#ef4444';
-                this.style.color = '#ef4444';
-            } else {
-                this.style.borderColor = '#1f293d';
-                this.style.color = '#fff';
-            }
-        });
-    }
-
     if (adFileInput) {
         adFileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
@@ -191,10 +163,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
             if (frequency > 12) {
                 alert('⚠️ Frequency cannot be more than 12 per day!');
-                if (frequencyInput) {
-                    frequencyInput.style.borderColor = '#ef4444';
-                    frequencyInput.style.color = '#ef4444';
-                }
                 return;
             }
 
@@ -213,7 +181,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- PERSISTENT & GENERATED OTP LOGIN MODAL FLOW ---
 async function openOtpLoginModal() {
     let existingModal = document.getElementById('otpLoginModal');
     if (existingModal) existingModal.remove();
@@ -308,6 +275,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
 
+        // Fetch fresh records to prevent blocking subsequent bookings
         let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
         let recordsToInsert = [];
 
@@ -391,23 +359,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         alert('Submission failed: ' + err.message);
     }
 }
-// --- ADMIN PREVIEW WITH SAFE RETURN ---
-function playAdminPreviewOnBillboard(ad, fromAdmin = false) {
-    const billboardBox = document.getElementById('billboardBox');
-    let timerEl = getCountdownElement();
-    if (!billboardBox) return;
 
-    if (timerEl) timerEl.innerText = 'Admin Preview Mode 📺';
-
-    renderAdOnBillboard(ad, () => {
-        sessionStorage.removeItem('admin_preview_ad');
-        if (fromAdmin) {
-            window.location.href = './karan-rai-secret-website-admin-panel.html';
-        }
-    });
-}
-
-// --- PARSE IST STRING TO DATE OBJECT ---
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
@@ -427,14 +379,12 @@ function parseIstSlotTimeToDate(slotTimeStr) {
     }
 }
 
-// --- CONVERT IST DATE OBJECT TO USER'S LOCAL TIMEZONE STRING ---
 function formatDateTimeToLocalUserTime(istDateObj) {
     if (isNaN(istDateObj)) return '';
     return istDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) +
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN VIA PHONE / OTP LOGIN OR LOCALSTORAGE ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -448,7 +398,7 @@ async function loadMyActiveCampaign() {
         if (statusBox) statusBox.style.display = 'none';
         if (searchResultArea) {
             searchResultArea.innerHTML = `
-                <div style="background: #121824; padding: 16px; border-radius: 8px; border: 1px solid #1f293d; text-align: center; margin-top: 10px;">
+            <div style="background: #121824; padding: 16px; border-radius: 8px; border: 1px solid #1f293d; text-align: center; margin-top: 10px;">
                     <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 10px;">🔍 Retrieve Your Campaign Status</p>
                     <p style="color: #9ca3af; font-size: 12px; margin-bottom: 12px;">Enter your registered mobile number and OTP to view your active bookings.</p>
                     <input type="tel" id="checkPhoneInput" placeholder="Enter Mobile Number" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 10px; text-align: center; font-size: 14px;">
@@ -487,7 +437,6 @@ async function loadMyActiveCampaign() {
 
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
-
         let now = new Date();
 
         let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
@@ -504,7 +453,6 @@ async function loadMyActiveCampaign() {
         if (master.status === 'pending') {
             if (statusText) statusText.innerText = `⏳ Waiting for Owner's Approval (${cleanBrand})`;
             if (countdownText) countdownText.innerText = 'Your ad is under review. Countdown starts instantly after approval.';
-
             if (searchResultArea) {
                 searchResultArea.innerHTML = `
                     <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
@@ -524,7 +472,6 @@ async function loadMyActiveCampaign() {
         }
 
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
-
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
         function updateLiveCountdownUI() {
@@ -579,10 +526,8 @@ async function loadMyActiveCampaign() {
             `;
             searchResultArea.innerHTML = html;
         }
-
     } catch (err) {
         console.error(err);
-        if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #ef4444;">Error loading campaign status.</span>';
     }
 }
 
@@ -633,7 +578,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- YOUTUBE-STYLE ADAPTIVE QUALITY & INSTANT LOAD MEDIA RENDERING ---
+// --- FIXED MEDIA RENDERER (SMOOTH PLAYBACK & AUTO-FIT) ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -647,15 +592,6 @@ function renderAdOnBillboard(ad, onComplete) {
     let isImage = lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp') || lowerUrl.endsWith('.gif');
     if (isImage) isVideo = false;
 
-    // --- AUTOMATIC NETWORK QUALITY DETECTION (YouTube-Style) ---
-    let connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    let isSlowConnection = false;
-    if (connection) {
-        if (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g' || connection.effectiveType === '3g') {
-            isSlowConnection = true;
-        }
-    }
-
     let isCompletedCalled = false;
     function triggerComplete() {
         if (isCompletedCalled) return;
@@ -665,49 +601,20 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        // Apply low-bandwidth hint or fast preload depending on network speed
-        let preloadMode = isSlowConnection ? 'metadata' : 'auto';
-        let qualityStyle = isSlowConnection
-            ? 'filter: blur(0.5px); transform: scale(0.98);' // Low bitrate simulation for 144p/360p feel on slow net
-            : 'filter: none; transform: scale(1);'; // Full 1080p crisp view on fast net
-
-        const tempVideo = document.createElement('video');
-        tempVideo.src = fileUrl;
-        tempVideo.preload = preloadMode;
-        tempVideo.onloadedmetadata = function () {
-            let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
-            if (isVertical) {
-                billboardBox.innerHTML = `
-                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <video src="${fileUrl}" autoplay muted playsinline preload="${preloadMode}" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;"></video>
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay preload="${preloadMode}" playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2; ${qualityStyle}" onclick="window.open('${targetUrl}', '_blank')"></video>
-                    </div>
-                `;
-            } else {
-                billboardBox.innerHTML = `
-                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay preload="${preloadMode}" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer; ${qualityStyle}" onclick="window.open('${targetUrl}', '_blank')"></video>
-                    </div>
-                `;
-            }
-            let mediaEl = document.getElementById('activeAdMedia');
-            if (mediaEl) {
-                mediaEl.onended = triggerComplete;
-                mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
-            }
-        };
-        tempVideo.onerror = function () {
-            billboardBox.innerHTML = `
-                <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                    <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
-                </div>
-            `;
-            let mediaEl = document.getElementById('activeAdMedia');
-            if (mediaEl) {
-                mediaEl.onended = triggerComplete;
-                mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
-            }
-        };
+        billboardBox.innerHTML = `
+            <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline preload="auto" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+            </div>
+        `;
+        let mediaEl = document.getElementById('activeAdMedia');
+        if (mediaEl) {
+            mediaEl.onended = triggerComplete;
+            mediaEl.play().catch(e => {
+                console.log("Autoplay blocked, muting and retrying:", e);
+                mediaEl.muted = true;
+                mediaEl.play();
+            });
+        }
     } else {
         const tempImg = new Image();
         tempImg.src = fileUrl;
@@ -751,8 +658,7 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-
-// --- 24-HOUR AUTONOMOUS SCHEDULER WITH PRELOADING ---
+// --- EXACT SCHEDULED TIME-BASED AUTONOMOUS PLAYER ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -762,7 +668,7 @@ async function initLiveBillboardPlayer() {
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
         let timerEl = getCountdownElement();
-        if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
+        if (timerEl) timerEl.innerText = 'Next Slot in Queue...';
     }
 
     try {
@@ -774,32 +680,13 @@ async function initLiveBillboardPlayer() {
         }
 
         let now = new Date();
-        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-        let todayDateStr = now.toLocaleDateString('en-US', optionsCheck);
-        let todaysApprovedAds = queueRecords.filter(ad => ad.slot_time && ad.slot_time.includes(todayDateStr));
-
-        if (todaysApprovedAds.length === 0) {
-            todaysApprovedAds = queueRecords;
-        }
-
         let scheduledAds = [];
-        todaysApprovedAds.forEach(ad => {
+        queueRecords.forEach(ad => {
             let adStart = parseIstSlotTimeToDate(ad.slot_time);
             let dur = parseInt(ad.duration_second) || 10;
             let adEnd = new Date(adStart.getTime() + (dur * 1000));
             scheduledAds.push({ adRecord: ad, start: adStart, end: adEnd, duration: dur });
         });
-
-        function preloadNextAd(currentIndex) {
-            if (scheduledAds[currentIndex + 1]) {
-                let nextAdUrl = scheduledAds[currentIndex + 1].adRecord.file_url;
-                if (nextAdUrl && nextAdUrl.toLowerCase().endsWith('.mp4')) {
-                    const preloadVid = document.createElement('video');
-                    preloadVid.src = nextAdUrl;
-                    preloadVid.preload = 'auto';
-                }
-            }
-        }
 
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
@@ -807,13 +694,11 @@ async function initLiveBillboardPlayer() {
 
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
-            let currentIndex = -1;
 
             for (let i = 0; i < scheduledAds.length; i++) {
                 let item = scheduledAds[i];
                 if (currentTime >= item.start && currentTime < item.end) {
                     currentPlayingAd = item;
-                    currentIndex = i;
                     break;
                 } else if (currentTime < item.start) {
                     if (!nextUpcomingAd) nextUpcomingAd = item;
@@ -822,7 +707,6 @@ async function initLiveBillboardPlayer() {
 
             let timerEl = getCountdownElement();
             if (currentPlayingAd) {
-                preloadNextAd(currentIndex);
                 renderAdOnBillboard(currentPlayingAd.adRecord, () => {
                     setTimeout(checkAndPlaySchedule, 500);
                 });
@@ -833,8 +717,8 @@ async function initLiveBillboardPlayer() {
                     if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs > 0 ? diffSecs : 0}s`;
                     setTimeout(checkAndPlaySchedule, diffSecs > 5 ? 5000 : (diffSecs > 0 ? diffSecs * 1000 : 1000));
                 } else {
-                    if (timerEl) timerEl.innerText = 'Queue Finished for Today';
-                    setTimeout(initLiveBillboardPlayer, 30000);
+                    if (timerEl) timerEl.innerText = 'No Active Slots Right Now';
+                    setTimeout(initLiveBillboardPlayer, 15000);
                 }
             }
         }
