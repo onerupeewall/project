@@ -87,7 +87,12 @@ window.addEventListener('DOMContentLoaded', () => {
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
 
-    if (checkRecordBtn && checkRecordModal) checkRecordBtn.addEventListener('click', () => { checkRecordModal.style.display = 'flex'; loadMyActiveCampaign(); });
+    if (checkRecordBtn && checkRecordModal) {
+        checkRecordBtn.addEventListener('click', () => {
+            checkRecordModal.style.display = 'flex';
+            loadMyActiveCampaign();
+        });
+    }
     if (closeCheckRecordModal && checkRecordModal) closeCheckRecordModal.addEventListener('click', () => checkRecordModal.style.display = 'none');
 
     window.addEventListener('click', (e) => {
@@ -242,17 +247,14 @@ async function openOtpLoginModal() {
             return;
         }
 
-        // Check if user already has an OTP assigned in database or localStorage
         let storedOtpKey = `user_otp_${phone}`;
         if (localStorage.getItem(storedOtpKey)) {
             generatedOtp = localStorage.getItem(storedOtpKey);
         } else {
-            // Check in supabase records if this phone exists to retrieve its persistent OTP
             let { data: existingUserRecs } = await supabaseClient.from('buysecond_records').select('*').eq('user_phone', phone).limit(1);
             if (existingUserRecs && existingUserRecs.length > 0 && existingUserRecs[0].user_otp) {
                 generatedOtp = existingUserRecs[0].user_otp;
             } else {
-                // Generate a random 6-digit OTP for new number
                 generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
             }
             localStorage.setItem(storedOtpKey, generatedOtp);
@@ -278,8 +280,7 @@ async function openOtpLoginModal() {
             await finalizeCampaignSubmission(phone, generatedOtp, pendingCampaignData);
         }
     });
-}
-async function finalizeCampaignSubmission(userPhone, userOtp, data) {
+} async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
         let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
 
@@ -432,7 +433,7 @@ function formatDateTimeToLocalUserTime(istDateObj) {
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
 
-// --- LOAD USER'S ACTIVE CAMPAIGN VIA PHONE / LOCALSTORAGE ---
+// --- LOAD USER'S ACTIVE CAMPAIGN VIA PHONE / OTP LOGIN OR LOCALSTORAGE ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -442,9 +443,20 @@ async function loadMyActiveCampaign() {
     let myCampaignId = localStorage.getItem('my_latest_campaign_id');
     let savedPhone = localStorage.getItem('user_phone');
 
+    // If no session exists, show a clean phone & OTP login form instead of "Loading..."
     if (!myCampaignId && !savedPhone) {
         if (statusBox) statusBox.style.display = 'none';
-        if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #9ca3af;">No active campaign found from this device. Book a campaign to view status here.</span>';
+        if (searchResultArea) {
+            searchResultArea.innerHTML = `
+                <div style="background: #121824; padding: 16px; border-radius: 8px; border: 1px solid #1f293d; text-align: center; margin-top: 10px;">
+                    <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 10px;">🔍 Retrieve Your Campaign Status</p>
+                    <p style="color: #9ca3af; font-size: 12px; margin-bottom: 12px;">Enter your registered mobile number and OTP to view your active bookings.</p>
+                    <input type="tel" id="checkPhoneInput" placeholder="Enter Mobile Number" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 10px; text-align: center; font-size: 14px;">
+                    <input type="text" id="checkOtpInput" placeholder="Enter Your OTP" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 12px; text-align: center; font-size: 14px;" maxlength="6">
+                    <button onclick="verifyAndLoadUserCampaign()" style="width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">View Campaign Details</button>
+                </div>
+            `;
+        }
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
         return;
     }
@@ -460,6 +472,9 @@ async function loadMyActiveCampaign() {
         let { data: singleRecord, error } = await query.single();
         if (error || !singleRecord) {
             if (statusBox) statusBox.style.display = 'none';
+            localStorage.removeItem('my_latest_campaign_id');
+            localStorage.removeItem('user_phone');
+            loadMyActiveCampaign();
             return;
         }
 
@@ -495,6 +510,7 @@ async function loadMyActiveCampaign() {
                     <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
                         <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
                         <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your live countdown and schedule will appear here instantly.</p>
+                        <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #38bdf8; text-decoration: underline; margin-top: 10px; cursor: pointer; font-size: 12px;">Logout / Switch Number</button>
                     </div>
                 `;
             }
@@ -555,7 +571,12 @@ async function loadMyActiveCampaign() {
                 html += `<p style="font-size: 13px; ${runStatusStyle}">↳ Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
             });
 
-            html += `</div>`;
+            html += `
+                <div style="text-align: center; margin-top: 12px;">
+                    <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #ef4444; text-decoration: underline; cursor: pointer; font-size: 12px;">Logout / Switch Number</button>
+                </div>
+                </div>
+            `;
             searchResultArea.innerHTML = html;
         }
 
@@ -563,6 +584,34 @@ async function loadMyActiveCampaign() {
         console.error(err);
         if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #ef4444;">Error loading campaign status.</span>';
     }
+}
+
+// --- VERIFY PHONE & OTP MANUALLY ENTERED BY USER ---
+async function verifyAndLoadUserCampaign() {
+    let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
+    let otpInput = document.getElementById('checkOtpInput')?.value.trim();
+
+    if (!phoneInput || !otpInput) {
+        alert('Please enter both mobile number and OTP.');
+        return;
+    }
+
+    let { data, error } = await supabaseClient
+        .from('buysecond_records')
+        .select('*')
+        .eq('user_phone', phoneInput)
+        .eq('user_otp', otpInput)
+        .order('id', { ascending: false })
+        .limit(1);
+
+    if (error || !data || data.length === 0) {
+        alert('❌ Invalid Mobile Number or OTP! Please check and try again.');
+        return;
+    }
+
+    localStorage.setItem('user_phone', phoneInput);
+    localStorage.setItem('my_latest_campaign_id', data[0].id);
+    loadMyActiveCampaign();
 }
 
 async function initVisitorCounter() {
@@ -620,45 +669,6 @@ function renderAdOnBillboard(ad, onComplete) {
                         <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
                     </div>
                 `;
-            } else {
-                billboardBox.innerHTML = `
-                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
-                    </div>
-                `;
-            }
-            let mediaEl = document.getElementById('activeAdMedia');
-            if (mediaEl) {
-                mediaEl.onended = triggerComplete;
-                mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
-            }
-        };
-        tempVideo.onerror = function () {
-            billboardBox.innerHTML = `
-                <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                    <video id="activeAdMedia" src="${fileUrl}" autoplay preload="auto" playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
-                </div>
-            `;
-            let mediaEl = document.getElementById('activeAdMedia');
-            if (mediaEl) {
-                mediaEl.onended = triggerComplete;
-                mediaEl.play().catch(e => console.log("Autoplay prevented:", e));
-            }
-        };
-    } else {
-        // Image rendering with vertical centering & blur background support
-        const tempImg = new Image();
-        tempImg.src = fileUrl;
-        tempImg.onload = function () {
-            let isVertical = tempImg.naturalHeight > tempImg.naturalWidth;
-            if (isVertical) {
-                billboardBox.innerHTML = `
-                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <img src="${fileUrl}" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;" alt="Blur BG">
-                        <img src="${fileUrl}" style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; z-index: 2; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')" alt="Ad Image">
-                    </div>
-                `;
-            } else {
                 billboardBox.innerHTML = `
                     <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
                         <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
