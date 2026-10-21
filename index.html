@@ -12,20 +12,23 @@
 
     <header>
         <div class="logo">Buy Second</div>
-        <a href="#" class="terms-link" id="openTermsBtn">Terms & Conditions</a>
+        <div class="header-links">
+            <span class="terms-link" id="openTermsBtn">Terms & Conditions</span>
+            <span class="terms-link" id="openPrivacyBtn" style="margin-left: 12px;">Privacy Policy</span>
+        </div>
     </header>
 
     <div class="main-container">
 
-        <div class="screen-time-banner">
-            Screen Time 24 Hours (Non-Stop Global Cycle)
+        <div class="screen-time-banner" id="liveClockBanner">
+            24 Hours Live Global Cycle
         </div>
 
         <div class="warning-banner">
             <span>Warning:</span> If your uploaded video or image violates our content guidelines (such as inappropriate or unsafe content), your advertisement will be rejected and no money will be refunded.
         </div>
 
-        <!-- Billboard Box (Muted by default with Unmute control overlay) -->
+        <!-- Billboard Box -->
         <div class="billboard" id="billboardBox" style="position: relative;"></div>
 
         <!-- Live Countdown & Status Box directly below Billboard -->
@@ -63,9 +66,6 @@
                 Token Number <span class="token-highlight" id="displayTokenVal">#1</span><br>
                 Date <span class="date-highlight" id="displayDateVal">02 October</span><br>
                 Ad Time <span class="time-highlight" id="displayTimeVal">12:30:10</span>
-            </div>
-            <div id="tokenReminderText" style="color: #ef4444; font-size: 13px; font-weight: 700; margin-top: 6px; text-transform: uppercase; display: none;">
-                Please remember your token number
             </div>
         </div>
 
@@ -140,13 +140,26 @@
     <div id="termsModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="closeTermsModal">&times;</span>
-            <h2 class="modal-main-title">Terms & Conditions for Advertisers</h2>
-            <div style="font-size: 13px; line-height: 1.6; display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
-                <p><b>1. Content Guidelines & Standards:</b> Every video or image uploaded to buysecond.in must comply with safety and quality standards (No nudity, no violence).</p>
-                <p><b>2. Manual Owner Review:</b> Every uploaded media file will undergo strict manual review and approval directly by the platform owner before going live on the billboard.</p>
-                <p><b>3. Final Owner Approval:</b> Final publication rights and scheduling are entirely managed and approved by the platform owner.</p>
-                <p><b>4. Strict Zero Refund Policy:</b> If any content is rejected due to violations, the ad will be canceled and no money will be refunded.</p>
-                <p><b>5. Advertiser Responsibility:</b> The advertiser is solely responsible for the target URL and brand name provided; the platform holds no liability.</p>
+            <h2 class="modal-main-title">Terms & Conditions</h2>
+            <div class="modal-scroll-text">
+                <p><b>1. Content Standards:</b> All uploaded media must be safe, legal, and appropriate for general audiences (No adult content, violence, or hate speech).</p>
+                <p><b>2. Owner Review & Approval:</b> Every campaign undergoes manual review and approval by the platform owner before broadcasting live.</p>
+                <p><b>3. Zero Refund Policy:</b> If an ad is rejected due to safety violations, booking fees are non-refundable.</p>
+                <p><b>4. Advertiser Liability:</b> Advertisers are fully responsible for their destination URL and brand content.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closePrivacyModal">&times;</span>
+            <h2 class="modal-main-title">Privacy Policy</h2>
+            <div class="modal-scroll-text">
+                <p><b>1. Information Collected:</b> We collect your mobile number and assigned OTP solely for campaign verification and authenticating your ad status.</p>
+                <p><b>2. Data Security:</b> Your mobile number and campaign records are securely stored and never shared with third-party advertisers.</p>
+                <p><b>3. Media Storage:</b> Uploaded ad files are stored securely on cloud storage and broadcasted on the global billboard according to your booked slots.</p>
+                <p><b>4. User Control:</b> You can clear your local browser session anytime to logout from active campaign tracking on your device.</p>
             </div>
         </div>
     </div>

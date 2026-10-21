@@ -12,30 +12,6 @@ let activeCountdownInterval = null;
 let pendingCampaignData = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    const styleTag = document.createElement('style');
-    styleTag.innerHTML = `
-        * {
-            -webkit-user-select: none !important;
-            -moz-user-select: none !important;
-            -ms-user-select: none !important;
-            user-select: none !important;
-            -webkit-touch-callout: none !important;
-        }
-        input, textarea {
-            -webkit-user-select: text !important;
-            user-select: text !important;
-        }
-        body {
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            touch-action: pan-y;
-        }
-    `;
-    document.head.appendChild(styleTag);
-
-    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
-    document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
-
     initVisitorCounter();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
@@ -68,6 +44,13 @@ window.addEventListener('DOMContentLoaded', () => {
     if (openTermsBtn && termsModal) openTermsBtn.addEventListener('click', (e) => { e.preventDefault(); termsModal.style.display = 'flex'; });
     if (closeTermsModal && termsModal) closeTermsModal.addEventListener('click', () => termsModal.style.display = 'none');
 
+    const privacyModal = document.getElementById('privacyModal');
+    const openPrivacyBtn = document.getElementById('openPrivacyBtn');
+    const closePrivacyModal = document.getElementById('closePrivacyModal');
+
+    if (openPrivacyBtn && privacyModal) openPrivacyBtn.addEventListener('click', (e) => { e.preventDefault(); privacyModal.style.display = 'flex'; });
+    if (closePrivacyModal && privacyModal) closePrivacyModal.addEventListener('click', () => privacyModal.style.display = 'none');
+
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
@@ -83,6 +66,7 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (e) => {
         if (slotModal && e.target === slotModal) slotModal.style.display = 'none';
         if (termsModal && e.target === termsModal) termsModal.style.display = 'none';
+        if (privacyModal && e.target === privacyModal) privacyModal.style.display = 'none';
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
@@ -275,7 +259,6 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
 
-        // Fetch fresh records to prevent blocking subsequent bookings
         let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
         let recordsToInsert = [];
 
@@ -385,6 +368,7 @@ function formatDateTimeToLocalUserTime(istDateObj) {
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
 
+// --- SMART LOAD ACTIVE CAMPAIGN & OWNER APPROVAL STATUS ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -398,8 +382,8 @@ async function loadMyActiveCampaign() {
         if (statusBox) statusBox.style.display = 'none';
         if (searchResultArea) {
             searchResultArea.innerHTML = `
-            <div style="background: #121824; padding: 16px; border-radius: 8px; border: 1px solid #1f293d; text-align: center; margin-top: 10px;">
-                    <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 10px;">🔍 Retrieve Your Campaign Status</p>
+                <div style="background: #121824; padding: 16px; border-radius: 8px; border: 1px solid #1f293d; text-align: center;">
+                    <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 8px;">🔍 Retrieve Your Campaign Status</p>
                     <p style="color: #9ca3af; font-size: 12px; margin-bottom: 12px;">Enter your registered mobile number and OTP to view your active bookings.</p>
                     <input type="tel" id="checkPhoneInput" placeholder="Enter Mobile Number" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 10px; text-align: center; font-size: 14px;">
                     <input type="text" id="checkOtpInput" placeholder="Enter Your OTP" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 12px; text-align: center; font-size: 14px;" maxlength="6">
@@ -455,9 +439,9 @@ async function loadMyActiveCampaign() {
             if (countdownText) countdownText.innerText = 'Your ad is under review. Countdown starts instantly after approval.';
             if (searchResultArea) {
                 searchResultArea.innerHTML = `
-                    <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; margin-top: 10px; text-align: center;">
-                        <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Pending Approval</p>
-                        <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Once approved by the owner, your live countdown and schedule will appear here instantly.</p>
+                    <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center;">
+                        <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Waiting for Owner's Approval</p>
+                        <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Your campaign has been submitted successfully and is currently under review by the owner. Once approved, your live countdown and schedule will appear here.</p>
                         <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #38bdf8; text-decoration: underline; margin-top: 10px; cursor: pointer; font-size: 12px;">Logout / Switch Number</button>
                     </div>
                 `;
@@ -502,7 +486,7 @@ async function loadMyActiveCampaign() {
 
         if (searchResultArea) {
             let html = `
-                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; margin-top: 10px; max-height: 280px; overflow-y: auto;">
+                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; max-height: 280px; overflow-y: auto;">
                     <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
                     <p><b>Token Number:</b> ${tokenDisplay}</p>
                     <p><b>Brand Name:</b> ${cleanBrand}</p>
@@ -578,7 +562,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- FIXED MEDIA RENDERER (SMOOTH PLAYBACK & AUTO-FIT) ---
+// --- FIXED MEDIA RENDERER WITH PROPER VERTICAL BLUR BACKGROUND ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -601,20 +585,46 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        billboardBox.innerHTML = `
-            <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline preload="auto" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
-            </div>
-        `;
-        let mediaEl = document.getElementById('activeAdMedia');
-        if (mediaEl) {
-            mediaEl.onended = triggerComplete;
-            mediaEl.play().catch(e => {
-                console.log("Autoplay blocked, muting and retrying:", e);
-                mediaEl.muted = true;
-                mediaEl.play();
-            });
-        }
+        const tempVideo = document.createElement('video');
+        tempVideo.src = fileUrl;
+        tempVideo.preload = 'metadata';
+        tempVideo.onloadedmetadata = function () {
+            let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
+            if (isVertical) {
+                billboardBox.innerHTML = `
+                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                        <video src="${fileUrl}" autoplay muted playsinline loop style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(25px); opacity: 0.6; pointer-events: none;"></video>
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline preload="auto" style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                    </div>
+                `;
+            } else {
+                billboardBox.innerHTML = `
+                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline preload="auto" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                    </div>
+                `;
+            }
+            let mediaEl = document.getElementById('activeAdMedia');
+            if (mediaEl) {
+                mediaEl.onended = triggerComplete;
+                mediaEl.play().catch(e => {
+                    mediaEl.muted = true;
+                    mediaEl.play();
+                });
+            }
+        };
+        tempVideo.onerror = function () {
+            billboardBox.innerHTML = `
+                <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline preload="auto" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                </div>
+            `;
+            let mediaEl = document.getElementById('activeAdMedia');
+            if (mediaEl) {
+                mediaEl.onended = triggerComplete;
+                mediaEl.play().catch(e => { mediaEl.muted = true; mediaEl.play(); });
+            }
+        };
     } else {
         const tempImg = new Image();
         tempImg.src = fileUrl;
@@ -623,7 +633,7 @@ function renderAdOnBillboard(ad, onComplete) {
             if (isVertical) {
                 billboardBox.innerHTML = `
                     <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <img src="${fileUrl}" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.5; pointer-events: none;" alt="Blur BG">
+                        <img src="${fileUrl}" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(25px); opacity: 0.6; pointer-events: none;" alt="Blur BG">
                         <img src="${fileUrl}" style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; z-index: 2; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')" alt="Ad Image">
                     </div>
                 `;
