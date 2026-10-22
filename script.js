@@ -6,12 +6,33 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const TOTAL_DAILY_SECONDS = 86400;
 const DEPART_DURATION = 7200;
 
-let isPlayingPastRecord = false;
+let serverTimeOffset = 0; // Sync offset to make countdown identical across all phones
 let globalTimerInterval = null;
 let activeCountdownInterval = null;
 let pendingCampaignData = null;
 
-window.addEventListener('DOMContentLoaded', () => {
+async function syncServerTime() {
+    try {
+        let clientSendTime = Date.now();
+        let { error } = await supabaseClient.from('site_analytics').select('count').eq('id', 1).single();
+        let clientReceiveTime = Date.now();
+        if (!error) {
+            let estimatedServerTime = clientSendTime + Math.floor((clientReceiveTime - clientSendTime) / 2);
+            serverTimeOffset = estimatedServerTime - clientReceiveTime;
+        }
+    } catch (e) {
+        serverTimeOffset = 0;
+    }
+}
+
+function getSyncedCurrentTime() {
+    return new Date(Date.now() + serverTimeOffset);
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+    await syncServerTime();
+    setInterval(syncServerTime, 60000); // re-sync every minute
+
     initVisitorCounter();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
@@ -117,7 +138,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     let vDuration = Math.round(videoElement.duration);
                     if (vDuration > 30) {
                         if (fileErrorMsg) {
-                            fileErrorMsg.innerText = '⚠️ Error: Max 30 seconds allowed!';
+                            fileErrorMsg.innerText = '⚠️ Max 30 seconds allowed!';
                             fileErrorMsg.style.display = 'block';
                         }
                         if (submitBtn) submitBtn.disabled = true;
@@ -146,7 +167,7 @@ window.addEventListener('DOMContentLoaded', () => {
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
 
             if (frequency > 12) {
-                alert('⚠️ Frequency cannot be more than 12 per day!');
+                alert('Frequency cannot exceed 12 per day.');
                 return;
             }
 
@@ -173,15 +194,15 @@ async function openOtpLoginModal() {
         <div id="otpLoginModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:9999;">
             <div style="background:#121824; padding:24px; border-radius:10px; border:1px solid #1f293d; width:90%; max-width:400px; color:#fff; text-align:center;">
                 <h3>🔐 Mobile Verification</h3>
-                <p style="font-size:13px; color:#9ca3af; margin-bottom:15px;">Enter your phone number to complete campaign booking.</p>
+                <p style="font-size:13px; color:#9ca3af; margin-bottom:15px;">Enter your phone number to complete booking.</p>
                 <div id="phoneStep">
-                    <input type="tel" id="loginPhone" placeholder="Enter 10-digit Mobile Number" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" required>
+                    <input type="tel" id="loginPhone" placeholder="10-digit Mobile Number" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" required>
                     <button id="sendOtpBtn" style="width:100%; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Continue</button>
                 </div>
                 <div id="otpStep" style="display:none;">
                     <p id="otpSentMsg" style="font-size:14px; color:#38bdf8; font-weight:bold; margin-bottom:12px;"></p>
-                    <input type="text" id="loginOtp" placeholder="Enter Your OTP" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" maxlength="6">
-                    <button id="verifyOtpBtn" style="width:100%; padding:12px; background:#10B981; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Verify & Complete Booking</button>
+                    <input type="text" id="loginOtp" placeholder="Enter OTP" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" maxlength="6">
+                    <button id="verifyOtpBtn" style="width:100%; padding:12px; background:#10B981; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Verify & Submit</button>
                 </div>
                 <button onclick="document.getElementById('otpLoginModal').remove()" style="background:transparent; border:none; color:#9ca3af; margin-top:15px; cursor:pointer; font-size:13px;">Cancel</button>
             </div>
@@ -194,7 +215,7 @@ async function openOtpLoginModal() {
     document.getElementById('sendOtpBtn').addEventListener('click', async () => {
         let phone = document.getElementById('loginPhone').value.trim();
         if (phone.length < 10) {
-            alert('Please enter a valid mobile number.');
+            alert('Enter a valid mobile number.');
             return;
         }
 
@@ -221,7 +242,7 @@ async function openOtpLoginModal() {
         let phone = document.getElementById('loginPhone').value.trim();
 
         if (otp !== generatedOtp) {
-            alert('Invalid OTP! Please enter the correct OTP.');
+            alert('Invalid OTP.');
             return;
         }
 
@@ -336,7 +357,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
             localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
         }
 
-        alert('✅ Campaign Submitted Successfully!');
+        alert('Campaign Submitted Successfully.');
         loadMyActiveCampaign();
     } catch (err) {
         alert('Submission failed: ' + err.message);
@@ -368,7 +389,6 @@ function formatDateTimeToLocalUserTime(istDateObj) {
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
 
-// --- SMART LOAD ACTIVE CAMPAIGN & OWNER APPROVAL STATUS ---
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -383,11 +403,11 @@ async function loadMyActiveCampaign() {
         if (searchResultArea) {
             searchResultArea.innerHTML = `
                 <div style="background: #121824; padding: 16px; border-radius: 8px; border: 1px solid #1f293d; text-align: center;">
-                    <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 8px;">🔍 Retrieve Your Campaign Status</p>
-                    <p style="color: #9ca3af; font-size: 12px; margin-bottom: 12px;">Enter your registered mobile number and OTP to view your active bookings.</p>
-                    <input type="tel" id="checkPhoneInput" placeholder="Enter Mobile Number" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 10px; text-align: center; font-size: 14px;">
-                    <input type="text" id="checkOtpInput" placeholder="Enter Your OTP" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 12px; text-align: center; font-size: 14px;" maxlength="6">
-                    <button onclick="verifyAndLoadUserCampaign()" style="width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">View Campaign Details</button>
+                    <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 8px;">Retrieve Campaign Status</p>
+                    <p style="color: #9ca3af; font-size: 12px; margin-bottom: 12px;">Enter registered mobile number and OTP.</p>
+                    <input type="tel" id="checkPhoneInput" placeholder="Mobile Number" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 10px; text-align: center; font-size: 14px;">
+                    <input type="text" id="checkOtpInput" placeholder="OTP" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 12px; text-align: center; font-size: 14px;" maxlength="6">
+                    <button onclick="verifyAndLoadUserCampaign()" style="width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">View Details</button>
                 </div>
             `;
         }
@@ -421,13 +441,13 @@ async function loadMyActiveCampaign() {
 
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
-        let now = new Date();
+        let now = getSyncedCurrentTime();
 
         let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
         if (allCompleted) {
             if (statusBox) statusBox.style.display = 'none';
             localStorage.removeItem('my_latest_campaign_id');
-            if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #10B981;">Your campaign has successfully completed all scheduled runs!</span>';
+            if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #10B981;">Campaign completed all scheduled runs.</span>';
             if (activeCountdownInterval) clearInterval(activeCountdownInterval);
             return;
         }
@@ -436,13 +456,13 @@ async function loadMyActiveCampaign() {
 
         if (master.status === 'pending') {
             if (statusText) statusText.innerText = `⏳ Waiting for Owner's Approval (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = 'Your ad is under review. Countdown starts instantly after approval.';
+            if (countdownText) countdownText.innerText = 'Campaign under review.';
             if (searchResultArea) {
                 searchResultArea.innerHTML = `
                     <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center;">
-                        <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">⏳ Waiting for Owner's Approval</p>
-                        <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Your campaign has been submitted successfully and is currently under review by the owner. Once approved, your live countdown and schedule will appear here.</p>
-                        <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #38bdf8; text-decoration: underline; margin-top: 10px; cursor: pointer; font-size: 12px;">Logout / Switch Number</button>
+                        <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">Waiting for Owner's Approval</p>
+                        <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Your campaign is under review. Live countdown will start immediately after approval.</p>
+                        <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #38bdf8; text-decoration: underline; margin-top: 10px; cursor: pointer; font-size: 12px;">Switch Number</button>
                     </div>
                 `;
             }
@@ -451,7 +471,7 @@ async function loadMyActiveCampaign() {
 
         if (master.status === 'rejected') {
             if (statusText) statusText.innerText = `❌ Campaign Rejected (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = 'This campaign has been rejected by the admin.';
+            if (countdownText) countdownText.innerText = 'Campaign rejected by admin.';
             return;
         }
 
@@ -459,7 +479,7 @@ async function loadMyActiveCampaign() {
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
         function updateLiveCountdownUI() {
-            let currentTime = new Date();
+            let currentTime = getSyncedCurrentTime();
             let upcomingRuns = runsList.filter(run => parseIstSlotTimeToDate(run.slot_time) >= currentTime);
             let nextItem = upcomingRuns.length > 0 ? upcomingRuns[0] : null;
 
@@ -470,10 +490,10 @@ async function loadMyActiveCampaign() {
                     let hrs = Math.floor(diffSecs / 3600);
                     let mins = Math.floor((diffSecs % 3600) / 60);
                     let secs = diffSecs % 60;
-                    if (statusText) statusText.innerText = `🟢 Approved Campaign: ${cleanBrand} (Token #${tokenDisplay})`;
-                    if (countdownText) countdownText.innerText = `⏳ Next Ad Live in: ${hrs}h : ${mins}m : ${secs}s`;
+                    if (statusText) statusText.innerText = `🟢 Approved: ${cleanBrand} (#${tokenDisplay})`;
+                    if (countdownText) countdownText.innerText = `Next Ad Live in: ${hrs}h : ${mins}m : ${secs}s`;
                 } else {
-                    if (statusText) statusText.innerText = `📺 Your Ad is Playing Now!`;
+                    if (statusText) statusText.innerText = `📺 Ad Playing Now`;
                     if (countdownText) countdownText.innerText = `Token: #${tokenDisplay}`;
                 }
             } else {
@@ -487,10 +507,10 @@ async function loadMyActiveCampaign() {
         if (searchResultArea) {
             let html = `
                 <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; max-height: 280px; overflow-y: auto;">
-                    <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED ✅</p>
-                    <p><b>Token Number:</b> ${tokenDisplay}</p>
-                    <p><b>Brand Name:</b> ${cleanBrand}</p>
-                    <p style="font-weight: bold; color: #38bdf8; margin-top: 8px; margin-bottom: 4px;">📅 Active Slots (Converted to Your Local Time):</p>
+                    <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED</p>
+                    <p><b>Token:</b> #${tokenDisplay}</p>
+                    <p><b>Brand:</b> ${cleanBrand}</p>
+                    <p style="font-weight: bold; color: #38bdf8; margin-top: 8px; margin-bottom: 4px;">Active Slots:</p>
             `;
 
             runsList.forEach((run, idx) => {
@@ -499,12 +519,12 @@ async function loadMyActiveCampaign() {
                 let isCompleted = runTimeObj < now;
                 let runStatusStyle = isCompleted ? 'color: #6b7280; text-decoration: line-through;' : 'color: #10B981; font-weight: bold;';
                 let runLabel = isCompleted ? 'Completed' : 'Upcoming';
-                html += `<p style="font-size: 13px; ${runStatusStyle}">↳ Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
+                html += `<p style="font-size: 13px; ${runStatusStyle}">Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
             });
 
             html += `
                 <div style="text-align: center; margin-top: 12px;">
-                    <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #ef4444; text-decoration: underline; cursor: pointer; font-size: 12px;">Logout / Switch Number</button>
+                    <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #ef4444; text-decoration: underline; cursor: pointer; font-size: 12px;">Switch Number</button>
                 </div>
                 </div>
             `;
@@ -520,7 +540,7 @@ async function verifyAndLoadUserCampaign() {
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
 
     if (!phoneInput || !otpInput) {
-        alert('Please enter both mobile number and OTP.');
+        alert('Enter phone number and OTP.');
         return;
     }
 
@@ -533,7 +553,7 @@ async function verifyAndLoadUserCampaign() {
         .limit(1);
 
     if (error || !data || data.length === 0) {
-        alert('❌ Invalid Mobile Number or OTP! Please check and try again.');
+        alert('Invalid mobile number or OTP.');
         return;
     }
 
@@ -562,7 +582,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- FIXED MEDIA RENDERER WITH PROPER VERTICAL BLUR BACKGROUND ---
+// --- MEDIA RENDERER ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -678,7 +698,7 @@ async function initLiveBillboardPlayer() {
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
         let timerEl = getCountdownElement();
-        if (timerEl) timerEl.innerText = 'Next Slot in Queue...';
+        if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
     }
 
     try {
@@ -689,7 +709,6 @@ async function initLiveBillboardPlayer() {
             return;
         }
 
-        let now = new Date();
         let scheduledAds = [];
         queueRecords.forEach(ad => {
             let adStart = parseIstSlotTimeToDate(ad.slot_time);
@@ -700,7 +719,7 @@ async function initLiveBillboardPlayer() {
 
         function checkAndPlaySchedule() {
             if (isPlayingPastRecord) return;
-            let currentTime = new Date();
+            let currentTime = getSyncedCurrentTime();
 
             let currentPlayingAd = null;
             let nextUpcomingAd = null;
@@ -727,7 +746,7 @@ async function initLiveBillboardPlayer() {
                     if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs > 0 ? diffSecs : 0}s`;
                     setTimeout(checkAndPlaySchedule, diffSecs > 5 ? 5000 : (diffSecs > 0 ? diffSecs * 1000 : 1000));
                 } else {
-                    if (timerEl) timerEl.innerText = 'No Active Slots Right Now';
+                    if (timerEl) timerEl.innerText = 'No Active Slots';
                     setTimeout(initLiveBillboardPlayer, 15000);
                 }
             }
