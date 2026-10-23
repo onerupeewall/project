@@ -11,6 +11,19 @@ let globalTimerInterval = null;
 let activeCountdownInterval = null;
 let pendingCampaignData = null;
 
+// --- SMART NETWORK OPTIMIZATION ---
+function applySmartNetworkOptimization(mediaElement) {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection) {
+        if (connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g' || connection.saveData) {
+            mediaElement.preload = 'none';
+            mediaElement.muted = true;
+        } else {
+            mediaElement.preload = 'auto';
+        }
+    }
+}
+
 async function syncServerTime() {
     try {
         let clientSendTime = Date.now();
@@ -133,6 +146,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             if (file.type.startsWith('video/')) {
                 const videoElement = document.createElement('video');
                 videoElement.preload = 'metadata';
+                applySmartNetworkOptimization(videoElement);
                 videoElement.onloadedmetadata = function () {
                     window.URL.revokeObjectURL(videoElement.src);
                     let vDuration = Math.round(videoElement.duration);
@@ -158,7 +172,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (durationInput) durationInput.addEventListener('input', updateCalculatedAmount);
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
-
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -212,7 +225,6 @@ async function openOtpLoginModal() {
 
     let serverGeneratedOtp = '';
 
-    // Jab user phone number daal kar button dabaye
     document.getElementById('sendOtpBtn').addEventListener('click', async () => {
         let phone = document.getElementById('loginPhone').value.trim();
         if (phone.length < 10) {
@@ -220,7 +232,6 @@ async function openOtpLoginModal() {
             return;
         }
 
-        // Server ke RPC function ko call karo jo backend par OTP banayega
         let { data, error } = await supabaseClient.rpc('request_user_otp', { p_phone: phone });
 
         if (error || !data.success) {
@@ -228,14 +239,13 @@ async function openOtpLoginModal() {
             return;
         }
 
-        serverGeneratedOtp = data.otp; // Server se OTP mil gaya
+        serverGeneratedOtp = data.otp;
 
         document.getElementById('phoneStep').style.display = 'none';
         document.getElementById('otpStep').style.display = 'block';
         document.getElementById('otpSentMsg').innerText = `Server Generated OTP: ${serverGeneratedOtp}`;
     });
 
-    // Jab user OTP enter karke verify kare
     document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
         let otp = document.getElementById('loginOtp').value.trim();
         let phone = document.getElementById('loginPhone').value.trim();
@@ -466,7 +476,6 @@ async function loadMyActiveCampaign() {
             }
             return;
         }
-
         if (master.status === 'rejected') {
             if (statusText) statusText.innerText = `❌ Campaign Rejected (${cleanBrand})`;
             if (countdownText) countdownText.innerText = 'Campaign rejected by admin.';
@@ -532,7 +541,6 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
-
 async function verifyAndLoadUserCampaign() {
     let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
@@ -580,7 +588,7 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERER ---
+// --- MEDIA RENDERER WITH NETWORK OPTIMIZATION ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
@@ -605,25 +613,26 @@ function renderAdOnBillboard(ad, onComplete) {
     if (isVideo) {
         const tempVideo = document.createElement('video');
         tempVideo.src = fileUrl;
-        tempVideo.preload = 'metadata';
+        applySmartNetworkOptimization(tempVideo);
         tempVideo.onloadedmetadata = function () {
             let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
             if (isVertical) {
                 billboardBox.innerHTML = `
                     <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
                         <video src="${fileUrl}" autoplay muted playsinline loop style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(25px); opacity: 0.6; pointer-events: none;"></video>
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline preload="auto" style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
                     </div>
                 `;
             } else {
                 billboardBox.innerHTML = `
                     <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline preload="auto" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
                     </div>
                 `;
             }
             let mediaEl = document.getElementById('activeAdMedia');
             if (mediaEl) {
+                applySmartNetworkOptimization(mediaEl);
                 mediaEl.onended = triggerComplete;
                 mediaEl.play().catch(e => {
                     mediaEl.muted = true;
@@ -634,11 +643,12 @@ function renderAdOnBillboard(ad, onComplete) {
         tempVideo.onerror = function () {
             billboardBox.innerHTML = `
                 <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline preload="auto" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
                 </div>
             `;
             let mediaEl = document.getElementById('activeAdMedia');
             if (mediaEl) {
+                applySmartNetworkOptimization(mediaEl);
                 mediaEl.onended = triggerComplete;
                 mediaEl.play().catch(e => { mediaEl.muted = true; mediaEl.play(); });
             }
@@ -716,7 +726,7 @@ async function initLiveBillboardPlayer() {
         });
 
         function checkAndPlaySchedule() {
-            if (isPlayingPastRecord) return;
+            if (typeof isPlayingPastRecord !== 'undefined' && isPlayingPastRecord) return;
             let currentTime = getSyncedCurrentTime();
 
             let currentPlayingAd = null;
