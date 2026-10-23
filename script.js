@@ -6,7 +6,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const TOTAL_DAILY_SECONDS = 86400;
 const DEPART_DURATION = 7200;
 
-let serverTimeOffset = 0; // Sync offset to make countdown identical across all phones
+let serverTimeOffset = 0;
 let globalTimerInterval = null;
 let activeCountdownInterval = null;
 let pendingCampaignData = null;
@@ -44,7 +44,7 @@ function getSyncedCurrentTime() {
 
 window.addEventListener('DOMContentLoaded', async () => {
     await syncServerTime();
-    setInterval(syncServerTime, 60000); // re-sync every minute
+    setInterval(syncServerTime, 60000);
 
     initVisitorCounter();
     updateAvailableSecondsCounter();
@@ -262,6 +262,7 @@ async function openOtpLoginModal() {
         }
     });
 }
+// --- FIXED CAMPAIGN SUBMISSION TO PREVENT NULL ROWS ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
         let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
@@ -338,8 +339,10 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                 let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
                 let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
 
+                let brandNameFormatted = data.adTitle + (data.frequency > 1 ? ` (Run ${f + 1}/${data.frequency})` : '');
+
                 let newRecordObj = {
-                    brand_name: data.adTitle + (data.frequency > 1 ? ` (Run ${f + 1}/${data.frequency})` : ''),
+                    brand_name: brandNameFormatted,
                     target_url: data.targetUrl,
                     file_url: publicFileUrl,
                     duration_second: data.duration,
@@ -350,8 +353,11 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                     user_otp: userOtp
                 };
 
-                recordsToInsert.push(newRecordObj);
-                dayExisting.push(newRecordObj);
+                // Strict validation check to prevent NULL or empty rows insertion
+                if (newRecordObj.brand_name && newRecordObj.target_url && newRecordObj.file_url) {
+                    recordsToInsert.push(newRecordObj);
+                    dayExisting.push(newRecordObj);
+                }
             }
         }
 
@@ -541,6 +547,7 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
+
 async function verifyAndLoadUserCampaign() {
     let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
@@ -587,7 +594,6 @@ async function updateAvailableSecondsCounter() {
 }
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
-
 // --- MEDIA RENDERER WITH NETWORK OPTIMIZATION ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
@@ -726,7 +732,6 @@ async function initLiveBillboardPlayer() {
         });
 
         function checkAndPlaySchedule() {
-            if (typeof isPlayingPastRecord !== 'undefined' && isPlayingPastRecord) return;
             let currentTime = getSyncedCurrentTime();
 
             let currentPlayingAd = null;
