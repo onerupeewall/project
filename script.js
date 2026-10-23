@@ -197,7 +197,7 @@ async function openOtpLoginModal() {
                 <p style="font-size:13px; color:#9ca3af; margin-bottom:15px;">Enter your phone number to complete booking.</p>
                 <div id="phoneStep">
                     <input type="tel" id="loginPhone" placeholder="10-digit Mobile Number" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" required>
-                    <button id="sendOtpBtn" style="width:100%; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Continue</button>
+                    <button id="sendOtpBtn" style="width:100%; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Get OTP from Server</button>
                 </div>
                 <div id="otpStep" style="display:none;">
                     <p id="otpSentMsg" style="font-size:14px; color:#38bdf8; font-weight:bold; margin-bottom:12px;"></p>
@@ -210,8 +210,9 @@ async function openOtpLoginModal() {
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-    let generatedOtp = '123456';
+    let serverGeneratedOtp = '';
 
+    // Jab user phone number daal kar button dabaye
     document.getElementById('sendOtpBtn').addEventListener('click', async () => {
         let phone = document.getElementById('loginPhone').value.trim();
         if (phone.length < 10) {
@@ -219,29 +220,27 @@ async function openOtpLoginModal() {
             return;
         }
 
-        let storedOtpKey = `user_otp_${phone}`;
-        if (localStorage.getItem(storedOtpKey)) {
-            generatedOtp = localStorage.getItem(storedOtpKey);
-        } else {
-            let { data: existingUserRecs } = await supabaseClient.from('buysecond_records').select('*').eq('user_phone', phone).limit(1);
-            if (existingUserRecs && existingUserRecs.length > 0 && existingUserRecs[0].user_otp) {
-                generatedOtp = existingUserRecs[0].user_otp;
-            } else {
-                generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-            }
-            localStorage.setItem(storedOtpKey, generatedOtp);
+        // Server ke RPC function ko call karo jo backend par OTP banayega
+        let { data, error } = await supabaseClient.rpc('request_user_otp', { p_phone: phone });
+
+        if (error || !data.success) {
+            alert('Failed to generate OTP on server.');
+            return;
         }
+
+        serverGeneratedOtp = data.otp; // Server se OTP mil gaya
 
         document.getElementById('phoneStep').style.display = 'none';
         document.getElementById('otpStep').style.display = 'block';
-        document.getElementById('otpSentMsg').innerText = `Your OTP: ${generatedOtp}`;
+        document.getElementById('otpSentMsg').innerText = `Server Generated OTP: ${serverGeneratedOtp}`;
     });
 
+    // Jab user OTP enter karke verify kare
     document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
         let otp = document.getElementById('loginOtp').value.trim();
         let phone = document.getElementById('loginPhone').value.trim();
 
-        if (otp !== generatedOtp) {
+        if (otp !== serverGeneratedOtp) {
             alert('Invalid OTP.');
             return;
         }
@@ -249,11 +248,10 @@ async function openOtpLoginModal() {
         document.getElementById('otpLoginModal').remove();
         localStorage.setItem('user_phone', phone);
         if (pendingCampaignData) {
-            await finalizeCampaignSubmission(phone, generatedOtp, pendingCampaignData);
+            await finalizeCampaignSubmission(phone, serverGeneratedOtp, pendingCampaignData);
         }
     });
 }
-
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
         let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
