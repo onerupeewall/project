@@ -353,7 +353,6 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                     user_otp: userOtp
                 };
 
-                // Strict validation check to prevent NULL or empty rows insertion
                 if (newRecordObj.brand_name && newRecordObj.target_url && newRecordObj.file_url) {
                     recordsToInsert.push(newRecordObj);
                     dayExisting.push(newRecordObj);
@@ -498,7 +497,8 @@ async function loadMyActiveCampaign() {
 
             if (nextItem) {
                 let targetTime = parseIstSlotTimeToDate(nextItem.slot_time);
-                let diffSecs = Math.floor((targetTime - currentTime) / 1000);
+                // Synchronized direct difference calculation
+                let diffSecs = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
                 if (diffSecs > 0) {
                     let hrs = Math.floor(diffSecs / 3600);
                     let mins = Math.floor((diffSecs % 3600) / 60);
@@ -547,7 +547,6 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
-
 async function verifyAndLoadUserCampaign() {
     let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
@@ -594,6 +593,7 @@ async function updateAvailableSecondsCounter() {
 }
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
+
 // --- MEDIA RENDERER WITH NETWORK OPTIMIZATION ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
@@ -688,14 +688,16 @@ function renderAdOnBillboard(ad, onComplete) {
         };
     }
 
-    let timeLeft = duration;
     let timerEl = getCountdownElement();
     if (globalTimerInterval) clearInterval(globalTimerInterval);
 
+    // Synchronized playback countdown
+    let startTime = Date.now();
     globalTimerInterval = setInterval(() => {
-        if (timerEl) timerEl.innerText = `Playing Ad... (${timeLeft}s left)`;
-        timeLeft--;
-        if (timeLeft < 0) {
+        let elapsed = Math.floor((Date.now() - startTime) / 1000);
+        let timeLeft = duration - elapsed;
+        if (timerEl) timerEl.innerText = `Playing Ad... (${timeLeft > 0 ? timeLeft : 0}s left)`;
+        if (timeLeft <= 0) {
             clearInterval(globalTimerInterval);
             triggerComplete();
         }
@@ -755,9 +757,12 @@ async function initLiveBillboardPlayer() {
             } else {
                 applyDefaultBanner();
                 if (nextUpcomingAd) {
-                    let diffSecs = Math.floor((nextUpcomingAd.start - currentTime) / 1000);
-                    if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs > 0 ? diffSecs : 0}s`;
-                    setTimeout(checkAndPlaySchedule, diffSecs > 5 ? 5000 : (diffSecs > 0 ? diffSecs * 1000 : 1000));
+                    // Absolute server-time difference calculation to prevent device clock drifting
+                    let diffSecs = Math.max(0, Math.floor((nextUpcomingAd.start - getSyncedCurrentTime()) / 1000));
+                    if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs}s`;
+
+                    // Refresh every second precisely aligned with server time sync
+                    setTimeout(checkAndPlaySchedule, 1000);
                 } else {
                     if (timerEl) timerEl.innerText = 'No Active Slots';
                     setTimeout(initLiveBillboardPlayer, 15000);
