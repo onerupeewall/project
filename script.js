@@ -46,6 +46,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     await syncServerTime();
     setInterval(syncServerTime, 60000);
 
+    // Check Maintenance Status on Load
+    await checkWebsiteMaintenance();
+
     initVisitorCounter();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
@@ -198,6 +201,32 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+// --- WEBSITE MAINTENANCE CHECKER ---
+async function checkWebsiteMaintenance() {
+    try {
+        let { data } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
+        if (data && data.is_active) {
+            let now = new Date();
+            let expiry = new Date(data.expires_at);
+            if (now < expiry) {
+                if (data.scope === 'all') {
+                    document.body.innerHTML = `
+                        <div style="background:#000; color:#fff; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;">
+                            <h1 style="color:#f59e0b; font-size:28px; margin-bottom:10px;">🛠️ Website Under Scheduled Maintenance</h1>
+                            <p style="color:#9ca3af; font-size:15px; max-width:450px;">We are upgrading BuySecond for a better experience. Please check back shortly!</p>
+                        </div>
+                    `;
+                } else if (data.scope === 'form') {
+                    const slotModal = document.getElementById('slotModal');
+                    if (slotModal) slotModal.innerHTML = `<div style="background:#121824; padding:30px; color:#fff; text-align:center; border-radius:8px;"><h3>🛠️ Booking Form Maintenance</h3><p style="color:#9ca3af; margin-top:10px;">Form is temporarily paused for quick updates. Will resume in a few minutes!</p></div>`;
+                } else if (data.scope === 'billboard') {
+                    const billboardBox = document.getElementById('billboardBox');
+                    if (billboardBox) billboardBox.innerHTML = `<div style="background:#000; color:#f59e0b; display:flex; align-items:center; justify-content:center; height:100%; font-weight:bold; font-size:16px;">🛠️ Billboard Under Maintenance</div>`;
+                }
+            }
+        }
+    } catch (e) { }
+}
 
 async function openOtpLoginModal() {
     let existingModal = document.getElementById('otpLoginModal');
@@ -262,6 +291,7 @@ async function openOtpLoginModal() {
         }
     });
 }
+
 // --- FIXED CAMPAIGN SUBMISSION TO PREVENT NULL ROWS ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
@@ -497,7 +527,6 @@ async function loadMyActiveCampaign() {
 
             if (nextItem) {
                 let targetTime = parseIstSlotTimeToDate(nextItem.slot_time);
-                // Synchronized direct difference calculation
                 let diffSecs = Math.max(0, Math.floor((targetTime - currentTime) / 1000));
                 if (diffSecs > 0) {
                     let hrs = Math.floor(diffSecs / 3600);
@@ -547,6 +576,7 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
+
 async function verifyAndLoadUserCampaign() {
     let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
@@ -691,7 +721,6 @@ function renderAdOnBillboard(ad, onComplete) {
     let timerEl = getCountdownElement();
     if (globalTimerInterval) clearInterval(globalTimerInterval);
 
-    // Synchronized playback countdown
     let startTime = Date.now();
     globalTimerInterval = setInterval(() => {
         let elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -757,11 +786,8 @@ async function initLiveBillboardPlayer() {
             } else {
                 applyDefaultBanner();
                 if (nextUpcomingAd) {
-                    // Absolute server-time difference calculation to prevent device clock drifting
                     let diffSecs = Math.max(0, Math.floor((nextUpcomingAd.start - getSyncedCurrentTime()) / 1000));
                     if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs}s`;
-
-                    // Refresh every second precisely aligned with server time sync
                     setTimeout(checkAndPlaySchedule, 1000);
                 } else {
                     if (timerEl) timerEl.innerText = 'No Active Slots';
