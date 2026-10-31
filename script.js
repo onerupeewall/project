@@ -46,7 +46,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await syncServerTime();
     setInterval(syncServerTime, 60000);
 
-    // Check Maintenance Status on Load
+    // Check Maintenance Status & Dynamic Button Check
     await checkWebsiteMaintenance();
 
     initVisitorCounter();
@@ -69,9 +69,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     const openSlotModal = document.getElementById('openSlotModal');
     const closeSlotModal = document.getElementById('closeSlotModal');
 
+    // --- DYNAMIC MAINTENANCE CHECK ON "BUY YOUR SLOT" CLICK ---
     if (openSlotModal && slotModal) {
-        openSlotModal.addEventListener('click', () => { slotModal.style.display = 'flex'; });
+        openSlotModal.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                let { data } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
+                if (data && data.is_active) {
+                    let now = new Date();
+                    let expiry = new Date(data.expires_at);
+                    if (now < expiry && (data.scope === 'all' || data.scope === 'form')) {
+                        alert('⚠️ Website is currently under maintenance. Booking is temporarily disabled.');
+                        return;
+                    }
+                }
+            } catch (err) { }
+
+            slotModal.style.display = 'flex';
+        });
     }
+
     if (closeSlotModal && slotModal) closeSlotModal.addEventListener('click', () => slotModal.style.display = 'none');
 
     const termsModal = document.getElementById('termsModal');
@@ -111,11 +128,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (slotFormContainer && !document.getElementById('frequencyInput')) {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
         let campaignFieldsHTML = `
-            <div class="form-group" style="margin-bottom: 15px;">
+            <div class="form-group">
                 <label>Times per Day (Max 12 Departs):</label>
                 <input type="number" id="frequencyInput" value="1" min="1" max="12" required>
             </div>
-            <div class="form-group" style="margin-bottom: 15px;">
+            <div class="form-group">
                 <label>Number of Days (Max 30):</label>
                 <input type="number" id="campaignDaysInput" value="1" min="1" max="30" required>
             </div>
@@ -201,6 +218,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+
 // --- WEBSITE MAINTENANCE CHECKER ---
 async function checkWebsiteMaintenance() {
     try {
@@ -211,17 +229,14 @@ async function checkWebsiteMaintenance() {
             if (now < expiry) {
                 if (data.scope === 'all') {
                     document.body.innerHTML = `
-                        <div style="background:#000; color:#fff; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;">
-                            <h1 style="color:#f59e0b; font-size:28px; margin-bottom:10px;">🛠️ Website Under Scheduled Maintenance</h1>
-                            <p style="color:#9ca3af; font-size:15px; max-width:450px;">We are upgrading BuySecond for a better experience. Please check back shortly!</p>
+                        <div class="maintenance-screen-full">
+                            <h1>🛠️ Website Under Scheduled Maintenance</h1>
+                            <p>We are upgrading BuySecond for a better experience. Please check back shortly!</p>
                         </div>
                     `;
-                } else if (data.scope === 'form') {
-                    const slotModal = document.getElementById('slotModal');
-                    if (slotModal) slotModal.innerHTML = `<div style="background:#121824; padding:30px; color:#fff; text-align:center; border-radius:8px;"><h3>🛠️ Booking Form Maintenance</h3><p style="color:#9ca3af; margin-top:10px;">Form is temporarily paused for quick updates. Will resume in a few minutes!</p></div>`;
                 } else if (data.scope === 'billboard') {
                     const billboardBox = document.getElementById('billboardBox');
-                    if (billboardBox) billboardBox.innerHTML = `<div style="background:#000; color:#f59e0b; display:flex; align-items:center; justify-content:center; height:100%; font-weight:bold; font-size:16px;">🛠️ Billboard Under Maintenance</div>`;
+                    if (billboardBox) billboardBox.innerHTML = `<div class="maintenance-screen-billboard">🛠️ Billboard Under Maintenance</div>`;
                 }
             }
         }
@@ -233,20 +248,20 @@ async function openOtpLoginModal() {
     if (existingModal) existingModal.remove();
 
     let modalHTML = `
-        <div id="otpLoginModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:9999;">
-            <div style="background:#121824; padding:24px; border-radius:10px; border:1px solid #1f293d; width:90%; max-width:400px; color:#fff; text-align:center;">
+        <div id="otpLoginModal" class="modal" style="display: flex;">
+            <div class="modal-content text-center">
                 <h3>🔐 Mobile Verification</h3>
-                <p style="font-size:13px; color:#9ca3af; margin-bottom:15px;">Enter your phone number to complete booking.</p>
+                <p class="text-muted-sm">Enter your phone number to complete booking.</p>
                 <div id="phoneStep">
-                    <input type="tel" id="loginPhone" placeholder="10-digit Mobile Number" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" required>
-                    <button id="sendOtpBtn" style="width:100%; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Get OTP from Server</button>
+                    <input type="tel" id="loginPhone" placeholder="10-digit Mobile Number" class="input-center-lg" required>
+                    <button id="sendOtpBtn" class="btn-primary-full">Get OTP from Server</button>
                 </div>
                 <div id="otpStep" style="display:none;">
-                    <p id="otpSentMsg" style="font-size:14px; color:#38bdf8; font-weight:bold; margin-bottom:12px;"></p>
-                    <input type="text" id="loginOtp" placeholder="Enter OTP" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:16px;" maxlength="6">
-                    <button id="verifyOtpBtn" style="width:100%; padding:12px; background:#10B981; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Verify & Submit</button>
+                    <p id="otpSentMsg" class="otp-msg"></p>
+                    <input type="text" id="loginOtp" placeholder="Enter OTP" class="input-center-lg" maxlength="6">
+                    <button id="verifyOtpBtn" class="btn-success-full">Verify & Submit</button>
                 </div>
-                <button onclick="document.getElementById('otpLoginModal').remove()" style="background:transparent; border:none; color:#9ca3af; margin-top:15px; cursor:pointer; font-size:13px;">Cancel</button>
+                <button onclick="document.getElementById('otpLoginModal').remove()" class="btn-cancel-sm">Cancel</button>
             </div>
         </div>
     `;
@@ -291,7 +306,6 @@ async function openOtpLoginModal() {
         }
     });
 }
-
 // --- FIXED CAMPAIGN SUBMISSION TO PREVENT NULL ROWS ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
@@ -445,12 +459,12 @@ async function loadMyActiveCampaign() {
         if (statusBox) statusBox.style.display = 'none';
         if (searchResultArea) {
             searchResultArea.innerHTML = `
-                <div style="background: #121824; padding: 16px; border-radius: 8px; border: 1px solid #1f293d; text-align: center;">
-                    <p style="color: #38bdf8; font-weight: bold; font-size: 14px; margin-bottom: 8px;">Retrieve Campaign Status</p>
-                    <p style="color: #9ca3af; font-size: 12px; margin-bottom: 12px;">Enter registered mobile number and OTP.</p>
-                    <input type="tel" id="checkPhoneInput" placeholder="Mobile Number" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 10px; text-align: center; font-size: 14px;">
-                    <input type="text" id="checkOtpInput" placeholder="OTP" style="width: 100%; padding: 10px; background: #0b0f17; border: 1px solid #1f293d; color: #fff; border-radius: 6px; margin-bottom: 12px; text-align: center; font-size: 14px;" maxlength="6">
-                    <button onclick="verifyAndLoadUserCampaign()" style="width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">View Details</button>
+                <div class="campaign-retrieve-box">
+                    <p class="retrieve-title">Retrieve Campaign Status</p>
+                    <p class="retrieve-subtitle">Enter registered mobile number and OTP.</p>
+                    <input type="tel" id="checkPhoneInput" placeholder="Mobile Number" class="retrieve-input">
+                    <input type="text" id="checkOtpInput" placeholder="OTP" class="retrieve-input" maxlength="6">
+                    <button onclick="verifyAndLoadUserCampaign()" class="retrieve-btn">View Details</button>
                 </div>
             `;
         }
@@ -490,7 +504,7 @@ async function loadMyActiveCampaign() {
         if (allCompleted) {
             if (statusBox) statusBox.style.display = 'none';
             localStorage.removeItem('my_latest_campaign_id');
-            if (searchResultArea) searchResultArea.innerHTML = '<span style="color: #10B981;">Campaign completed all scheduled runs.</span>';
+            if (searchResultArea) searchResultArea.innerHTML = '<span class="text-success">Campaign completed all scheduled runs.</span>';
             if (activeCountdownInterval) clearInterval(activeCountdownInterval);
             return;
         }
@@ -502,10 +516,10 @@ async function loadMyActiveCampaign() {
             if (countdownText) countdownText.innerText = 'Campaign under review.';
             if (searchResultArea) {
                 searchResultArea.innerHTML = `
-                    <div style="background: #121824; padding: 16px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center;">
-                        <p style="color: #f59e0b; font-weight: bold; font-size: 15px; margin-bottom: 6px;">Waiting for Owner's Approval</p>
-                        <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Your campaign is under review. Live countdown will start immediately after approval.</p>
-                        <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #38bdf8; text-decoration: underline; margin-top: 10px; cursor: pointer; font-size: 12px;">Switch Number</button>
+                    <div class="campaign-pending-box">
+                        <p class="pending-title">Waiting for Owner's Approval</p>
+                        <p class="pending-subtitle">Your campaign is under review. Live countdown will start immediately after approval.</p>
+                        <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" class="btn-switch-num">Switch Number</button>
                     </div>
                 `;
             }
@@ -548,25 +562,25 @@ async function loadMyActiveCampaign() {
 
         if (searchResultArea) {
             let html = `
-                <div style="background: #121824; padding: 14px; border-radius: 6px; border: 1px solid #10B981; max-height: 280px; overflow-y: auto;">
-                    <p style="color: #10B981; font-weight: bold; font-size: 15px;">Status: APPROVED</p>
+                <div class="campaign-list-box">
+                    <p class="list-status-approved">Status: APPROVED</p>
                     <p><b>Token:</b> #${tokenDisplay}</p>
                     <p><b>Brand:</b> ${cleanBrand}</p>
-                    <p style="font-weight: bold; color: #38bdf8; margin-top: 8px; margin-bottom: 4px;">Active Slots:</p>
+                    <p class="list-active-title">Active Slots:</p>
             `;
 
             runsList.forEach((run, idx) => {
                 let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
                 let localFormattedTime = formatDateTimeToLocalUserTime(runTimeObj);
                 let isCompleted = runTimeObj < now;
-                let runStatusStyle = isCompleted ? 'color: #6b7280; text-decoration: line-through;' : 'color: #10B981; font-weight: bold;';
+                let runClass = isCompleted ? 'slot-item-completed' : 'slot-item-upcoming';
                 let runLabel = isCompleted ? 'Completed' : 'Upcoming';
-                html += `<p style="font-size: 13px; ${runStatusStyle}">Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
+                html += `<p class="slot-item-text ${runClass}">Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
             });
 
             html += `
-                <div style="text-align: center; margin-top: 12px;">
-                    <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" style="background: transparent; border: none; color: #ef4444; text-decoration: underline; cursor: pointer; font-size: 12px;">Switch Number</button>
+                <div class="text-center mt-12">
+                    <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" class="btn-switch-danger">Switch Number</button>
                 </div>
                 </div>
             `;
@@ -623,7 +637,6 @@ async function updateAvailableSecondsCounter() {
 }
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
-
 // --- MEDIA RENDERER WITH NETWORK OPTIMIZATION ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
@@ -654,15 +667,15 @@ function renderAdOnBillboard(ad, onComplete) {
             let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
             if (isVertical) {
                 billboardBox.innerHTML = `
-                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <video src="${fileUrl}" autoplay muted playsinline loop style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(25px); opacity: 0.6; pointer-events: none;"></video>
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                    <div class="media-wrapper-flex">
+                        <video src="${fileUrl}" autoplay muted playsinline loop class="media-video-blur"></video>
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-contain" onclick="window.open('${targetUrl}', '_blank')"></video>
                     </div>
                 `;
             } else {
                 billboardBox.innerHTML = `
-                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer; z-index: 2;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                    <div class="media-wrapper-flex">
+                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-fill" onclick="window.open('${targetUrl}', '_blank')"></video>
                     </div>
                 `;
             }
@@ -678,8 +691,8 @@ function renderAdOnBillboard(ad, onComplete) {
         };
         tempVideo.onerror = function () {
             billboardBox.innerHTML = `
-                <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')"></video>
+                <div class="media-wrapper-flex">
+                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-fill" onclick="window.open('${targetUrl}', '_blank')"></video>
                 </div>
             `;
             let mediaEl = document.getElementById('activeAdMedia');
@@ -696,23 +709,23 @@ function renderAdOnBillboard(ad, onComplete) {
             let isVertical = tempImg.naturalHeight > tempImg.naturalWidth;
             if (isVertical) {
                 billboardBox.innerHTML = `
-                    <div style="background: #000; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-                        <img src="${fileUrl}" style="position: absolute; width: 100%; height: 100%; object-fit: cover; filter: blur(25px); opacity: 0.6; pointer-events: none;" alt="Blur BG">
-                        <img src="${fileUrl}" style="position: relative; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; z-index: 2; cursor: pointer;" onclick="window.open('${targetUrl}', '_blank')" alt="Ad Image">
+                    <div class="media-wrapper-flex">
+                        <img src="${fileUrl}" class="media-img-blur" alt="Blur BG">
+                        <img src="${fileUrl}" class="media-img-contain" onclick="window.open('${targetUrl}', '_blank')" alt="Ad Image">
                     </div>
                 `;
             } else {
                 billboardBox.innerHTML = `
-                    <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                        <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                    <div onclick="window.open('${targetUrl}', '_blank')" class="media-wrapper-bg">
+                        <img src="${fileUrl}" alt="Ad Image" class="media-img-fill">
                     </div>
                 `;
             }
         };
         tempImg.onerror = function () {
             billboardBox.innerHTML = `
-                <div onclick="window.open('${targetUrl}', '_blank')" style="background: #0b0f17; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;">
-                    <img src="${fileUrl}" alt="Ad Image" style="width: 100%; height: 100%; object-fit: fill; border-radius: 6px;">
+                <div onclick="window.open('${targetUrl}', '_blank')" class="media-wrapper-bg">
+                    <img src="${fileUrl}" alt="Ad Image" class="media-img-fill">
                 </div>
             `;
         };
@@ -725,7 +738,7 @@ function renderAdOnBillboard(ad, onComplete) {
     globalTimerInterval = setInterval(() => {
         let elapsed = Math.floor((Date.now() - startTime) / 1000);
         let timeLeft = duration - elapsed;
-        if (timerEl) timerEl.innerText = `Playing Ad... (${timeLeft > 0 ? timeLeft : 0}s left)`;
+        if (timerEl) timerEl.innerText = `${timeLeft > 0 ? timeLeft : 0}s`;
         if (timeLeft <= 0) {
             clearInterval(globalTimerInterval);
             triggerComplete();
@@ -743,7 +756,7 @@ async function initLiveBillboardPlayer() {
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
         let timerEl = getCountdownElement();
-        if (timerEl) timerEl.innerText = 'Next Slot in: 0s';
+        if (timerEl) timerEl.innerText = 'No Active Slots';
     }
 
     try {
@@ -785,14 +798,8 @@ async function initLiveBillboardPlayer() {
                 });
             } else {
                 applyDefaultBanner();
-                if (nextUpcomingAd) {
-                    let diffSecs = Math.max(0, Math.floor((nextUpcomingAd.start - getSyncedCurrentTime()) / 1000));
-                    if (timerEl) timerEl.innerText = `Next Slot in: ${diffSecs}s`;
-                    setTimeout(checkAndPlaySchedule, 1000);
-                } else {
-                    if (timerEl) timerEl.innerText = 'No Active Slots';
-                    setTimeout(initLiveBillboardPlayer, 15000);
-                }
+                if (timerEl) timerEl.innerText = 'No Active Slots';
+                setTimeout(initLiveBillboardPlayer, 10000);
             }
         }
         checkAndPlaySchedule();
