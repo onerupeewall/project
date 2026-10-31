@@ -148,12 +148,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     const campaignDaysInput = document.getElementById('campaignDaysInput');
     const totalAmount = document.getElementById('totalAmount');
 
-    function updateCalculatedAmount() {
+    // --- SECURE SERVER-SIDE AMOUNT CALCULATION ---
+    async function updateCalculatedAmount() {
         if (!durationInput || !totalAmount) return;
         let dur = parseInt(durationInput.value) || 10;
         let freq = frequencyInput ? parseInt(frequencyInput.value) || 1 : 1;
         let days = campaignDaysInput ? parseInt(campaignDaysInput.value) || 1 : 1;
-        totalAmount.innerText = '₹' + (dur * freq * days * 10);
+
+        let { data: verifiedPrice, error } = await supabaseClient.rpc('calculate_campaign_amount', {
+            p_duration: dur,
+            p_frequency: freq,
+            p_days: days
+        });
+
+        let finalPrice = error || verifiedPrice === null ? (dur * freq * days * 10) : verifiedPrice;
+        totalAmount.innerText = '₹' + finalPrice;
     }
 
     if (adFileInput) {
@@ -192,6 +201,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (durationInput) durationInput.addEventListener('input', updateCalculatedAmount);
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
+
+    // Initial call to set amount
+    updateCalculatedAmount();
+
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -218,7 +231,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
-
 // --- WEBSITE MAINTENANCE CHECKER ---
 async function checkWebsiteMaintenance() {
     try {
@@ -306,6 +318,7 @@ async function openOtpLoginModal() {
         }
     });
 }
+
 // --- FIXED CAMPAIGN SUBMISSION TO PREVENT NULL ROWS ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
@@ -508,7 +521,6 @@ async function loadMyActiveCampaign() {
             if (activeCountdownInterval) clearInterval(activeCountdownInterval);
             return;
         }
-
         if (statusBox) statusBox.style.display = 'block';
 
         if (master.status === 'pending') {
@@ -637,6 +649,7 @@ async function updateAvailableSecondsCounter() {
 }
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
+
 // --- MEDIA RENDERER WITH NETWORK OPTIMIZATION ---
 function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
