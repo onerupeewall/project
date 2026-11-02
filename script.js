@@ -202,7 +202,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (frequencyInput) frequencyInput.addEventListener('input', updateCalculatedAmount);
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
-    // Initial call to set amount
     updateCalculatedAmount();
 
     if (slotFormContainer) {
@@ -217,16 +216,21 @@ window.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const targetUrl = document.getElementById('targetUrl').value;
-            const adTitle = document.getElementById('adTitle').value;
+            const targetUrl = document.getElementById('targetUrl')?.value || '';
+            const adTitle = document.getElementById('adTitle')?.value || '';
             const fileInput = document.getElementById('adFile');
-            const selectedDateVal = document.getElementById('bookingDateInput').value;
+            const selectedDateVal = document.getElementById('bookingDateInput')?.value || '';
+
+            if (!targetUrl || !adTitle) {
+                alert('Please fill out all required fields.');
+                return;
+            }
 
             pendingCampaignData = {
                 duration, frequency, campaignDays, targetUrl, adTitle, fileInputFile: fileInput?.files[0], selectedDateVal
             };
 
-            slotModal.style.display = 'none';
+            if (slotModal) slotModal.style.display = 'none';
             openOtpLoginModal();
         });
     }
@@ -273,7 +277,7 @@ async function openOtpLoginModal() {
                     <input type="text" id="loginOtp" placeholder="Enter OTP" class="input-center-lg" maxlength="6">
                     <button id="verifyOtpBtn" class="btn-success-full">Verify & Submit</button>
                 </div>
-                <button onclick="document.getElementById('otpLoginModal').remove()" class="btn-cancel-sm">Cancel</button>
+                <button onclick="document.getElementById('otpLoginModal')?.remove()" class="btn-cancel-sm">Cancel</button>
             </div>
         </div>
     `;
@@ -281,16 +285,16 @@ async function openOtpLoginModal() {
 
     let serverGeneratedOtp = '';
 
-    document.getElementById('sendOtpBtn').addEventListener('click', async () => {
-        let phone = document.getElementById('loginPhone').value.trim();
-        if (phone.length < 10) {
+    document.getElementById('sendOtpBtn')?.addEventListener('click', async () => {
+        let phone = document.getElementById('loginPhone')?.value.trim();
+        if (!phone || phone.length < 10) {
             alert('Enter a valid mobile number.');
             return;
         }
 
         let { data, error } = await supabaseClient.rpc('request_user_otp', { p_phone: phone });
 
-        if (error || !data.success) {
+        if (error || !data || !data.success) {
             alert('Failed to generate OTP on server.');
             return;
         }
@@ -302,16 +306,16 @@ async function openOtpLoginModal() {
         document.getElementById('otpSentMsg').innerText = `Server Generated OTP: ${serverGeneratedOtp}`;
     });
 
-    document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
-        let otp = document.getElementById('loginOtp').value.trim();
-        let phone = document.getElementById('loginPhone').value.trim();
+    document.getElementById('verifyOtpBtn')?.addEventListener('click', async () => {
+        let otp = document.getElementById('loginOtp')?.value.trim();
+        let phone = document.getElementById('loginPhone')?.value.trim();
 
         if (otp !== serverGeneratedOtp) {
             alert('Invalid OTP.');
             return;
         }
 
-        document.getElementById('otpLoginModal').remove();
+        document.getElementById('otpLoginModal')?.remove();
         localStorage.setItem('user_phone', phone);
         if (pendingCampaignData) {
             await finalizeCampaignSubmission(phone, serverGeneratedOtp, pendingCampaignData);
@@ -342,8 +346,8 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
             }
         }
 
-        let baseParts = data.selectedDateVal.split('-');
-        let startDate = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
+        let baseParts = data.selectedDateVal ? data.selectedDateVal.split('-') : [];
+        let startDate = baseParts.length === 3 ? new Date(baseParts[0], baseParts[1] - 1, baseParts[2]) : new Date();
         let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
 
         let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
@@ -580,7 +584,6 @@ async function loadMyActiveCampaign() {
                     <p><b>Brand:</b> ${cleanBrand}</p>
                     <p class="list-active-title">Active Slots:</p>
             `;
-
             runsList.forEach((run, idx) => {
                 let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
                 let localFormattedTime = formatDateTimeToLocalUserTime(runTimeObj);
@@ -790,17 +793,13 @@ async function initLiveBillboardPlayer() {
 
         function checkAndPlaySchedule() {
             let currentTime = getSyncedCurrentTime();
-
             let currentPlayingAd = null;
-            let nextUpcomingAd = null;
 
             for (let i = 0; i < scheduledAds.length; i++) {
                 let item = scheduledAds[i];
                 if (currentTime >= item.start && currentTime < item.end) {
                     currentPlayingAd = item;
                     break;
-                } else if (currentTime < item.start) {
-                    if (!nextUpcomingAd) nextUpcomingAd = item;
                 }
             }
 
