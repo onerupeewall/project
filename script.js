@@ -73,12 +73,21 @@ window.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             try {
                 let { data } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
+                const maintenanceElement = document.querySelector('.maintenance-screen-full');
+
                 if (data && data.is_active) {
+                    if (maintenanceElement) {
+                        maintenanceElement.style.display = 'flex';
+                    }
                     let now = new Date();
                     let expiry = new Date(data.expires_at);
                     if (now < expiry && (data.scope === 'all' || data.scope === 'form')) {
                         alert('⚠️ Website is currently under maintenance. Booking is temporarily disabled.');
                         return;
+                    }
+                } else {
+                    if (maintenanceElement) {
+                        maintenanceElement.style.display = 'none';
                     }
                 }
             } catch (err) { }
