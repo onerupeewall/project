@@ -46,7 +46,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     await syncServerTime();
     setInterval(syncServerTime, 60000);
 
-    // Check Maintenance Status & Dynamic Button Check
     await checkWebsiteMaintenance();
 
     initVisitorCounter();
@@ -69,7 +68,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     const openSlotModal = document.getElementById('openSlotModal');
     const closeSlotModal = document.getElementById('closeSlotModal');
 
-    // --- DYNAMIC MAINTENANCE CHECK ON "BUY YOUR SLOT" CLICK ---
     if (openSlotModal && slotModal) {
         openSlotModal.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -148,7 +146,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     const campaignDaysInput = document.getElementById('campaignDaysInput');
     const totalAmount = document.getElementById('totalAmount');
 
-    // --- SECURE SERVER-SIDE AMOUNT CALCULATION ---
     async function updateCalculatedAmount() {
         if (!durationInput || !totalAmount) return;
         let dur = parseInt(durationInput.value) || 10;
@@ -235,7 +232,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
-// --- WEBSITE MAINTENANCE CHECKER ---
 async function checkWebsiteMaintenance() {
     try {
         let { data } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
@@ -323,26 +319,25 @@ async function openOtpLoginModal() {
     });
 }
 
-// --- FIXED CAMPAIGN SUBMISSION TO PREVENT NULL ROWS ---
+// --- PRIVATE BUCKET FILE SAVING ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
-        let publicFileUrl = 'https://swndqwcujyepctncxfhr.supabase.co/storage/v1/object/public/ad-videos/default.mp4';
+        let publicFileUrl = 'default.mp4';
 
         if (data.fileInputFile) {
             const file = data.fileInputFile;
             const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
 
-            const { data: uploadData, error: uploadError } = await supabaseClient.storage
+            const { error: uploadError } = await supabaseClient.storage
                 .from('ad-videos')
                 .upload(fileName, file, { upsert: true });
 
             if (!uploadError) {
-                let { data: publicUrlData } = supabaseClient.storage.from('ad-videos').getPublicUrl(fileName);
-                if (publicUrlData && publicUrlData.publicUrl) {
-                    publicFileUrl = publicUrlData.publicUrl;
-                }
+                // Private bucket ke liye sirf file name store hoga
+                publicFileUrl = fileName;
             } else {
-                publicFileUrl = URL.createObjectURL(file);
+                alert('File upload failed: ' + uploadError.message);
+                return;
             }
         }
 
@@ -505,7 +500,6 @@ async function loadMyActiveCampaign() {
             loadMyActiveCampaign();
             return;
         }
-
         let cleanBrand = singleRecord.brand_name.replace(/\s*\(Run \d+\/\d+\)/g, '').trim();
         let { data: allRuns } = await supabaseClient
             .from('buysecond_records')
@@ -584,6 +578,7 @@ async function loadMyActiveCampaign() {
                     <p><b>Brand:</b> ${cleanBrand}</p>
                     <p class="list-active-title">Active Slots:</p>
             `;
+
             runsList.forEach((run, idx) => {
                 let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
                 let localFormattedTime = formatDateTimeToLocalUserTime(runTimeObj);
@@ -653,17 +648,27 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERER WITH NETWORK OPTIMIZATION ---
-function renderAdOnBillboard(ad, onComplete) {
+// --- MEDIA RENDERER WITH SIGNED URL FOR PRIVATE BUCKET ---
+async function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
 
     let duration = parseInt(ad.duration_second) || 10;
-    let fileUrl = ad.file_url || ad.video_url || '';
+    let filePath = ad.file_url || ad.video_url || '';
     let targetUrl = ad.target_url || '#';
 
+    let fileUrl = filePath;
+    if (filePath && !filePath.startsWith('http') && !filePath.startsWith('blob:')) {
+        let { data: signedData } = await supabaseClient.storage
+            .from('ad-videos')
+            .createSignedUrl(filePath, duration + 30);
+        if (signedData && signedData.signedUrl) {
+            fileUrl = signedData.signedUrl;
+        }
+    }
+
     let lowerUrl = fileUrl.toLowerCase();
-    let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm') || lowerUrl.includes('video/mp4') || lowerUrl.includes('object/public/ad-videos');
+    let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm') || lowerUrl.includes('video/mp4') || lowerUrl.includes('object/public/ad-videos') || lowerUrl.includes('token=');
     let isImage = lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp') || lowerUrl.endsWith('.gif');
     if (isImage) isVideo = false;
 
@@ -676,75 +681,26 @@ function renderAdOnBillboard(ad, onComplete) {
     }
 
     if (isVideo) {
-        const tempVideo = document.createElement('video');
-        tempVideo.src = fileUrl;
-        applySmartNetworkOptimization(tempVideo);
-        tempVideo.onloadedmetadata = function () {
-            let isVertical = tempVideo.videoHeight > tempVideo.videoWidth;
-            if (isVertical) {
-                billboardBox.innerHTML = `
-                    <div class="media-wrapper-flex">
-                        <video src="${fileUrl}" autoplay muted playsinline loop class="media-video-blur"></video>
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-contain" onclick="window.open('${targetUrl}', '_blank')"></video>
-                    </div>
-                `;
-            } else {
-                billboardBox.innerHTML = `
-                    <div class="media-wrapper-flex">
-                        <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-fill" onclick="window.open('${targetUrl}', '_blank')"></video>
-                    </div>
-                `;
-            }
-            let mediaEl = document.getElementById('activeAdMedia');
-            if (mediaEl) {
-                applySmartNetworkOptimization(mediaEl);
-                mediaEl.onended = triggerComplete;
-                mediaEl.play().catch(e => {
-                    mediaEl.muted = true;
-                    mediaEl.play();
-                });
-            }
-        };
-        tempVideo.onerror = function () {
-            billboardBox.innerHTML = `
-                <div class="media-wrapper-flex">
-                    <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-fill" onclick="window.open('${targetUrl}', '_blank')"></video>
-                </div>
-            `;
-            let mediaEl = document.getElementById('activeAdMedia');
-            if (mediaEl) {
-                applySmartNetworkOptimization(mediaEl);
-                mediaEl.onended = triggerComplete;
-                mediaEl.play().catch(e => { mediaEl.muted = true; mediaEl.play(); });
-            }
-        };
+        billboardBox.innerHTML = `
+            <div class="media-wrapper-flex">
+                <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-fill" onclick="window.open('${targetUrl}', '_blank')"></video>
+            </div>
+        `;
+        let mediaEl = document.getElementById('activeAdMedia');
+        if (mediaEl) {
+            applySmartNetworkOptimization(mediaEl);
+            mediaEl.onended = triggerComplete;
+            mediaEl.play().catch(e => {
+                mediaEl.muted = true;
+                mediaEl.play();
+            });
+        }
     } else {
-        const tempImg = new Image();
-        tempImg.src = fileUrl;
-        tempImg.onload = function () {
-            let isVertical = tempImg.naturalHeight > tempImg.naturalWidth;
-            if (isVertical) {
-                billboardBox.innerHTML = `
-                    <div class="media-wrapper-flex">
-                        <img src="${fileUrl}" class="media-img-blur" alt="Blur BG">
-                        <img src="${fileUrl}" class="media-img-contain" onclick="window.open('${targetUrl}', '_blank')" alt="Ad Image">
-                    </div>
-                `;
-            } else {
-                billboardBox.innerHTML = `
-                    <div onclick="window.open('${targetUrl}', '_blank')" class="media-wrapper-bg">
-                        <img src="${fileUrl}" alt="Ad Image" class="media-img-fill">
-                    </div>
-                `;
-            }
-        };
-        tempImg.onerror = function () {
-            billboardBox.innerHTML = `
-                <div onclick="window.open('${targetUrl}', '_blank')" class="media-wrapper-bg">
-                    <img src="${fileUrl}" alt="Ad Image" class="media-img-fill">
-                </div>
-            `;
-        };
+        billboardBox.innerHTML = `
+            <div onclick="window.open('${targetUrl}', '_blank')" class="media-wrapper-bg">
+                <img src="${fileUrl}" alt="Ad Image" class="media-img-fill">
+            </div>
+        `;
     }
 
     let timerEl = getCountdownElement();
@@ -762,7 +718,6 @@ function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// --- EXACT SCHEDULED TIME-BASED AUTONOMOUS PLAYER ---
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox) return;
