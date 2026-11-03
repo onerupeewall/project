@@ -319,9 +319,14 @@ async function openOtpLoginModal() {
     });
 }
 
-// --- PRIVATE BUCKET FILE SAVING ---
+// --- STRICT NULL PREVENTION CAMPAIGN SUBMISSION ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
+        if (!data.adTitle || !data.targetUrl) {
+            alert('Campaign title and target URL are required.');
+            return;
+        }
+
         let publicFileUrl = 'default.mp4';
 
         if (data.fileInputFile) {
@@ -333,7 +338,6 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                 .upload(fileName, file, { upsert: true });
 
             if (!uploadError) {
-                // Private bucket ke liye sirf file name store hoga
                 publicFileUrl = fileName;
             } else {
                 alert('File upload failed: ' + uploadError.message);
@@ -432,7 +436,6 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         alert('Submission failed: ' + err.message);
     }
 }
-
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
