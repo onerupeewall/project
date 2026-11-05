@@ -370,8 +370,7 @@ async function openOtpLoginModal() {
         }
     });
 }
-
-// --- STRICT NULL PREVENTION CAMPAIGN SUBMISSION WITH SHA-256 HASHING ---
+// --- CAMPAIGN SUBMISSION WITH SHA-256 HASHING ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
         let isMaint = await isSiteUnderMaintenance('form');
@@ -403,7 +402,6 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
             }
         }
 
-        // OTP ko database me plain text ki jagah SHA-256 Hash karke bhejenge
         let hashedOtp = await hashOTP(userOtp);
 
         let baseParts = data.selectedDateVal ? data.selectedDateVal.split('-') : [];
@@ -471,7 +469,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                     status: 'pending',
                     unified_token: null,
                     user_phone: userPhone,
-                    user_otp: hashedOtp // HASHED OTP SAVED SECURELY
+                    user_otp: hashedOtp
                 };
 
                 if (newRecordObj.brand_name && newRecordObj.target_url && newRecordObj.file_url) {
@@ -539,9 +537,12 @@ async function loadMyActiveCampaign() {
                 <div class="campaign-retrieve-box">
                     <p class="retrieve-title">Retrieve Campaign Status</p>
                     <p class="retrieve-subtitle">Enter registered mobile number and OTP.</p>
-                    <input type="tel" id="checkPhoneInput" placeholder="Mobile Number" class="retrieve-input">
-                    <input type="text" id="checkOtpInput" placeholder="OTP" class="retrieve-input" maxlength="6">
-                    <button onclick="verifyAndLoadUserCampaign()" class="retrieve-btn">View Details</button>
+                    <div id="retrieveFormSection" class="retrieve-box">
+                        <input type="tel" id="checkPhoneInput" placeholder="Mobile Number" class="retrieve-input">
+                        <input type="text" id="checkOtpInput" placeholder="OTP" class="retrieve-input" maxlength="6">
+                        <button onclick="verifyAndLoadUserCampaign()" class="retrieve-btn" id="retrieveSubmitBtn">View Details</button>
+                    </div>
+                    <div id="retrieveLockoutMsg" style="color: #ef4444; font-weight: bold; margin-top: 10px; display: none; text-align: center;"></div>
                 </div>
             `;
         }
@@ -659,18 +660,21 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
-
-// --- SECURE RPC VERIFICATION WITH RATE LIMITING (3 Attempts & 1 Hour Lockout) ---
+// --- SECURE RPC VERIFICATION WITH VIBRATE SHAKE AND 1-HOUR LOCKOUT ---
 async function verifyAndLoadUserCampaign() {
-    let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
-    let otpInput = document.getElementById('checkOtpInput')?.value.trim();
+    let phoneInputEl = document.getElementById('checkPhoneInput');
+    let otpInputEl = document.getElementById('checkOtpInput');
+    let retrieveForm = document.getElementById('retrieveFormSection');
+    let lockoutMsg = document.getElementById('retrieveLockoutMsg');
+
+    let phoneInput = phoneInputEl?.value.trim();
+    let otpInput = otpInputEl?.value.trim();
 
     if (!phoneInput || !otpInput) {
         alert('Enter phone number and OTP.');
         return;
     }
 
-    // Direct table query ki jagah backend RPC function call karenge jo rate-limit check karega
     let { data, error } = await supabaseClient.rpc('verify_user_otp', {
         input_phone: phoneInput,
         input_otp: otpInput
@@ -682,11 +686,30 @@ async function verifyAndLoadUserCampaign() {
     }
 
     if (!data.success) {
-        alert(data.message); // Yeh message 3 attempts fail hone par ya lockout timing bata dega
+        // Vibrate/Shake effect on wrong OTP input
+        otpInputEl.classList.add('input-error-shake');
+
+        setTimeout(() => {
+            otpInputEl.classList.remove('input-error-shake');
+            otpInputEl.value = ''; // Clear wrong code
+        }, 300);
+
+        // Check for 1 hour lockout / 3 failed attempts
+        if (data.message.includes('1 hour') || data.message.includes('Locked') || data.message.includes('Too many')) {
+            if (retrieveForm) retrieveForm.style.display = 'none';
+            if (lockoutMsg) {
+                lockoutMsg.style.display = 'block';
+                lockoutMsg.innerText = `⚠️ 3 attempts failed. Locked for 1 hour. Please try again later.`;
+            }
+        } else {
+            if (lockoutMsg) {
+                lockoutMsg.style.display = 'block';
+                lockoutMsg.innerText = data.message;
+            }
+        }
         return;
     }
 
-    // Agar verification successful ho gayi, toh record fetch karke dashboard load karo
     let { data: recordData, error: recError } = await supabaseClient
         .from('buysecond_records')
         .select('*')
@@ -851,4 +874,4 @@ async function initLiveBillboardPlayer() {
         applyDefaultBanner();
         setTimeout(initLiveBillboardPlayer, 15000);
     }
-}
+    
