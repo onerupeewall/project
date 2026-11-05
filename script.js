@@ -577,15 +577,15 @@ async function loadMyActiveCampaign() {
         }
         if (statusBox) statusBox.style.display = 'block';
 
-        if (master.status === 'pending') {
-            if (statusText) statusText.innerText = `⏳ Waiting for Owner's Approval (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = 'Campaign under review.';
+        if (master.status === 'rejected') {
+            if (statusText) statusText.innerText = `❌ Campaign Rejected (${cleanBrand})`;
+            if (countdownText) countdownText.innerText = 'Campaign rejected by admin.';
             if (searchResultArea) {
                 searchResultArea.innerHTML = `
-                    <div class="campaign-pending-box">
-                        <p class="pending-title">Waiting for Owner's Approval</p>
-                        <p class="pending-subtitle">Your campaign is under review. Live countdown will start immediately after approval.</p>
-                        <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" class="btn-switch-num">Switch Number</button>
+                    <div class="campaign-pending-box" style="border-color: #ff4d4d;">
+                        <p class="pending-title" style="color: #ff4d4d;">Campaign Rejected</p>
+                        <p class="pending-subtitle">Your campaign was rejected by the admin. Please try submitting with new details.</p>
+                        <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" class="btn-switch-danger">Switch Number / Try Again</button>
                     </div>
                 `;
             }
