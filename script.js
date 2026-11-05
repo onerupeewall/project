@@ -11,6 +11,14 @@ let globalTimerInterval = null;
 let activeCountdownInterval = null;
 let pendingCampaignData = null;
 
+// --- SHA-256 OTP HASHING HELPER ---
+async function hashOTP(otp) {
+    const msgBuffer = new TextEncoder().encode(otp.toString().trim());
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // --- SMART NETWORK OPTIMIZATION ---
 function applySmartNetworkOptimization(mediaElement) {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -57,14 +65,12 @@ async function isSiteUnderMaintenance(scopeCheck = 'form') {
             let now = getSyncedCurrentTime();
             let expiry = new Date(data.expires_at);
 
-            // Agar maintenance expiye ho gayi hai
             if (now >= expiry) {
                 const maintenanceElement = document.querySelector('.maintenance-screen-full');
                 if (maintenanceElement) maintenanceElement.style.display = 'none';
                 return false;
             }
 
-            // Mobile/Laptop scope check
             if (scopeCheck === 'form' && (data.scope === 'all' || data.scope === 'form')) {
                 return true;
             }
@@ -111,7 +117,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         const handleModalOpen = async (e) => {
             if (e) e.preventDefault();
 
-            // Direct Maintenance Verification (Bypasses Phone Caching)
             let isMaint = await isSiteUnderMaintenance('form');
             if (isMaint) {
                 alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
@@ -238,7 +243,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
     updateCalculatedAmount();
-    // STRICT SUBMIT LOCK (Prevents Form Submission from Mobile)
+
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -366,7 +371,7 @@ async function openOtpLoginModal() {
     });
 }
 
-// --- STRICT NULL PREVENTION CAMPAIGN SUBMISSION ---
+// --- STRICT NULL PREVENTION CAMPAIGN SUBMISSION WITH SHA-256 HASHING ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
         let isMaint = await isSiteUnderMaintenance('form');
@@ -397,6 +402,9 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                 return;
             }
         }
+
+        // OTP ko database me plain text ki jagah SHA-256 Hash karke bhejenge
+        let hashedOtp = await hashOTP(userOtp);
 
         let baseParts = data.selectedDateVal ? data.selectedDateVal.split('-') : [];
         let startDate = baseParts.length === 3 ? new Date(baseParts[0], baseParts[1] - 1, baseParts[2]) : new Date();
@@ -463,7 +471,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                     status: 'pending',
                     unified_token: null,
                     user_phone: userPhone,
-                    user_otp: userOtp
+                    user_otp: hashedOtp // HASHED OTP SAVED SECURELY
                 };
 
                 if (newRecordObj.brand_name && newRecordObj.target_url && newRecordObj.file_url) {
@@ -489,6 +497,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         alert('Submission failed: ' + err.message);
     }
 }
+
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
@@ -591,11 +600,6 @@ async function loadMyActiveCampaign() {
             }
             return;
         }
-        if (master.status === 'rejected') {
-            if (statusText) statusText.innerText = `❌ Campaign Rejected (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = 'Campaign rejected by admin.';
-            return;
-        }
 
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
@@ -622,7 +626,6 @@ async function loadMyActiveCampaign() {
                 if (statusBox) statusBox.style.display = 'none';
             }
         }
-
         updateLiveCountdownUI();
         activeCountdownInterval = setInterval(updateLiveCountdownUI, 1000);
 
@@ -657,6 +660,7 @@ async function loadMyActiveCampaign() {
     }
 }
 
+// --- SECURE RPC VERIFICATION WITH RATE LIMITING (3 Attempts & 1 Hour Lockout) ---
 async function verifyAndLoadUserCampaign() {
     let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
@@ -666,21 +670,37 @@ async function verifyAndLoadUserCampaign() {
         return;
     }
 
-    let { data, error } = await supabaseClient
+    // Direct table query ki jagah backend RPC function call karenge jo rate-limit check karega
+    let { data, error } = await supabaseClient.rpc('verify_user_otp', {
+        input_phone: phoneInput,
+        input_otp: otpInput
+    });
+
+    if (error || !data) {
+        alert('Verification failed. Please try again.');
+        return;
+    }
+
+    if (!data.success) {
+        alert(data.message); // Yeh message 3 attempts fail hone par ya lockout timing bata dega
+        return;
+    }
+
+    // Agar verification successful ho gayi, toh record fetch karke dashboard load karo
+    let { data: recordData, error: recError } = await supabaseClient
         .from('buysecond_records')
         .select('*')
         .eq('user_phone', phoneInput)
-        .eq('user_otp', otpInput)
         .order('id', { ascending: false })
         .limit(1);
 
-    if (error || !data || data.length === 0) {
-        alert('Invalid mobile number or OTP.');
+    if (recError || !recordData || recordData.length === 0) {
+        alert('Record not found.');
         return;
     }
 
     localStorage.setItem('user_phone', phoneInput);
-    localStorage.setItem('my_latest_campaign_id', data[0].id);
+    localStorage.setItem('my_latest_campaign_id', recordData[0].id);
     loadMyActiveCampaign();
 }
 
