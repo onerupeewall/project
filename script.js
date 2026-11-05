@@ -76,14 +76,21 @@ window.addEventListener('DOMContentLoaded', async () => {
                 const maintenanceElement = document.querySelector('.maintenance-screen-full');
 
                 if (data && data.is_active) {
-                    if (maintenanceElement) {
-                        maintenanceElement.style.display = 'flex';
-                    }
-                    let now = new Date();
+                    let now = getSyncedCurrentTime();
                     let expiry = new Date(data.expires_at);
-                    if (now < expiry && (data.scope === 'all' || data.scope === 'form')) {
-                        alert('⚠️ Website is currently under maintenance. Booking is temporarily disabled.');
-                        return;
+
+                    // Agar expiry time cross ho gaya hai, toh maintenance hide karke form khulne do
+                    if (now >= expiry) {
+                        if (maintenanceElement) maintenanceElement.style.display = 'none';
+                    } else {
+                        // Agar maintenance active aur valid hai
+                        if (maintenanceElement) {
+                            maintenanceElement.style.display = 'flex';
+                        }
+                        if (data.scope === 'all' || data.scope === 'form') {
+                            alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
+                            return;
+                        }
                     }
                 } else {
                     if (maintenanceElement) {
@@ -241,24 +248,34 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+
 async function checkWebsiteMaintenance() {
     try {
         let { data } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
+        const maintenanceElement = document.querySelector('.maintenance-screen-full');
+
         if (data && data.is_active) {
-            let now = new Date();
+            let now = getSyncedCurrentTime();
             let expiry = new Date(data.expires_at);
-            if (now < expiry) {
-                if (data.scope === 'all') {
-                    document.body.innerHTML = `
-                        <div class="maintenance-screen-full">
-                            <h1>🛠️ Website Under Scheduled Maintenance</h1>
-                            <p>We are upgrading BuySecond for a better experience. Please check back shortly!</p>
-                        </div>
-                    `;
-                } else if (data.scope === 'billboard') {
-                    const billboardBox = document.getElementById('billboardBox');
-                    if (billboardBox) billboardBox.innerHTML = `<div class="maintenance-screen-billboard">🛠️ Billboard Under Maintenance</div>`;
+
+            // Agar time khatam ho gaya hai, toh maintenance hide kardo
+            if (now >= expiry) {
+                if (maintenanceElement) maintenanceElement.style.display = 'none';
+                return;
+            }
+
+            // Agar time bacha hai aur scope match karta hai
+            if (data.scope === 'all' || data.scope === 'form') {
+                if (maintenanceElement) {
+                    maintenanceElement.style.display = 'flex';
                 }
+            } else if (data.scope === 'banner') {
+                const billboardBox = document.getElementById('billboardBox');
+                if (billboardBox) billboardBox.innerHTML = `<div class="maintenance-screen-billboard">🛠️ Billboard Under Maintenance</div>`;
+            }
+        } else {
+            if (maintenanceElement) {
+                maintenanceElement.style.display = 'none';
             }
         }
     } catch (e) { }
@@ -327,7 +344,6 @@ async function openOtpLoginModal() {
         }
     });
 }
-
 // --- STRICT NULL PREVENTION CAMPAIGN SUBMISSION ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
@@ -445,6 +461,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         alert('Submission failed: ' + err.message);
     }
 }
+
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
@@ -612,7 +629,6 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
-
 async function verifyAndLoadUserCampaign() {
     let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
