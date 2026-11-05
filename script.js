@@ -42,6 +42,45 @@ function getSyncedCurrentTime() {
     return new Date(Date.now() + serverTimeOffset);
 }
 
+// --- STRICT MAINTENANCE CHECK FUNCTION ---
+async function isSiteUnderMaintenance(scopeCheck = 'form') {
+    try {
+        let { data, error } = await supabaseClient
+            .from('site_maintenance')
+            .select('*')
+            .eq('id', 1)
+            .single();
+
+        if (error || !data) return false;
+
+        if (data && data.is_active) {
+            let now = getSyncedCurrentTime();
+            let expiry = new Date(data.expires_at);
+
+            // Agar maintenance expiye ho gayi hai
+            if (now >= expiry) {
+                const maintenanceElement = document.querySelector('.maintenance-screen-full');
+                if (maintenanceElement) maintenanceElement.style.display = 'none';
+                return false;
+            }
+
+            // Mobile/Laptop scope check
+            if (scopeCheck === 'form' && (data.scope === 'all' || data.scope === 'form')) {
+                return true;
+            }
+            if (scopeCheck === 'all' && data.scope === 'all') {
+                return true;
+            }
+            if (scopeCheck === 'banner' && data.scope === 'banner') {
+                return true;
+            }
+        }
+    } catch (err) {
+        console.error("Maintenance Fetch Error:", err);
+    }
+    return false;
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
     await syncServerTime();
     setInterval(syncServerTime, 60000);
@@ -69,38 +108,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     const closeSlotModal = document.getElementById('closeSlotModal');
 
     if (openSlotModal && slotModal) {
-        openSlotModal.addEventListener('click', async (e) => {
-            e.preventDefault();
-            try {
-                let { data } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
-                const maintenanceElement = document.querySelector('.maintenance-screen-full');
+        const handleModalOpen = async (e) => {
+            if (e) e.preventDefault();
 
-                if (data && data.is_active) {
-                    let now = getSyncedCurrentTime();
-                    let expiry = new Date(data.expires_at);
-
-                    // Agar expiry time cross ho gaya hai, toh maintenance hide karke form khulne do
-                    if (now >= expiry) {
-                        if (maintenanceElement) maintenanceElement.style.display = 'none';
-                    } else {
-                        // Agar maintenance active aur valid hai
-                        if (maintenanceElement) {
-                            maintenanceElement.style.display = 'flex';
-                        }
-                        if (data.scope === 'all' || data.scope === 'form') {
-                            alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
-                            return;
-                        }
-                    }
-                } else {
-                    if (maintenanceElement) {
-                        maintenanceElement.style.display = 'none';
-                    }
-                }
-            } catch (err) { }
+            // Direct Maintenance Verification (Bypasses Phone Caching)
+            let isMaint = await isSiteUnderMaintenance('form');
+            if (isMaint) {
+                alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
+                return false;
+            }
 
             slotModal.style.display = 'flex';
-        });
+        };
+
+        openSlotModal.addEventListener('click', handleModalOpen);
+        openSlotModal.addEventListener('touchstart', handleModalOpen, { passive: false });
     }
 
     if (closeSlotModal && slotModal) closeSlotModal.addEventListener('click', () => slotModal.style.display = 'none');
@@ -216,10 +238,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
     updateCalculatedAmount();
-
+    // STRICT SUBMIT LOCK (Prevents Form Submission from Mobile)
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            let isMaint = await isSiteUnderMaintenance('form');
+            if (isMaint) {
+                alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
+                if (slotModal) slotModal.style.display = 'none';
+                return;
+            }
+
             let duration = parseInt(document.getElementById('durationInput')?.value) || 10;
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
@@ -251,31 +281,22 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 async function checkWebsiteMaintenance() {
     try {
-        let { data } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
+        let isMaintAll = await isSiteUnderMaintenance('all');
         const maintenanceElement = document.querySelector('.maintenance-screen-full');
 
-        if (data && data.is_active) {
-            let now = getSyncedCurrentTime();
-            let expiry = new Date(data.expires_at);
-
-            // Agar time khatam ho gaya hai, toh maintenance hide kardo
-            if (now >= expiry) {
-                if (maintenanceElement) maintenanceElement.style.display = 'none';
-                return;
-            }
-
-            // Agar time bacha hai aur scope match karta hai
-            if (data.scope === 'all' || data.scope === 'form') {
-                if (maintenanceElement) {
-                    maintenanceElement.style.display = 'flex';
-                }
-            } else if (data.scope === 'banner') {
-                const billboardBox = document.getElementById('billboardBox');
-                if (billboardBox) billboardBox.innerHTML = `<div class="maintenance-screen-billboard">🛠️ Billboard Under Maintenance</div>`;
+        if (isMaintAll) {
+            if (maintenanceElement) {
+                maintenanceElement.style.display = 'flex';
             }
         } else {
             if (maintenanceElement) {
                 maintenanceElement.style.display = 'none';
+            }
+
+            let isMaintBanner = await isSiteUnderMaintenance('banner');
+            if (isMaintBanner) {
+                const billboardBox = document.getElementById('billboardBox');
+                if (billboardBox) billboardBox.innerHTML = `<div class="maintenance-screen-billboard">🛠️ Billboard Under Maintenance</div>`;
             }
         }
     } catch (e) { }
@@ -344,9 +365,16 @@ async function openOtpLoginModal() {
         }
     });
 }
+
 // --- STRICT NULL PREVENTION CAMPAIGN SUBMISSION ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
+        let isMaint = await isSiteUnderMaintenance('form');
+        if (isMaint) {
+            alert('⚠️ Website is currently under maintenance. Submission cancelled.');
+            return;
+        }
+
         if (!data.adTitle || !data.targetUrl) {
             alert('Campaign title and target URL are required.');
             return;
@@ -461,7 +489,6 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         alert('Submission failed: ' + err.message);
     }
 }
-
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
@@ -629,6 +656,7 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
+
 async function verifyAndLoadUserCampaign() {
     let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
     let otpInput = document.getElementById('checkOtpInput')?.value.trim();
