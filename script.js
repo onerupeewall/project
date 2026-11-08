@@ -11,14 +11,6 @@ let globalTimerInterval = null;
 let activeCountdownInterval = null;
 let pendingCampaignData = null;
 
-// --- SHA-256 OTP HASHING HELPER ---
-async function hashOTP(otp) {
-    const msgBuffer = new TextEncoder().encode(otp.toString().trim());
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 // --- SMART NETWORK OPTIMIZATION ---
 function applySmartNetworkOptimization(mediaElement) {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -65,12 +57,14 @@ async function isSiteUnderMaintenance(scopeCheck = 'form') {
             let now = getSyncedCurrentTime();
             let expiry = new Date(data.expires_at);
 
+            // Agar maintenance expiye ho gayi hai
             if (now >= expiry) {
                 const maintenanceElement = document.querySelector('.maintenance-screen-full');
                 if (maintenanceElement) maintenanceElement.style.display = 'none';
                 return false;
             }
 
+            // Mobile/Laptop scope check
             if (scopeCheck === 'form' && (data.scope === 'all' || data.scope === 'form')) {
                 return true;
             }
@@ -117,6 +111,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         const handleModalOpen = async (e) => {
             if (e) e.preventDefault();
 
+            // Direct Maintenance Verification (Bypasses Phone Caching)
             let isMaint = await isSiteUnderMaintenance('form');
             if (isMaint) {
                 alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
@@ -243,7 +238,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
     updateCalculatedAmount();
-
+    // STRICT SUBMIT LOCK (Prevents Form Submission from Mobile)
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -370,7 +365,8 @@ async function openOtpLoginModal() {
         }
     });
 }
-// --- CAMPAIGN SUBMISSION WITH SHA-256 HASHING ---
+
+// --- STRICT NULL PREVENTION CAMPAIGN SUBMISSION ---
 async function finalizeCampaignSubmission(userPhone, userOtp, data) {
     try {
         let isMaint = await isSiteUnderMaintenance('form');
@@ -401,8 +397,6 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                 return;
             }
         }
-
-        let hashedOtp = await hashOTP(userOtp);
 
         let baseParts = data.selectedDateVal ? data.selectedDateVal.split('-') : [];
         let startDate = baseParts.length === 3 ? new Date(baseParts[0], baseParts[1] - 1, baseParts[2]) : new Date();
@@ -469,7 +463,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                     status: 'pending',
                     unified_token: null,
                     user_phone: userPhone,
-                    user_otp: hashedOtp
+                    user_otp: userOtp
                 };
 
                 if (newRecordObj.brand_name && newRecordObj.target_url && newRecordObj.file_url) {
@@ -495,7 +489,6 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         alert('Submission failed: ' + err.message);
     }
 }
-
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
@@ -537,12 +530,9 @@ async function loadMyActiveCampaign() {
                 <div class="campaign-retrieve-box">
                     <p class="retrieve-title">Retrieve Campaign Status</p>
                     <p class="retrieve-subtitle">Enter registered mobile number and OTP.</p>
-                    <div id="retrieveFormSection" class="retrieve-box">
-                        <input type="tel" id="checkPhoneInput" placeholder="Mobile Number" class="retrieve-input">
-                        <input type="text" id="checkOtpInput" placeholder="OTP" class="retrieve-input" maxlength="6">
-                        <button onclick="verifyAndLoadUserCampaign()" class="retrieve-btn" id="retrieveSubmitBtn">View Details</button>
-                    </div>
-                    <div id="retrieveLockoutMsg" style="color: #ef4444; font-weight: bold; margin-top: 10px; display: none; text-align: center;"></div>
+                    <input type="tel" id="checkPhoneInput" placeholder="Mobile Number" class="retrieve-input">
+                    <input type="text" id="checkOtpInput" placeholder="OTP" class="retrieve-input" maxlength="6">
+                    <button onclick="verifyAndLoadUserCampaign()" class="retrieve-btn">View Details</button>
                 </div>
             `;
         }
@@ -599,6 +589,11 @@ async function loadMyActiveCampaign() {
                     </div>
                 `;
             }
+            return;
+        }
+        if (master.status === 'rejected') {
+            if (statusText) statusText.innerText = `❌ Campaign Rejected (${cleanBrand})`;
+            if (countdownText) countdownText.innerText = 'Campaign rejected by admin.';
             return;
         }
 
@@ -660,70 +655,31 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
-// --- SECURE RPC VERIFICATION WITH VIBRATE SHAKE AND 1-HOUR LOCKOUT ---
-async function verifyAndLoadUserCampaign() {
-    let phoneInputEl = document.getElementById('checkPhoneInput');
-    let otpInputEl = document.getElementById('checkOtpInput');
-    let retrieveForm = document.getElementById('retrieveFormSection');
-    let lockoutMsg = document.getElementById('retrieveLockoutMsg');
 
-    let phoneInput = phoneInputEl?.value.trim();
-    let otpInput = otpInputEl?.value.trim();
+async function verifyAndLoadUserCampaign() {
+    let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
+    let otpInput = document.getElementById('checkOtpInput')?.value.trim();
 
     if (!phoneInput || !otpInput) {
         alert('Enter phone number and OTP.');
         return;
     }
 
-    let { data, error } = await supabaseClient.rpc('verify_user_otp', {
-        input_phone: phoneInput,
-        input_otp: otpInput
-    });
-
-    if (error || !data) {
-        alert('Verification failed. Please try again.');
-        return;
-    }
-
-    if (!data.success) {
-        // Vibrate/Shake effect on wrong OTP input
-        otpInputEl.classList.add('input-error-shake');
-
-        setTimeout(() => {
-            otpInputEl.classList.remove('input-error-shake');
-            otpInputEl.value = ''; // Clear wrong code
-        }, 300);
-
-        // Check for 1 hour lockout / 3 failed attempts
-        if (data.message.includes('1 hour') || data.message.includes('Locked') || data.message.includes('Too many')) {
-            if (retrieveForm) retrieveForm.style.display = 'none';
-            if (lockoutMsg) {
-                lockoutMsg.style.display = 'block';
-                lockoutMsg.innerText = `⚠️ 3 attempts failed. Locked for 1 hour. Please try again later.`;
-            }
-        } else {
-            if (lockoutMsg) {
-                lockoutMsg.style.display = 'block';
-                lockoutMsg.innerText = data.message;
-            }
-        }
-        return;
-    }
-
-    let { data: recordData, error: recError } = await supabaseClient
+    let { data, error } = await supabaseClient
         .from('buysecond_records')
         .select('*')
         .eq('user_phone', phoneInput)
+        .eq('user_otp', otpInput)
         .order('id', { ascending: false })
         .limit(1);
 
-    if (recError || !recordData || recordData.length === 0) {
-        alert('Record not found.');
+    if (error || !data || data.length === 0) {
+        alert('Invalid mobile number or OTP.');
         return;
     }
 
     localStorage.setItem('user_phone', phoneInput);
-    localStorage.setItem('my_latest_campaign_id', recordData[0].id);
+    localStorage.setItem('my_latest_campaign_id', data[0].id);
     loadMyActiveCampaign();
 }
 
@@ -874,4 +830,4 @@ async function initLiveBillboardPlayer() {
         applyDefaultBanner();
         setTimeout(initLiveBillboardPlayer, 15000);
     }
-    
+}
