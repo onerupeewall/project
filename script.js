@@ -111,11 +111,18 @@ window.addEventListener('DOMContentLoaded', async () => {
         const handleModalOpen = async (e) => {
             if (e) e.preventDefault();
 
-            // Direct Maintenance Verification (Bypasses Phone Caching)
+            // Direct Maintenance Verification
             let isMaint = await isSiteUnderMaintenance('form');
             if (isMaint) {
                 alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
                 return false;
+            }
+
+            // Check Google Auth Session instead of opening OTP modal
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                openGoogleLoginModal();
+                return;
             }
 
             slotModal.style.display = 'flex';
@@ -146,7 +153,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
 
     if (checkRecordBtn && checkRecordModal) {
-        checkRecordBtn.addEventListener('click', () => {
+        checkRecordBtn.addEventListener('click', async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                openGoogleLoginModal();
+                return;
+            }
             checkRecordModal.style.display = 'flex';
             loadMyActiveCampaign();
         });
@@ -238,7 +250,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
     updateCalculatedAmount();
-    // STRICT SUBMIT LOCK (Prevents Form Submission from Mobile)
+    // STRICT SUBMIT LOCK
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -247,6 +259,13 @@ window.addEventListener('DOMContentLoaded', async () => {
             if (isMaint) {
                 alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
                 if (slotModal) slotModal.style.display = 'none';
+                return;
+            }
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                alert('Please sign in with Google to submit campaigns.');
+                openGoogleLoginModal();
                 return;
             }
 
@@ -269,12 +288,12 @@ window.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            pendingCampaignData = {
+            let campaignData = {
                 duration, frequency, campaignDays, targetUrl, adTitle, fileInputFile: fileInput?.files[0], selectedDateVal
             };
 
             if (slotModal) slotModal.style.display = 'none';
-            openOtpLoginModal();
+            await finalizeCampaignSubmission(session.user, campaignData);
         });
     }
 });
@@ -302,72 +321,41 @@ async function checkWebsiteMaintenance() {
     } catch (e) { }
 }
 
-async function openOtpLoginModal() {
-    let existingModal = document.getElementById('otpLoginModal');
+// --- GOOGLE OAUTH LOGIN MODAL ---
+async function openGoogleLoginModal() {
+    let existingModal = document.getElementById('googleLoginModal');
     if (existingModal) existingModal.remove();
 
     let modalHTML = `
-        <div id="otpLoginModal" class="modal" style="display: flex;">
+        <div id="googleLoginModal" class="modal" style="display: flex;">
             <div class="modal-content text-center">
-                <h3>🔐 Mobile Verification</h3>
-                <p class="text-muted-sm">Enter your phone number to complete booking.</p>
-                <div id="phoneStep">
-                    <input type="tel" id="loginPhone" placeholder="10-digit Mobile Number" class="input-center-lg" required>
-                    <button id="sendOtpBtn" class="btn-primary-full">Get OTP from Server</button>
-                </div>
-                <div id="otpStep" style="display:none;">
-                    <p id="otpSentMsg" class="otp-msg"></p>
-                    <input type="text" id="loginOtp" placeholder="Enter OTP" class="input-center-lg" maxlength="6">
-                    <button id="verifyOtpBtn" class="btn-success-full">Verify & Submit</button>
-                </div>
-                <button onclick="document.getElementById('otpLoginModal')?.remove()" class="btn-cancel-sm">Cancel</button>
+                <h3>🔐 Google Authentication</h3>
+                <p class="text-muted-sm">Continue with your Google account to book and manage campaigns.</p>
+                <button id="googleSignInBtn" class="google-login-btn">
+                    <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.14C3.15 21.37 7.22 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.62H1.18C.43 8.14 0 9.87 0 12s.43 3.86 1.18 5.38l4.09-3.14z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.15 2.63 1.18 6.62l4.09 3.14c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+                    Continue with Google
+                </button>
+                <button onclick="document.getElementById('googleLoginModal')?.remove()" class="btn-cancel-sm" style="margin-top: 15px;">Cancel</button>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-    let serverGeneratedOtp = '';
-
-    document.getElementById('sendOtpBtn')?.addEventListener('click', async () => {
-        let phone = document.getElementById('loginPhone')?.value.trim();
-        if (!phone || phone.length < 10) {
-            alert('Enter a valid mobile number.');
-            return;
-        }
-
-        let { data, error } = await supabaseClient.rpc('request_user_otp', { p_phone: phone });
-
-        if (error || !data || !data.success) {
-            alert('Failed to generate OTP on server.');
-            return;
-        }
-
-        serverGeneratedOtp = data.otp;
-
-        document.getElementById('phoneStep').style.display = 'none';
-        document.getElementById('otpStep').style.display = 'block';
-        document.getElementById('otpSentMsg').innerText = `Server Generated OTP: ${serverGeneratedOtp}`;
-    });
-
-    document.getElementById('verifyOtpBtn')?.addEventListener('click', async () => {
-        let otp = document.getElementById('loginOtp')?.value.trim();
-        let phone = document.getElementById('loginPhone')?.value.trim();
-
-        if (otp !== serverGeneratedOtp) {
-            alert('Invalid OTP.');
-            return;
-        }
-
-        document.getElementById('otpLoginModal')?.remove();
-        localStorage.setItem('user_phone', phone);
-        if (pendingCampaignData) {
-            await finalizeCampaignSubmission(phone, serverGeneratedOtp, pendingCampaignData);
+    document.getElementById('googleSignInBtn')?.addEventListener('click', async () => {
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin
+            }
+        });
+        if (error) {
+            alert('Google login failed: ' + error.message);
         }
     });
 }
 
-// --- STRICT NULL PREVENTION CAMPAIGN SUBMISSION ---
-async function finalizeCampaignSubmission(userPhone, userOtp, data) {
+// --- CAMPAIGN SUBMISSION WITH GOOGLE USER ID & EMAIL ---
+async function finalizeCampaignSubmission(user, data) {
     try {
         let isMaint = await isSiteUnderMaintenance('form');
         if (isMaint) {
@@ -462,8 +450,8 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
                     slot_time: finalSlotTimeFormatted,
                     status: 'pending',
                     unified_token: null,
-                    user_phone: userPhone,
-                    user_otp: userOtp
+                    user_id: user.id,
+                    user_email: user.email
                 };
 
                 if (newRecordObj.brand_name && newRecordObj.target_url && newRecordObj.file_url) {
@@ -478,7 +466,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
             if (insertError) throw insertError;
         }
 
-        let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').eq('user_phone', userPhone).order('id', { ascending: false }).limit(1);
+        let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').eq('user_id', user.id).order('id', { ascending: false }).limit(1);
         if (latestRecord && latestRecord.length > 0) {
             localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
         }
@@ -489,6 +477,7 @@ async function finalizeCampaignSubmission(userPhone, userOtp, data) {
         alert('Submission failed: ' + err.message);
     }
 }
+
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
@@ -520,19 +509,18 @@ async function loadMyActiveCampaign() {
     const statusText = document.getElementById('billboardStatusText');
     const countdownText = document.getElementById('billboardCountdownText');
 
-    let myCampaignId = localStorage.getItem('my_latest_campaign_id');
-    let savedPhone = localStorage.getItem('user_phone');
-
-    if (!myCampaignId && !savedPhone) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
         if (statusBox) statusBox.style.display = 'none';
         if (searchResultArea) {
             searchResultArea.innerHTML = `
-                <div class="campaign-retrieve-box">
+                <div class="campaign-retrieve-box text-center">
                     <p class="retrieve-title">Retrieve Campaign Status</p>
-                    <p class="retrieve-subtitle">Enter registered mobile number and OTP.</p>
-                    <input type="tel" id="checkPhoneInput" placeholder="Mobile Number" class="retrieve-input">
-                    <input type="text" id="checkOtpInput" placeholder="OTP" class="retrieve-input" maxlength="6">
-                    <button onclick="verifyAndLoadUserCampaign()" class="retrieve-btn">View Details</button>
+                    <p class="retrieve-subtitle">Please sign in with Google to view your campaigns.</p>
+                    <button onclick="openGoogleLoginModal()" class="google-login-btn">
+                        <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.14C3.15 21.37 7.22 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.62H1.18C.43 8.14 0 9.87 0 12s.43 3.86 1.18 5.38l4.09-3.14z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.15 2.63 1.18 6.62l4.09 3.14c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+                        Continue with Google
+                    </button>
                 </div>
             `;
         }
@@ -541,21 +529,20 @@ async function loadMyActiveCampaign() {
     }
 
     try {
-        let query = supabaseClient.from('buysecond_records').select('*');
-        if (myCampaignId) {
-            query = query.eq('id', myCampaignId);
-        } else if (savedPhone) {
-            query = query.eq('user_phone', savedPhone).order('id', { ascending: false }).limit(1);
-        }
+        let { data: singleRecord, error } = await supabaseClient
+            .from('buysecond_records')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .order('id', { ascending: false })
+            .limit(1)
+            .single();
 
-        let { data: singleRecord, error } = await query.single();
         if (error || !singleRecord) {
             if (statusBox) statusBox.style.display = 'none';
-            localStorage.removeItem('my_latest_campaign_id');
-            localStorage.removeItem('user_phone');
-            loadMyActiveCampaign();
+            if (searchResultArea) searchResultArea.innerHTML = '<span class="text-muted-sm">No campaigns found for this account.</span>';
             return;
         }
+
         let cleanBrand = singleRecord.brand_name.replace(/\s*\(Run \d+\/\d+\)/g, '').trim();
         let { data: allRuns } = await supabaseClient
             .from('buysecond_records')
@@ -570,11 +557,11 @@ async function loadMyActiveCampaign() {
         let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
         if (allCompleted) {
             if (statusBox) statusBox.style.display = 'none';
-            localStorage.removeItem('my_latest_campaign_id');
             if (searchResultArea) searchResultArea.innerHTML = '<span class="text-success">Campaign completed all scheduled runs.</span>';
             if (activeCountdownInterval) clearInterval(activeCountdownInterval);
             return;
         }
+
         if (statusBox) statusBox.style.display = 'block';
 
         if (master.status === 'rejected') {
@@ -585,15 +572,10 @@ async function loadMyActiveCampaign() {
                     <div class="campaign-pending-box" style="border-color: #ff4d4d;">
                         <p class="pending-title" style="color: #ff4d4d;">Campaign Rejected</p>
                         <p class="pending-subtitle">Your campaign was rejected by the admin. Please try submitting with new details.</p>
-                        <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" class="btn-switch-danger">Switch Number / Try Again</button>
+                        <button onclick="handleLogout()" class="btn-switch-danger">Sign Out / Try Again</button>
                     </div>
                 `;
             }
-            return;
-        }
-        if (master.status === 'rejected') {
-            if (statusText) statusText.innerText = `❌ Campaign Rejected (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = 'Campaign rejected by admin.';
             return;
         }
 
@@ -631,6 +613,7 @@ async function loadMyActiveCampaign() {
                     <p class="list-status-approved">Status: APPROVED</p>
                     <p><b>Token:</b> #${tokenDisplay}</p>
                     <p><b>Brand:</b> ${cleanBrand}</p>
+                    <p><b>Account:</b> ${session.user.email}</p>
                     <p class="list-active-title">Active Slots:</p>
             `;
 
@@ -645,7 +628,7 @@ async function loadMyActiveCampaign() {
 
             html += `
                 <div class="text-center mt-12">
-                    <button onclick="localStorage.removeItem('my_latest_campaign_id'); localStorage.removeItem('user_phone'); loadMyActiveCampaign();" class="btn-switch-danger">Switch Number</button>
+                    <button onclick="handleLogout()" class="btn-switch-danger">Sign Out</button>
                 </div>
                 </div>
             `;
@@ -655,32 +638,12 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
-
-async function verifyAndLoadUserCampaign() {
-    let phoneInput = document.getElementById('checkPhoneInput')?.value.trim();
-    let otpInput = document.getElementById('checkOtpInput')?.value.trim();
-
-    if (!phoneInput || !otpInput) {
-        alert('Enter phone number and OTP.');
-        return;
-    }
-
-    let { data, error } = await supabaseClient
-        .from('buysecond_records')
-        .select('*')
-        .eq('user_phone', phoneInput)
-        .eq('user_otp', otpInput)
-        .order('id', { ascending: false })
-        .limit(1);
-
-    if (error || !data || data.length === 0) {
-        alert('Invalid mobile number or OTP.');
-        return;
-    }
-
-    localStorage.setItem('user_phone', phoneInput);
-    localStorage.setItem('my_latest_campaign_id', data[0].id);
-    loadMyActiveCampaign();
+async function handleLogout() {
+    await supabaseClient.auth.signOut();
+    localStorage.removeItem('my_latest_campaign_id');
+    localStorage.removeItem('user_phone');
+    alert('Signed out successfully.');
+    location.reload();
 }
 
 async function initVisitorCounter() {

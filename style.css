@@ -636,6 +636,34 @@ header {
     border-radius: 6px;
 }
 
+/* --- Added Google Login Button Styles --- */
+.google-login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: #ffffff;
+    color: #1f2937;
+    border: none;
+    width: 100%;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 15px;
+}
+
+    .google-login-btn:hover {
+        background-color: #f3f4f6;
+    }
+
+.google-icon {
+    width: 18px;
+    height: 18px;
+}
+
 @media screen and (max-width: 768px) {
     body {
         padding: 8px;
