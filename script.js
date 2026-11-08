@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const TOTAL_DAILY_SECONDS = 86400;
 const DEPART_DURATION = 7200;
 
@@ -57,7 +57,7 @@ async function isSiteUnderMaintenance(scopeCheck = 'form') {
             let now = getSyncedCurrentTime();
             let expiry = new Date(data.expires_at);
 
-            // Agar maintenance expiye ho gayi hai
+            // Agar maintenance expire ho gayi hai
             if (now >= expiry) {
                 const maintenanceElement = document.querySelector('.maintenance-screen-full');
                 if (maintenanceElement) maintenanceElement.style.display = 'none';
@@ -119,10 +119,12 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
 
             // Check Google Auth Session instead of opening OTP modal
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                openGoogleLoginModal();
-                return;
+            if (supabaseClient) {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) {
+                    openGoogleLoginModal();
+                    return;
+                }
             }
 
             slotModal.style.display = 'flex';
@@ -154,10 +156,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     if (checkRecordBtn && checkRecordModal) {
         checkRecordBtn.addEventListener('click', async () => {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                openGoogleLoginModal();
-                return;
+            if (supabaseClient) {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) {
+                    openGoogleLoginModal();
+                    return;
+                }
             }
             checkRecordModal.style.display = 'flex';
             loadMyActiveCampaign();
@@ -197,7 +201,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const totalAmount = document.getElementById('totalAmount');
 
     async function updateCalculatedAmount() {
-        if (!durationInput || !totalAmount) return;
+        if (!durationInput || !totalAmount || !supabaseClient) return;
         let dur = parseInt(durationInput.value) || 10;
         let freq = frequencyInput ? parseInt(frequencyInput.value) || 1 : 1;
         let days = campaignDaysInput ? parseInt(campaignDaysInput.value) || 1 : 1;
@@ -259,6 +263,11 @@ window.addEventListener('DOMContentLoaded', async () => {
             if (isMaint) {
                 alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
                 if (slotModal) slotModal.style.display = 'none';
+                return;
+            }
+
+            if (!supabaseClient) {
+                alert('Supabase client failed to initialize.');
                 return;
             }
 
@@ -342,10 +351,11 @@ async function openGoogleLoginModal() {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
     document.getElementById('googleSignInBtn')?.addEventListener('click', async () => {
+        if (!supabaseClient) return;
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin
+                redirectTo: window.location.href // Seedha current active URL par wapas redirect karega
             }
         });
         if (error) {
@@ -509,6 +519,8 @@ async function loadMyActiveCampaign() {
     const statusText = document.getElementById('billboardStatusText');
     const countdownText = document.getElementById('billboardCountdownText');
 
+    if (!supabaseClient) return;
+
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
         if (statusBox) statusBox.style.display = 'none';
@@ -639,6 +651,7 @@ async function loadMyActiveCampaign() {
     }
 }
 async function handleLogout() {
+    if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     localStorage.removeItem('my_latest_campaign_id');
     localStorage.removeItem('user_phone');
@@ -647,6 +660,7 @@ async function handleLogout() {
 }
 
 async function initVisitorCounter() {
+    if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
     if (!visitorEl) return;
     let { data } = await supabaseClient.from('site_analytics').select('count').eq('id', 1).single();
@@ -656,6 +670,7 @@ async function initVisitorCounter() {
 }
 
 async function updateAvailableSecondsCounter() {
+    if (!supabaseClient) return;
     let remainingEl = document.getElementById('remainingSecondsCount');
     if (!remainingEl) return;
     let { data: records } = await supabaseClient.from('buysecond_records').select('duration_second').eq('status', 'approved');
@@ -669,7 +684,7 @@ function getCountdownElement() { return document.getElementById('timer-text'); }
 // --- MEDIA RENDERER WITH SIGNED URL FOR PRIVATE BUCKET ---
 async function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
-    if (!billboardBox) return;
+    if (!billboardBox || !supabaseClient) return;
 
     let duration = parseInt(ad.duration_second) || 10;
     let filePath = ad.file_url || ad.video_url || '';
@@ -738,7 +753,7 @@ async function renderAdOnBillboard(ad, onComplete) {
 
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
-    if (!billboardBox) return;
+    if (!billboardBox || !supabaseClient) return;
 
     function applyDefaultBanner() {
         billboardBox.innerHTML = '';
