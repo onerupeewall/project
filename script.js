@@ -57,14 +57,12 @@ async function isSiteUnderMaintenance(scopeCheck = 'form') {
             let now = getSyncedCurrentTime();
             let expiry = new Date(data.expires_at);
 
-            // Agar maintenance expire ho gayi hai
             if (now >= expiry) {
                 const maintenanceElement = document.querySelector('.maintenance-screen-full');
                 if (maintenanceElement) maintenanceElement.style.display = 'none';
                 return false;
             }
 
-            // Mobile/Laptop scope check
             if (scopeCheck === 'form' && (data.scope === 'all' || data.scope === 'form')) {
                 return true;
             }
@@ -111,14 +109,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         const handleModalOpen = async (e) => {
             if (e) e.preventDefault();
 
-            // Direct Maintenance Verification
             let isMaint = await isSiteUnderMaintenance('form');
             if (isMaint) {
                 alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
                 return false;
             }
 
-            // Check Google Auth Session instead of opening OTP modal
             if (supabaseClient) {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session) {
@@ -254,7 +250,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (campaignDaysInput) campaignDaysInput.addEventListener('input', updateCalculatedAmount);
 
     updateCalculatedAmount();
-    // STRICT SUBMIT LOCK
+
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -329,8 +325,7 @@ async function checkWebsiteMaintenance() {
         }
     } catch (e) { }
 }
-
-// --- GOOGLE OAUTH LOGIN MODAL ---
+// --- GOOGLE OAUTH LOGIN MODAL (TEXT REMOVED) ---
 async function openGoogleLoginModal() {
     let existingModal = document.getElementById('googleLoginModal');
     if (existingModal) existingModal.remove();
@@ -338,8 +333,6 @@ async function openGoogleLoginModal() {
     let modalHTML = `
         <div id="googleLoginModal" class="modal" style="display: flex;">
             <div class="modal-content text-center">
-                <h3>🔐 Google Authentication</h3>
-                <p class="text-muted-sm">Continue with your Google account to book and manage campaigns.</p>
                 <button id="googleSignInBtn" class="google-login-btn">
                     <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.14C3.15 21.37 7.22 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.62H1.18C.43 8.14 0 9.87 0 12s.43 3.86 1.18 5.38l4.09-3.14z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.15 2.63 1.18 6.62l4.09 3.14c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
                     Continue with Google
@@ -355,7 +348,7 @@ async function openGoogleLoginModal() {
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.href // Seedha current active URL par wapas redirect karega
+                redirectTo: window.location.href
             }
         });
         if (error) {
@@ -364,7 +357,6 @@ async function openGoogleLoginModal() {
     });
 }
 
-// --- CAMPAIGN SUBMISSION WITH GOOGLE USER ID & EMAIL ---
 async function finalizeCampaignSubmission(user, data) {
     try {
         let isMaint = await isSiteUnderMaintenance('form');
@@ -681,7 +673,6 @@ async function updateAvailableSecondsCounter() {
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
 
-// --- MEDIA RENDERER WITH SIGNED URL FOR PRIVATE BUCKET ---
 async function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
