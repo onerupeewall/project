@@ -46,11 +46,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     syncServerTime();
     checkWebsiteMaintenance();
 
-    // 1. Increment visitor count on every visit/refresh & update counter display
+    // Register visit & load counters
     await registerVisitAndLoadCounters();
 
-    // 2. Sync user follow state (Guest localStorage -> Google account sync) & toggle follow strip UI
-    await handleUserFollowSyncAndUI();
+    // Check and handle Header Follow button visibility & sync
+    await handleHeaderFollowSyncAndUI();
 
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
@@ -81,14 +81,6 @@ window.addEventListener('DOMContentLoaded', async () => {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session) {
                     openGoogleLoginModal();
-                    return;
-                }
-
-                let hasFollowed = await checkIfUserFollowed(session.user.id);
-                if (!hasFollowed && localStorage.getItem('has_followed_buysecond') !== 'true') {
-                    openMandatoryFollowModal(() => {
-                        slotModal.style.display = 'flex';
-                    });
                     return;
                 }
             }
@@ -155,13 +147,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // Follow Strip Button Handler
-    const centerFollowBtn = document.getElementById('centerFollowBtn');
-    if (centerFollowBtn) {
-        centerFollowBtn.addEventListener('click', async () => {
+    // Header Follow Button Click Handler
+    const headerFollowBtn = document.getElementById('headerFollowBtn');
+    if (headerFollowBtn) {
+        headerFollowBtn.addEventListener('click', async () => {
             await recordUserFollowAction();
-            const overlay = document.getElementById('billboardFollowOverlay');
-            if (overlay) overlay.style.display = 'none';
+            headerFollowBtn.style.display = 'none';
             alert('🎉 Thank you for following @buysecond!');
         });
     }
@@ -291,7 +282,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
-
 // --- COUNTERS & VISITOR REGISTRATION ---
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
@@ -299,18 +289,11 @@ async function registerVisitAndLoadCounters() {
     let followerEl = document.getElementById('totalFollowersCount');
 
     try {
-        // Visitor count increment via RPC function
         await supabaseClient.rpc('increment_site_visitors');
     } catch (err) { }
 
     try {
-        // Yahan 'count' aur 'followers_count' fetch ho raha hai jo ki teri table ke exact columns hain
-        let { data, error } = await supabaseClient
-            .from('site_analytics')
-            .select('count, followers_count')
-            .eq('id', 1)
-            .single();
-
+        let { data, error } = await supabaseClient.from('site_analytics').select('count, followers_count').eq('id', 1).single();
         if (!error && data) {
             if (visitorEl) visitorEl.innerText = data.count || 0;
             if (followerEl) followerEl.innerText = data.followers_count || 0;
@@ -339,10 +322,10 @@ async function checkIfUserFollowed(userId) {
     }
 }
 
-async function handleUserFollowSyncAndUI() {
+async function handleHeaderFollowSyncAndUI() {
     if (!supabaseClient) return;
 
-    const overlay = document.getElementById('billboardFollowOverlay');
+    const headerBtn = document.getElementById('headerFollowBtn');
     const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (session) {
@@ -355,15 +338,15 @@ async function handleUserFollowSyncAndUI() {
         }
 
         if (isFollowedInDB) {
-            if (overlay) overlay.style.display = 'none';
+            if (headerBtn) headerBtn.style.display = 'none';
         } else {
-            if (overlay) overlay.style.display = 'flex';
+            if (headerBtn) headerBtn.style.display = 'inline-block';
         }
     } else {
         if (localStorage.getItem('has_followed_buysecond') === 'true') {
-            if (overlay) overlay.style.display = 'none';
+            if (headerBtn) headerBtn.style.display = 'none';
         } else {
-            if (overlay) overlay.style.display = 'flex';
+            if (headerBtn) headerBtn.style.display = 'inline-block';
         }
     }
 }
@@ -387,37 +370,10 @@ async function recordUserFollowAction() {
 
     await updateFollowersDisplay();
 
-    const overlay = document.getElementById('billboardFollowOverlay');
-    if (overlay) overlay.style.display = 'none';
+    const headerBtn = document.getElementById('headerFollowBtn');
+    if (headerBtn) headerBtn.style.display = 'none';
 
     return true;
-}
-
-function openMandatoryFollowModal(onSuccessCallback) {
-    let existing = document.getElementById('mandatoryFollowModal');
-    if (existing) existing.remove();
-
-    let modalHTML = `
-        <div id="mandatoryFollowModal" class="modal" style="display: flex; z-index: 99999;">
-            <div class="modal-content text-center" style="max-width: 350px;">
-                <h3>📢 Follow @buysecond</h3>
-                <p class="text-muted-sm" style="margin: 15px 0;">You must follow <b>@buysecond</b> to proceed with your campaign booking.</p>
-                <button id="performFollowBtn" class="google-login-btn" style="background: #10B981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%;">
-                    Follow @buysecond
-                </button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    document.getElementById('performFollowBtn')?.addEventListener('click', async () => {
-        await recordUserFollowAction();
-        document.getElementById('mandatoryFollowModal')?.remove();
-        alert('🎉 Thanks for following!');
-        if (typeof onSuccessCallback === 'function') {
-            onSuccessCallback();
-        }
-    });
 }
 
 async function openGoogleLoginModal() {

@@ -11,7 +11,11 @@
 <body>
 
     <header>
-        <div class="logo">Buy Second</div>
+        <div class="logo-area">
+            <div class="logo">Buy Second</div>
+            <!-- 🎯 Header ke aage chhota Follow Button (Dynamic visibility) -->
+            <button id="headerFollowBtn" class="header-follow-btn" style="display: none;">FOLLOW</button>
+        </div>
         <div class="header-links">
             <span class="terms-link" id="openTermsBtn">Terms & Conditions</span>
             <span class="terms-link" id="openPrivacyBtn" style="margin-left: 12px;">Privacy Policy</span>
@@ -28,7 +32,7 @@
             <span>Strict Warning:</span> Violation of content guidelines will result in immediate ad rejection and permanent forfeiture of funds with zero refund.
         </div>
 
-        <!-- Clean Billboard Box (Overlay Removed) -->
+        <!-- Clean Billboard Box -->
         <div class="billboard" id="billboardBox"></div>
 
         <!-- Live Countdown & Status Box directly below Billboard -->
