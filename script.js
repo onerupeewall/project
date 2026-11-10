@@ -46,17 +46,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     syncServerTime();
     checkWebsiteMaintenance();
 
-    // Register visit & load counters
+    // Register visit & load live counters
     await registerVisitAndLoadCounters();
 
-    // Check and handle Header Follow button visibility & sync
+    // Handle Header Follow sync
     await handleHeaderFollowSyncAndUI();
 
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
     loadMyActiveCampaign();
 
-    // Date Input Setup
+    // Setup tomorrow's date limit
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
         let tomorrow = new Date();
@@ -76,7 +76,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (openSlotModal && slotModal) {
         openSlotModal.addEventListener('click', async (e) => {
             e.preventDefault();
-
             if (supabaseClient) {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session) {
@@ -84,7 +83,6 @@ window.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
             }
-
             slotModal.style.display = 'flex';
         });
     }
@@ -139,7 +137,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         closeCheckRecordModal.addEventListener('click', () => { checkRecordModal.style.display = 'none'; });
     }
 
-    // Window Click to Close Modals
+    // Close Modals on Outer Click
     window.addEventListener('click', (e) => {
         if (slotModal && e.target === slotModal) slotModal.style.display = 'none';
         if (termsModal && e.target === termsModal) termsModal.style.display = 'none';
@@ -312,7 +310,7 @@ async function updateFollowersDisplay() {
     } catch (e) { }
 }
 
-// --- FOLLOW STATE & GUEST-TO-GOOGLE SYNC ---
+// --- FOLLOW STATE HANDLERS ---
 async function checkIfUserFollowed(userId) {
     try {
         let { data } = await supabaseClient.from('user_follows').select('*').eq('user_id', userId).single();
@@ -418,7 +416,7 @@ async function checkWebsiteMaintenance() {
     } catch (e) { }
 }
 
-// --- CAMPAIGN SUBMISSION & BILLBOARD PLAYER ---
+// --- SECURE CAMPAIGN SUBMISSION ---
 async function finalizeCampaignSubmission(user, data) {
     try {
         if (!data.adTitle || !data.targetUrl) {
@@ -489,6 +487,7 @@ async function finalizeCampaignSubmission(user, data) {
                 let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
                 let brandNameFormatted = data.adTitle + (data.frequency > 1 ? ` (Run ${f + 1}/${data.frequency})` : '');
 
+                // 🔒 HARDCODED PENDING STATUS (FRONTEND SECURITY LOCK)
                 let newRecordObj = {
                     brand_name: brandNameFormatted,
                     target_url: data.targetUrl,
@@ -516,7 +515,7 @@ async function finalizeCampaignSubmission(user, data) {
             localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
         }
 
-        alert('Campaign Submitted Successfully.');
+        alert('Campaign Submitted Successfully! Waiting for Owner Approval.');
         loadMyActiveCampaign();
     } catch (err) {
         alert('Submission failed: ' + err.message);
@@ -572,7 +571,6 @@ async function loadMyActiveCampaign() {
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
         return;
     }
-
     try {
         let { data: singleRecord, error } = await supabaseClient
             .from('buysecond_records')
@@ -594,6 +592,23 @@ async function loadMyActiveCampaign() {
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
         let now = getSyncedCurrentTime();
+
+        // ⏳ PENDING STATUS UI DISPLAY
+        if (master.status === 'pending') {
+            if (statusBox) statusBox.style.display = 'block';
+            if (statusText) statusText.innerText = `⏳ Waiting for Owner's Approval... (${cleanBrand})`;
+            if (countdownText) countdownText.innerText = 'Your ad request is under review.';
+            if (searchResultArea) {
+                searchResultArea.innerHTML = `
+                    <div class="campaign-pending-box">
+                        <p class="pending-title">Campaign Under Review</p>
+                        <p class="pending-subtitle">Your ad booking is currently pending owner approval. It will go live once verified.</p>
+                        <button onclick="handleLogout()" class="btn-switch-danger">Sign Out</button>
+                    </div>
+                `;
+            }
+            return;
+        }
 
         let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
         if (allCompleted) {
@@ -619,6 +634,8 @@ async function loadMyActiveCampaign() {
             }
             return;
         }
+
+        // APPROVED DISPLAY
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
@@ -752,6 +769,7 @@ async function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
+// 📺 BILLBOARD PLAYER: Strictly plays ONLY approved campaigns
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
