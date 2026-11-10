@@ -41,54 +41,22 @@ function getSyncedCurrentTime() {
     return new Date(Date.now() + serverTimeOffset);
 }
 
-// --- STRICT MAINTENANCE CHECK FUNCTION ---
-async function isSiteUnderMaintenance(scopeCheck = 'form') {
-    try {
-        let { data, error } = await supabaseClient
-            .from('site_maintenance')
-            .select('*')
-            .eq('id', 1)
-            .single();
-
-        if (error || !data) return false;
-
-        if (data && data.is_active) {
-            let now = getSyncedCurrentTime();
-            let expiry = new Date(data.expires_at);
-
-            if (now >= expiry) {
-                const maintenanceElement = document.querySelector('.maintenance-screen-full');
-                if (maintenanceElement) maintenanceElement.style.display = 'none';
-                return false;
-            }
-
-            if (scopeCheck === 'form' && (data.scope === 'all' || data.scope === 'form')) return true;
-            if (scopeCheck === 'all' && data.scope === 'all') return true;
-            if (scopeCheck === 'banner' && data.scope === 'banner') return true;
-        }
-    } catch (err) {
-        console.error("Maintenance Fetch Error:", err);
-    }
-    return false;
-}
-
-window.addEventListener('DOMContentLoaded', async () => {
-    await syncServerTime();
-    setInterval(syncServerTime, 60000);
-
-    await checkWebsiteMaintenance();
-
-    // Safe execution of counters so it never blocks the rest of the site
+// --- INSTANT DOM INITIALIZATION (UI NEVER BLOCKED) ---
+window.addEventListener('DOMContentLoaded', () => {
+    // 1. Sync time & background tasks safely without blocking UI
+    syncServerTime();
+    checkWebsiteMaintenance();
     registerVisitAndLoadCounters();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
     loadMyActiveCampaign();
 
-    // Trigger floating general follow popup after 7 seconds if not followed
+    // Floating follow popup after 7 seconds
     setTimeout(() => {
         checkAndShowFloatingFollowPopup();
     }, 7000);
 
+    // Date Input Setup
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
         let tomorrow = new Date();
@@ -100,19 +68,14 @@ window.addEventListener('DOMContentLoaded', async () => {
         bookingDateInput.value = `${tYear}-${tMonth}-${tDay}`;
     }
 
+    // --- MODAL EVENT LISTENERS ---
     const slotModal = document.getElementById('slotModal');
     const openSlotModal = document.getElementById('openSlotModal');
     const closeSlotModal = document.getElementById('closeSlotModal');
 
     if (openSlotModal && slotModal) {
-        const handleModalOpen = async (e) => {
-            if (e) e.preventDefault();
-
-            let isMaint = await isSiteUnderMaintenance('form');
-            if (isMaint) {
-                alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
-                return false;
-            }
+        openSlotModal.addEventListener('click', async (e) => {
+            e.preventDefault();
 
             if (supabaseClient) {
                 const { data: { session } } = await supabaseClient.auth.getSession();
@@ -121,10 +84,9 @@ window.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
-                // MANDATORY FOLLOW CHECK BEFORE OPENING BOOKING FORM
                 let hasFollowed = await checkIfUserFollowed(session.user.id);
                 if (!hasFollowed) {
-                    openMandatoryFollowModal(async () => {
+                    openMandatoryFollowModal(() => {
                         slotModal.style.display = 'flex';
                     });
                     return;
@@ -132,28 +94,50 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
 
             slotModal.style.display = 'flex';
-        };
-
-        openSlotModal.addEventListener('click', handleModalOpen);
-        openSlotModal.addEventListener('touchstart', handleModalOpen, { passive: false });
+        });
     }
 
-    if (closeSlotModal && slotModal) closeSlotModal.addEventListener('click', () => slotModal.style.display = 'none');
+    if (closeSlotModal && slotModal) {
+        closeSlotModal.addEventListener('click', () => {
+            slotModal.style.display = 'none';
+        });
+    }
 
+    // Terms Modal
     const termsModal = document.getElementById('termsModal');
     const openTermsBtn = document.getElementById('openTermsBtn');
     const closeTermsModal = document.getElementById('closeTermsModal');
 
-    if (openTermsBtn && termsModal) openTermsBtn.addEventListener('click', (e) => { e.preventDefault(); termsModal.style.display = 'flex'; });
-    if (closeTermsModal && termsModal) closeTermsModal.addEventListener('click', () => termsModal.style.display = 'none');
+    if (openTermsBtn && termsModal) {
+        openTermsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            termsModal.style.display = 'flex';
+        });
+    }
+    if (closeTermsModal && termsModal) {
+        closeTermsModal.addEventListener('click', () => {
+            termsModal.style.display = 'none';
+        });
+    }
 
+    // Privacy Modal
     const privacyModal = document.getElementById('privacyModal');
     const openPrivacyBtn = document.getElementById('openPrivacyBtn');
     const closePrivacyModal = document.getElementById('closePrivacyModal');
 
-    if (openPrivacyBtn && privacyModal) openPrivacyBtn.addEventListener('click', (e) => { e.preventDefault(); privacyModal.style.display = 'flex'; });
-    if (closePrivacyModal && privacyModal) closePrivacyModal.addEventListener('click', () => privacyModal.style.display = 'none');
+    if (openPrivacyBtn && privacyModal) {
+        openPrivacyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            privacyModal.style.display = 'flex';
+        });
+    }
+    if (closePrivacyModal && privacyModal) {
+        closePrivacyModal.addEventListener('click', () => {
+            privacyModal.style.display = 'none';
+        });
+    }
 
+    // Check Record Modal
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
@@ -171,8 +155,13 @@ window.addEventListener('DOMContentLoaded', async () => {
             loadMyActiveCampaign();
         });
     }
-    if (closeCheckRecordModal && checkRecordModal) closeCheckRecordModal.addEventListener('click', () => checkRecordModal.style.display = 'none');
+    if (closeCheckRecordModal && checkRecordModal) {
+        closeCheckRecordModal.addEventListener('click', () => {
+            checkRecordModal.style.display = 'none';
+        });
+    }
 
+    // Window Click to Close Modals
     window.addEventListener('click', (e) => {
         if (slotModal && e.target === slotModal) slotModal.style.display = 'none';
         if (termsModal && e.target === termsModal) termsModal.style.display = 'none';
@@ -180,6 +169,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
+    // Dynamic Campaign Fields Injection
     const slotFormContainer = document.getElementById('slotForm');
     if (slotFormContainer && !document.getElementById('frequencyInput')) {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
@@ -196,6 +186,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (durationGroup) durationGroup.insertAdjacentHTML('afterend', campaignFieldsHTML);
     }
 
+    // Form Calculations & Validation
     const adFileInput = document.getElementById('adFile');
     const fileErrorMsg = document.getElementById('fileErrorMsg');
     const submitBtn = document.querySelector('#slotForm button[type="submit"]');
@@ -259,16 +250,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     updateCalculatedAmount();
 
+    // Form Submit Handler
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
-
-            let isMaint = await isSiteUnderMaintenance('form');
-            if (isMaint) {
-                alert('⚠️ Website is currently under maintenance. Please try again in a few minutes.');
-                if (slotModal) slotModal.style.display = 'none';
-                return;
-            }
 
             if (!supabaseClient) {
                 alert('Supabase client failed to initialize.');
@@ -310,7 +295,27 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
-// --- SAFE SERVER-SIDE COUNTERS FETCH & INCREMENT ---
+
+// --- MAINTENANCE CHECK ---
+async function checkWebsiteMaintenance() {
+    try {
+        let { data, error } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
+        if (error || !data || !data.is_active) return;
+
+        let now = getSyncedCurrentTime();
+        let expiry = new Date(data.expires_at);
+        if (now >= expiry) return;
+
+        if (data.scope === 'all') {
+            const mFull = document.querySelector('.maintenance-screen-full');
+            if (mFull) mFull.style.display = 'flex';
+        } else if (data.scope === 'banner') {
+            const billboardBox = document.getElementById('billboardBox');
+            if (billboardBox) billboardBox.innerHTML = `<div class="maintenance-screen-billboard">🛠️ Billboard Under Maintenance</div>`;
+        }
+    } catch (e) { }
+}
+// --- SECURE COUNTERS ---
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -318,9 +323,7 @@ async function registerVisitAndLoadCounters() {
 
     try {
         await supabaseClient.rpc('increment_site_visitors');
-    } catch (err) {
-        console.warn("RPC increment_site_visitors notice:", err);
-    }
+    } catch (err) { }
 
     try {
         let { data, error } = await supabaseClient.from('site_analytics').select('count, followers_count').eq('id', 1).single();
@@ -328,9 +331,7 @@ async function registerVisitAndLoadCounters() {
             if (visitorEl) visitorEl.innerText = data.count || 0;
             if (followerEl) followerEl.innerText = data.followers_count || 0;
         }
-    } catch (err) {
-        console.error("Counter Fetch Error:", err);
-    }
+    } catch (err) { }
 }
 
 async function updateFollowersDisplay() {
@@ -344,21 +345,15 @@ async function updateFollowersDisplay() {
     } catch (e) { }
 }
 
-// --- CHECK IF LOGGED IN USER FOLLOWED ---
 async function checkIfUserFollowed(userId) {
     try {
-        let { data } = await supabaseClient
-            .from('user_follows')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
+        let { data } = await supabaseClient.from('user_follows').select('*').eq('user_id', userId).single();
         return !!data;
     } catch (e) {
         return false;
     }
 }
 
-// --- RECORD FOLLOW ACTION SECURELY ON SERVER ---
 async function recordUserFollow() {
     if (!supabaseClient) return;
     const { data: { session } } = await supabaseClient.auth.getSession();
@@ -378,7 +373,6 @@ async function recordUserFollow() {
     return true;
 }
 
-// --- MANDATORY FOLLOW MODAL FOR BOOKING ---
 function openMandatoryFollowModal(onSuccessCallback) {
     let existing = document.getElementById('mandatoryFollowModal');
     if (existing) existing.remove();
@@ -406,10 +400,8 @@ function openMandatoryFollowModal(onSuccessCallback) {
     });
 }
 
-// --- AUTO FLOATING FOLLOW POPUP FOR NORMAL VISITORS ---
 async function checkAndShowFloatingFollowPopup() {
     if (!supabaseClient) return;
-
     if (localStorage.getItem('has_followed_buysecond') === 'true') return;
 
     const { data: { session } } = await supabaseClient.auth.getSession();
@@ -439,7 +431,6 @@ async function checkAndShowFloatingFollowPopup() {
     });
 }
 
-// --- GOOGLE OAUTH LOGIN MODAL ---
 async function openGoogleLoginModal() {
     let existingModal = document.getElementById('googleLoginModal');
     if (existingModal) existingModal.remove();
@@ -461,46 +452,27 @@ async function openGoogleLoginModal() {
         if (!supabaseClient) return;
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
-            options: {
-                redirectTo: window.location.href
-            }
+            options: { redirectTo: window.location.href }
         });
-        if (error) {
-            alert('Google login failed: ' + error.message);
-        }
+        if (error) alert('Google login failed: ' + error.message);
     });
 }
 
-// --- CAMPAIGN SUBMISSION ---
+// --- BILLBOARD & CAMPAIGN PLAYERS ---
 async function finalizeCampaignSubmission(user, data) {
     try {
-        let isMaint = await isSiteUnderMaintenance('form');
-        if (isMaint) {
-            alert('⚠️ Website is currently under maintenance. Submission cancelled.');
-            return;
-        }
-
         if (!data.adTitle || !data.targetUrl) {
             alert('Campaign title and target URL are required.');
             return;
         }
 
         let publicFileUrl = 'default.mp4';
-
         if (data.fileInputFile) {
             const file = data.fileInputFile;
             const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-
-            const { error: uploadError } = await supabaseClient.storage
-                .from('ad-videos')
-                .upload(fileName, file, { upsert: true });
-
-            if (!uploadError) {
-                publicFileUrl = fileName;
-            } else {
-                alert('File upload failed: ' + uploadError.message);
-                return;
-            }
+            const { error: uploadError } = await supabaseClient.storage.from('ad-videos').upload(fileName, file, { upsert: true });
+            if (!uploadError) publicFileUrl = fileName;
+            else { alert('File upload failed: ' + uploadError.message); return; }
         }
 
         let baseParts = data.selectedDateVal ? data.selectedDateVal.split('-') : [];
@@ -514,7 +486,6 @@ async function finalizeCampaignSubmission(user, data) {
             let currentDayDate = new Date(startDate);
             currentDayDate.setDate(startDate.getDate() + d);
             let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
-
             let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
 
             for (let f = 0; f < data.frequency; f++) {
@@ -556,7 +527,6 @@ async function finalizeCampaignSubmission(user, data) {
 
                 let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
                 let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
-
                 let brandNameFormatted = data.adTitle + (data.frequency > 1 ? ` (Run ${f + 1}/${data.frequency})` : '');
 
                 let newRecordObj = {
@@ -571,10 +541,8 @@ async function finalizeCampaignSubmission(user, data) {
                     user_email: user.email
                 };
 
-                if (newRecordObj.brand_name && newRecordObj.target_url && newRecordObj.file_url) {
-                    recordsToInsert.push(newRecordObj);
-                    dayExisting.push(newRecordObj);
-                }
+                recordsToInsert.push(newRecordObj);
+                dayExisting.push(newRecordObj);
             }
         }
 
@@ -600,10 +568,8 @@ function parseIstSlotTimeToDate(slotTimeStr) {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
         let parts = cleanStr.split(' at ');
         if (parts.length < 2) return new Date(NaN);
-        let datePart = parts[0];
-        let timePart = parts[1];
-        let dateObj = new Date(datePart);
-        let [timeStr, modifier] = timePart.split(' ');
+        let dateObj = new Date(parts[0]);
+        let [timeStr, modifier] = parts[1].split(' ');
         let [hrs, mins, secs] = timeStr.split(':').map(Number);
         if (modifier === 'PM' && hrs < 12) hrs += 12;
         if (modifier === 'AM' && hrs === 12) hrs = 0;
@@ -663,11 +629,7 @@ async function loadMyActiveCampaign() {
         }
 
         let cleanBrand = singleRecord.brand_name.replace(/\s*\(Run \d+\/\d+\)/g, '').trim();
-        let { data: allRuns } = await supabaseClient
-            .from('buysecond_records')
-            .select('*')
-            .ilike('brand_name', `%${cleanBrand}%`)
-            .eq('file_url', singleRecord.file_url);
+        let { data: allRuns } = await supabaseClient.from('buysecond_records').select('*').ilike('brand_name', `%${cleanBrand}%`).eq('file_url', singleRecord.file_url);
 
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
@@ -680,6 +642,7 @@ async function loadMyActiveCampaign() {
             if (activeCountdownInterval) clearInterval(activeCountdownInterval);
             return;
         }
+
         if (statusBox) statusBox.style.display = 'block';
 
         if (master.status === 'rejected') {
@@ -696,7 +659,6 @@ async function loadMyActiveCampaign() {
             }
             return;
         }
-
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
@@ -734,7 +696,6 @@ async function loadMyActiveCampaign() {
                     <p><b>Account:</b> ${session.user.email}</p>
                     <p class="list-active-title">Active Slots:</p>
             `;
-
             runsList.forEach((run, idx) => {
                 let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
                 let localFormattedTime = formatDateTimeToLocalUserTime(runTimeObj);
@@ -743,25 +704,16 @@ async function loadMyActiveCampaign() {
                 let runLabel = isCompleted ? 'Completed' : 'Upcoming';
                 html += `<p class="slot-item-text ${runClass}">Slot ${idx + 1}: ${localFormattedTime} [${runLabel}]</p>`;
             });
-
-            html += `
-                <div class="text-center mt-12">
-                    <button onclick="handleLogout()" class="btn-switch-danger">Sign Out</button>
-                </div>
-                </div>
-            `;
+            html += `<div class="text-center mt-12"><button onclick="handleLogout()" class="btn-switch-danger">Sign Out</button></div></div>`;
             searchResultArea.innerHTML = html;
         }
-    } catch (err) {
-        console.error(err);
-    }
+    } catch (err) { }
 }
 
 async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     localStorage.removeItem('my_latest_campaign_id');
-    localStorage.removeItem('user_phone');
     alert('Signed out successfully.');
     location.reload();
 }
@@ -788,17 +740,13 @@ async function renderAdOnBillboard(ad, onComplete) {
 
     let fileUrl = filePath;
     if (filePath && !filePath.startsWith('http') && !filePath.startsWith('blob:')) {
-        let { data: signedData } = await supabaseClient.storage
-            .from('ad-videos')
-            .createSignedUrl(filePath, duration + 30);
-        if (signedData && signedData.signedUrl) {
-            fileUrl = signedData.signedUrl;
-        }
+        let { data: signedData } = await supabaseClient.storage.from('ad-videos').createSignedUrl(filePath, duration + 30);
+        if (signedData && signedData.signedUrl) fileUrl = signedData.signedUrl;
     }
 
     let lowerUrl = fileUrl.toLowerCase();
-    let isVideo = lowerUrl.endsWith('.mp4') || lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm') || lowerUrl.includes('video/mp4') || lowerUrl.includes('object/public/ad-videos') || lowerUrl.includes('token=');
-    let isImage = lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp') || lowerUrl.endsWith('.gif');
+    let isVideo = lowerUrl.includes('.mp4') || lowerUrl.includes('video') || lowerUrl.includes('.mov') || lowerUrl.includes('token=');
+    let isImage = lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.webp');
     if (isImage) isVideo = false;
 
     let isCompletedCalled = false;
@@ -819,10 +767,7 @@ async function renderAdOnBillboard(ad, onComplete) {
         if (mediaEl) {
             applySmartNetworkOptimization(mediaEl);
             mediaEl.onended = triggerComplete;
-            mediaEl.play().catch(e => {
-                mediaEl.muted = true;
-                mediaEl.play();
-            });
+            mediaEl.play().catch(() => { mediaEl.muted = true; mediaEl.play(); });
         }
     } else {
         billboardBox.innerHTML = `
@@ -900,7 +845,6 @@ async function initLiveBillboardPlayer() {
         }
         checkAndPlaySchedule();
     } catch (err) {
-        console.error(err);
         applyDefaultBanner();
         setTimeout(initLiveBillboardPlayer, 15000);
     }
