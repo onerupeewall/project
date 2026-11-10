@@ -78,7 +78,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await checkWebsiteMaintenance();
 
-    await registerVisitAndLoadCounters();
+    // Secure Server-Side Counters
+    registerVisitAndLoadCounters();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
     loadMyActiveCampaign();
@@ -316,10 +317,8 @@ async function registerVisitAndLoadCounters() {
     let followerEl = document.getElementById('totalFollowersCount');
 
     try {
-        // Securely increment visitor count via Supabase SQL RPC function
         await supabaseClient.rpc('increment_site_visitors');
 
-        // Fetch updated counts from server table
         let { data, error } = await supabaseClient.from('site_analytics').select('count, followers_count').eq('id', 1).single();
 
         if (!error && data) {
@@ -363,11 +362,9 @@ async function recordUserFollow() {
         let already = await checkIfUserFollowed(session.user.id);
         if (already) return true;
 
-        // Insert into user_follows table for logged-in users
         await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
     }
 
-    // Securely increment followers count via Supabase SQL RPC function
     await supabaseClient.rpc('increment_site_followers');
     await updateFollowersDisplay();
     return true;
@@ -405,7 +402,6 @@ function openMandatoryFollowModal(onSuccessCallback) {
 async function checkAndShowFloatingFollowPopup() {
     if (!supabaseClient) return;
 
-    // Check if guest already followed in this browser session
     if (localStorage.getItem('has_followed_buysecond') === 'true') return;
 
     const { data: { session } } = await supabaseClient.auth.getSession();
@@ -693,7 +689,6 @@ async function loadMyActiveCampaign() {
             }
             return;
         }
-
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
