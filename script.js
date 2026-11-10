@@ -9,7 +9,6 @@ const DEPART_DURATION = 7200;
 let serverTimeOffset = 0;
 let globalTimerInterval = null;
 let activeCountdownInterval = null;
-let pendingCampaignData = null;
 
 // --- SMART NETWORK OPTIMIZATION ---
 function applySmartNetworkOptimization(mediaElement) {
@@ -63,15 +62,9 @@ async function isSiteUnderMaintenance(scopeCheck = 'form') {
                 return false;
             }
 
-            if (scopeCheck === 'form' && (data.scope === 'all' || data.scope === 'form')) {
-                return true;
-            }
-            if (scopeCheck === 'all' && data.scope === 'all') {
-                return true;
-            }
-            if (scopeCheck === 'banner' && data.scope === 'banner') {
-                return true;
-            }
+            if (scopeCheck === 'form' && (data.scope === 'all' || data.scope === 'form')) return true;
+            if (scopeCheck === 'all' && data.scope === 'all') return true;
+            if (scopeCheck === 'banner' && data.scope === 'banner') return true;
         }
     } catch (err) {
         console.error("Maintenance Fetch Error:", err);
@@ -85,10 +78,15 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await checkWebsiteMaintenance();
 
-    initVisitorCounter();
+    await registerVisitAndLoadCounters();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
     loadMyActiveCampaign();
+
+    // Trigger floating general follow popup after 7 seconds if not followed
+    setTimeout(() => {
+        checkAndShowFloatingFollowPopup();
+    }, 7000);
 
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
@@ -119,6 +117,15 @@ window.addEventListener('DOMContentLoaded', async () => {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session) {
                     openGoogleLoginModal();
+                    return;
+                }
+
+                // MANDATORY FOLLOW CHECK BEFORE OPENING BOOKING FORM
+                let hasFollowed = await checkIfUserFollowed(session.user.id);
+                if (!hasFollowed) {
+                    openMandatoryFollowModal(async () => {
+                        slotModal.style.display = 'flex';
+                    });
                     return;
                 }
             }
@@ -302,30 +309,133 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+// --- SERVER-SIDE SECURE VISITORS & FOLLOWERS FETCH & INCREMENT ---
+async function registerVisitAndLoadCounters() {
+    if (!supabaseClient) return;
+    let visitorEl = document.getElementById('totalGlobalCount');
+    let followerEl = document.getElementById('totalFollowersCount');
 
-async function checkWebsiteMaintenance() {
     try {
-        let isMaintAll = await isSiteUnderMaintenance('all');
-        const maintenanceElement = document.querySelector('.maintenance-screen-full');
+        // Securely increment visitor count via Supabase SQL RPC function
+        await supabaseClient.rpc('increment_site_visitors');
 
-        if (isMaintAll) {
-            if (maintenanceElement) {
-                maintenanceElement.style.display = 'flex';
-            }
-        } else {
-            if (maintenanceElement) {
-                maintenanceElement.style.display = 'none';
-            }
+        // Fetch updated counts from server table
+        let { data, error } = await supabaseClient.from('site_analytics').select('count, followers_count').eq('id', 1).single();
 
-            let isMaintBanner = await isSiteUnderMaintenance('banner');
-            if (isMaintBanner) {
-                const billboardBox = document.getElementById('billboardBox');
-                if (billboardBox) billboardBox.innerHTML = `<div class="maintenance-screen-billboard">🛠️ Billboard Under Maintenance</div>`;
-            }
+        if (!error && data) {
+            if (visitorEl) visitorEl.innerText = data.count || 0;
+            if (followerEl) followerEl.innerText = data.followers_count || 0;
         }
-    } catch (e) { }
+    } catch (err) {
+        console.error("Counter Fetch Error:", err);
+    }
 }
-// --- GOOGLE OAUTH LOGIN MODAL (TEXT REMOVED) ---
+
+async function updateFollowersDisplay() {
+    let followerEl = document.getElementById('totalFollowersCount');
+    if (!followerEl || !supabaseClient) return;
+    let { data } = await supabaseClient.from('site_analytics').select('followers_count').eq('id', 1).single();
+    if (data) {
+        followerEl.innerText = data.followers_count || 0;
+    }
+}
+
+// --- CHECK IF LOGGED IN USER FOLLOWED ---
+async function checkIfUserFollowed(userId) {
+    try {
+        let { data } = await supabaseClient
+            .from('user_follows')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+        return !!data;
+    } catch (e) {
+        return false;
+    }
+}
+
+// --- RECORD FOLLOW ACTION SECURELY ON SERVER ---
+async function recordUserFollow() {
+    if (!supabaseClient) return;
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    if (session) {
+        let already = await checkIfUserFollowed(session.user.id);
+        if (already) return true;
+
+        // Insert into user_follows table for logged-in users
+        await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
+    }
+
+    // Securely increment followers count via Supabase SQL RPC function
+    await supabaseClient.rpc('increment_site_followers');
+    await updateFollowersDisplay();
+    return true;
+}
+
+// --- MANDATORY FOLLOW MODAL FOR BOOKING ---
+function openMandatoryFollowModal(onSuccessCallback) {
+    let existing = document.getElementById('mandatoryFollowModal');
+    if (existing) existing.remove();
+
+    let modalHTML = `
+        <div id="mandatoryFollowModal" class="modal" style="display: flex; z-index: 99999;">
+            <div class="modal-content text-center" style="max-width: 350px;">
+                <h3>📢 Follow @buysecond</h3>
+                <p class="text-muted-sm" style="margin: 15px 0;">You must follow <b>@buysecond</b> to proceed with your campaign booking.</p>
+                <button id="performFollowBtn" class="google-login-btn" style="background: #10B981; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%;">
+                    Follow @buysecond
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    document.getElementById('performFollowBtn')?.addEventListener('click', async () => {
+        await recordUserFollow();
+        document.getElementById('mandatoryFollowModal')?.remove();
+        alert('🎉 Thanks for following!');
+        if (typeof onSuccessCallback === 'function') {
+            onSuccessCallback();
+        }
+    });
+}
+
+// --- AUTO FLOATING FOLLOW POPUP FOR NORMAL VISITORS ---
+async function checkAndShowFloatingFollowPopup() {
+    if (!supabaseClient) return;
+
+    // Check if guest already followed in this browser session
+    if (localStorage.getItem('has_followed_buysecond') === 'true') return;
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+        let followed = await checkIfUserFollowed(session.user.id);
+        if (followed) return;
+    }
+
+    let existing = document.getElementById('floatingFollowBanner');
+    if (existing) return;
+
+    let bannerHTML = `
+        <div id="floatingFollowBanner" style="position: fixed; bottom: 20px; right: 20px; background: #121824; border: 1px solid #10B981; padding: 15px; border-radius: 8px; z-index: 99998; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 280px; text-align: center;">
+            <p style="color: #fff; font-size: 14px; margin-bottom: 10px;">Support us! Follow <b>@buysecond</b></p>
+            <button id="floatingFollowBtn" style="background: #10B981; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%;">
+                Follow @buysecond
+            </button>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', bannerHTML);
+
+    document.getElementById('floatingFollowBtn')?.addEventListener('click', async () => {
+        await recordUserFollow();
+        localStorage.setItem('has_followed_buysecond', 'true');
+        document.getElementById('floatingFollowBanner')?.remove();
+        alert('🎉 Thank you for following @buysecond!');
+    });
+}
+
+// --- GOOGLE OAUTH LOGIN MODAL ---
 async function openGoogleLoginModal() {
     let existingModal = document.getElementById('googleLoginModal');
     if (existingModal) existingModal.remove();
@@ -357,6 +467,7 @@ async function openGoogleLoginModal() {
     });
 }
 
+// --- CAMPAIGN SUBMISSION ---
 async function finalizeCampaignSubmission(user, data) {
     try {
         let isMaint = await isSiteUnderMaintenance('form');
@@ -642,6 +753,7 @@ async function loadMyActiveCampaign() {
         console.error(err);
     }
 }
+
 async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
@@ -649,16 +761,6 @@ async function handleLogout() {
     localStorage.removeItem('user_phone');
     alert('Signed out successfully.');
     location.reload();
-}
-
-async function initVisitorCounter() {
-    if (!supabaseClient) return;
-    let visitorEl = document.getElementById('totalGlobalCount');
-    if (!visitorEl) return;
-    let { data } = await supabaseClient.from('site_analytics').select('count').eq('id', 1).single();
-    let count = (data ? data.count : 120) + 1;
-    await supabaseClient.from('site_analytics').upsert({ id: 1, count: count });
-    visitorEl.innerText = count;
 }
 
 async function updateAvailableSecondsCounter() {
