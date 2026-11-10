@@ -41,20 +41,20 @@ function getSyncedCurrentTime() {
     return new Date(Date.now() + serverTimeOffset);
 }
 
-// --- INSTANT DOM INITIALIZATION (UI NEVER BLOCKED) ---
-window.addEventListener('DOMContentLoaded', () => {
-    // 1. Sync time & background tasks safely without blocking UI
+// --- INSTANT DOM INITIALIZATION ---
+window.addEventListener('DOMContentLoaded', async () => {
     syncServerTime();
     checkWebsiteMaintenance();
-    registerVisitAndLoadCounters();
+
+    // 1. Increment visitor count on every visit/refresh & fetch counters
+    await registerVisitAndLoadCounters();
+
+    // 2. Check and sync user follow state (Guest localStorage -> Google account sync)
+    await handleUserFollowSyncAndUI();
+
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
     loadMyActiveCampaign();
-
-    // Floating follow popup after 7 seconds
-    setTimeout(() => {
-        checkAndShowFloatingFollowPopup();
-    }, 7000);
 
     // Date Input Setup
     const bookingDateInput = document.getElementById('bookingDateInput');
@@ -85,7 +85,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
 
                 let hasFollowed = await checkIfUserFollowed(session.user.id);
-                if (!hasFollowed) {
+                if (!hasFollowed && localStorage.getItem('has_followed_buysecond') !== 'true') {
                     openMandatoryFollowModal(() => {
                         slotModal.style.display = 'flex';
                     });
@@ -98,9 +98,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     if (closeSlotModal && slotModal) {
-        closeSlotModal.addEventListener('click', () => {
-            slotModal.style.display = 'none';
-        });
+        closeSlotModal.addEventListener('click', () => { slotModal.style.display = 'none'; });
     }
 
     // Terms Modal
@@ -109,15 +107,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const closeTermsModal = document.getElementById('closeTermsModal');
 
     if (openTermsBtn && termsModal) {
-        openTermsBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            termsModal.style.display = 'flex';
-        });
+        openTermsBtn.addEventListener('click', (e) => { e.preventDefault(); termsModal.style.display = 'flex'; });
     }
     if (closeTermsModal && termsModal) {
-        closeTermsModal.addEventListener('click', () => {
-            termsModal.style.display = 'none';
-        });
+        closeTermsModal.addEventListener('click', () => { termsModal.style.display = 'none'; });
     }
 
     // Privacy Modal
@@ -126,15 +119,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const closePrivacyModal = document.getElementById('closePrivacyModal');
 
     if (openPrivacyBtn && privacyModal) {
-        openPrivacyBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            privacyModal.style.display = 'flex';
-        });
+        openPrivacyBtn.addEventListener('click', (e) => { e.preventDefault(); privacyModal.style.display = 'flex'; });
     }
     if (closePrivacyModal && privacyModal) {
-        closePrivacyModal.addEventListener('click', () => {
-            privacyModal.style.display = 'none';
-        });
+        closePrivacyModal.addEventListener('click', () => { privacyModal.style.display = 'none'; });
     }
 
     // Check Record Modal
@@ -156,9 +144,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
     if (closeCheckRecordModal && checkRecordModal) {
-        closeCheckRecordModal.addEventListener('click', () => {
-            checkRecordModal.style.display = 'none';
-        });
+        closeCheckRecordModal.addEventListener('click', () => { checkRecordModal.style.display = 'none'; });
     }
 
     // Window Click to Close Modals
@@ -168,6 +154,16 @@ window.addEventListener('DOMContentLoaded', () => {
         if (privacyModal && e.target === privacyModal) privacyModal.style.display = 'none';
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
+
+    // Center Billboard Follow Button Handler
+    const centerFollowBtn = document.getElementById('centerFollowBtn');
+    if (centerFollowBtn) {
+        centerFollowBtn.addEventListener('click', async () => {
+            await recordUserFollowAction();
+            document.getElementById('billboardFollowOverlay').style.display = 'none';
+            alert('🎉 Thank you for following @buysecond!');
+        });
+    }
 
     // Dynamic Campaign Fields Injection
     const slotFormContainer = document.getElementById('slotForm');
@@ -186,7 +182,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if (durationGroup) durationGroup.insertAdjacentHTML('afterend', campaignFieldsHTML);
     }
 
-    // Form Calculations & Validation
     const adFileInput = document.getElementById('adFile');
     const fileErrorMsg = document.getElementById('fileErrorMsg');
     const submitBtn = document.querySelector('#slotForm button[type="submit"]');
@@ -295,33 +290,14 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
-// --- MAINTENANCE CHECK ---
-async function checkWebsiteMaintenance() {
-    try {
-        let { data, error } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
-        if (error || !data || !data.is_active) return;
-
-        let now = getSyncedCurrentTime();
-        let expiry = new Date(data.expires_at);
-        if (now >= expiry) return;
-
-        if (data.scope === 'all') {
-            const mFull = document.querySelector('.maintenance-screen-full');
-            if (mFull) mFull.style.display = 'flex';
-        } else if (data.scope === 'banner') {
-            const billboardBox = document.getElementById('billboardBox');
-            if (billboardBox) billboardBox.innerHTML = `<div class="maintenance-screen-billboard">🛠️ Billboard Under Maintenance</div>`;
-        }
-    } catch (e) { }
-}
-// --- SECURE COUNTERS ---
+// --- COUNTERS & VISITOR REGISTRATION ---
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
     let followerEl = document.getElementById('totalFollowersCount');
 
     try {
+        // Increment visitor count by 1 on every page load/refresh securely via RPC
         await supabaseClient.rpc('increment_site_visitors');
     } catch (err) { }
 
@@ -345,6 +321,7 @@ async function updateFollowersDisplay() {
     } catch (e) { }
 }
 
+// --- FOLLOW STATE & GUEST-TO-GOOGLE SYNC ---
 async function checkIfUserFollowed(userId) {
     try {
         let { data } = await supabaseClient.from('user_follows').select('*').eq('user_id', userId).single();
@@ -354,7 +331,43 @@ async function checkIfUserFollowed(userId) {
     }
 }
 
-async function recordUserFollow() {
+async function handleUserFollowSyncAndUI() {
+    if (!supabaseClient) return;
+
+    const overlay = document.getElementById('billboardFollowOverlay');
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    if (session) {
+        // User is logged in via Google
+        let isFollowedInDB = await checkIfUserFollowed(session.user.id);
+
+        if (!isFollowedInDB && localStorage.getItem('has_followed_buysecond') === 'true') {
+            // Guest follow found in localStorage -> Auto-sync to database!
+            await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
+            localStorage.removeItem('has_followed_buysecond'); // Clean guest token
+            isFollowedInDB = true;
+        }
+
+        if (isFollowedInDB) {
+            // User has already followed, hide center billboard follow overlay
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            // Logged in but not followed yet, show billboard follow overlay
+            if (overlay) overlay.style.display = 'flex';
+        }
+    } else {
+        // Guest user
+        if (localStorage.getItem('has_followed_buysecond') === 'true') {
+            // Guest already followed in this browser
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            // Guest has not followed yet, show billboard follow overlay
+            if (overlay) overlay.style.display = 'flex';
+        }
+    }
+}
+
+async function recordUserFollowAction() {
     if (!supabaseClient) return;
     const { data: { session } } = await supabaseClient.auth.getSession();
 
@@ -363,13 +376,22 @@ async function recordUserFollow() {
         if (!already) {
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
         }
+    } else {
+        // Save guest state in localStorage
+        localStorage.setItem('has_followed_buysecond', 'true');
     }
 
     try {
+        // Increment follower count securely via server RPC
         await supabaseClient.rpc('increment_site_followers');
     } catch (e) { }
 
     await updateFollowersDisplay();
+
+    // Hide billboard overlay immediately
+    const overlay = document.getElementById('billboardFollowOverlay');
+    if (overlay) overlay.style.display = 'none';
+
     return true;
 }
 
@@ -391,43 +413,12 @@ function openMandatoryFollowModal(onSuccessCallback) {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
     document.getElementById('performFollowBtn')?.addEventListener('click', async () => {
-        await recordUserFollow();
+        await recordUserFollowAction();
         document.getElementById('mandatoryFollowModal')?.remove();
         alert('🎉 Thanks for following!');
         if (typeof onSuccessCallback === 'function') {
             onSuccessCallback();
         }
-    });
-}
-
-async function checkAndShowFloatingFollowPopup() {
-    if (!supabaseClient) return;
-    if (localStorage.getItem('has_followed_buysecond') === 'true') return;
-
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session) {
-        let followed = await checkIfUserFollowed(session.user.id);
-        if (followed) return;
-    }
-
-    let existing = document.getElementById('floatingFollowBanner');
-    if (existing) return;
-
-    let bannerHTML = `
-        <div id="floatingFollowBanner" style="position: fixed; bottom: 20px; right: 20px; background: #121824; border: 1px solid #10B981; padding: 15px; border-radius: 8px; z-index: 99998; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 280px; text-align: center;">
-            <p style="color: #fff; font-size: 14px; margin-bottom: 10px;">Support us! Follow <b>@buysecond</b></p>
-            <button id="floatingFollowBtn" style="background: #10B981; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%;">
-                Follow @buysecond
-            </button>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', bannerHTML);
-
-    document.getElementById('floatingFollowBtn')?.addEventListener('click', async () => {
-        await recordUserFollow();
-        localStorage.setItem('has_followed_buysecond', 'true');
-        document.getElementById('floatingFollowBanner')?.remove();
-        alert('🎉 Thank you for following @buysecond!');
     });
 }
 
@@ -458,7 +449,22 @@ async function openGoogleLoginModal() {
     });
 }
 
-// --- BILLBOARD & CAMPAIGN PLAYERS ---
+// --- MAINTENANCE CHECK ---
+async function checkWebsiteMaintenance() {
+    try {
+        let { data, error } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
+        if (error || !data || !data.is_active) return;
+        let now = getSyncedCurrentTime();
+        let expiry = new Date(data.expires_at);
+        if (now >= expiry) return;
+        if (data.scope === 'all') {
+            const mFull = document.querySelector('.maintenance-screen-full');
+            if (mFull) mFull.style.display = 'flex';
+        }
+    } catch (e) { }
+}
+
+// --- CAMPAIGN SUBMISSION & BILLBOARD PLAYER ---
 async function finalizeCampaignSubmission(user, data) {
     try {
         if (!data.adTitle || !data.targetUrl) {
@@ -585,7 +591,6 @@ function formatDateTimeToLocalUserTime(istDateObj) {
     return istDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) +
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
-
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -659,6 +664,7 @@ async function loadMyActiveCampaign() {
             }
             return;
         }
+
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
@@ -734,6 +740,7 @@ async function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
 
+    // Keep the follow overlay intact if still needed, but render ad underneath/around it
     let duration = parseInt(ad.duration_second) || 10;
     let filePath = ad.file_url || ad.video_url || '';
     let targetUrl = ad.target_url || '#';
@@ -757,11 +764,15 @@ async function renderAdOnBillboard(ad, onComplete) {
         if (typeof onComplete === 'function') onComplete();
     }
 
+    // Preserve overlay element inside billboardBox
+    const overlayHTML = document.getElementById('billboardFollowOverlay')?.outerHTML || '';
+
     if (isVideo) {
         billboardBox.innerHTML = `
             <div class="media-wrapper-flex">
                 <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-fill" onclick="window.open('${targetUrl}', '_blank')"></video>
             </div>
+            ${overlayHTML}
         `;
         let mediaEl = document.getElementById('activeAdMedia');
         if (mediaEl) {
@@ -774,6 +785,7 @@ async function renderAdOnBillboard(ad, onComplete) {
             <div onclick="window.open('${targetUrl}', '_blank')" class="media-wrapper-bg">
                 <img src="${fileUrl}" alt="Ad Image" class="media-img-fill">
             </div>
+            ${overlayHTML}
         `;
     }
 
@@ -797,11 +809,15 @@ async function initLiveBillboardPlayer() {
     if (!billboardBox || !supabaseClient) return;
 
     function applyDefaultBanner() {
-        billboardBox.innerHTML = '';
+        const overlayHTML = document.getElementById('billboardFollowOverlay')?.outerHTML || '';
+        billboardBox.innerHTML = overlayHTML;
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
         let timerEl = getCountdownElement();
         if (timerEl) timerEl.innerText = 'No Active Slots';
+
+        // Re-apply follow state check after innerHTML reset
+        handleUserFollowSyncAndUI();
     }
 
     try {
