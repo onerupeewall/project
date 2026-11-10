@@ -41,15 +41,15 @@ function getSyncedCurrentTime() {
     return new Date(Date.now() + serverTimeOffset);
 }
 
-// --- INSTANT DOM INITIALIZATION ---
+// --- DOM INITIALIZATION ---
 window.addEventListener('DOMContentLoaded', async () => {
     syncServerTime();
     checkWebsiteMaintenance();
 
-    // 1. Increment visitor count on every visit/refresh & fetch counters
+    // 1. Increment visitor count on every visit/refresh & update counter display
     await registerVisitAndLoadCounters();
 
-    // 2. Check and sync user follow state (Guest localStorage -> Google account sync)
+    // 2. Sync user follow state (Guest localStorage -> Google account sync) & toggle follow strip UI
     await handleUserFollowSyncAndUI();
 
     updateAvailableSecondsCounter();
@@ -155,12 +155,13 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // Center Billboard Follow Button Handler
+    // Follow Strip Button Handler
     const centerFollowBtn = document.getElementById('centerFollowBtn');
     if (centerFollowBtn) {
         centerFollowBtn.addEventListener('click', async () => {
             await recordUserFollowAction();
-            document.getElementById('billboardFollowOverlay').style.display = 'none';
+            const overlay = document.getElementById('billboardFollowOverlay');
+            if (overlay) overlay.style.display = 'none';
             alert('🎉 Thank you for following @buysecond!');
         });
     }
@@ -298,12 +299,18 @@ async function registerVisitAndLoadCounters() {
     let followerEl = document.getElementById('totalFollowersCount');
 
     try {
-        // Increment visitor count by 1 on every page load/refresh securely via RPC
+        // Visitor count increment via RPC function
         await supabaseClient.rpc('increment_site_visitors');
     } catch (err) { }
 
     try {
-        let { data, error } = await supabaseClient.from('site_analytics').select('count, followers_count').eq('id', 1).single();
+        // Yahan 'count' aur 'followers_count' fetch ho raha hai jo ki teri table ke exact columns hain
+        let { data, error } = await supabaseClient
+            .from('site_analytics')
+            .select('count, followers_count')
+            .eq('id', 1)
+            .single();
+
         if (!error && data) {
             if (visitorEl) visitorEl.innerText = data.count || 0;
             if (followerEl) followerEl.innerText = data.followers_count || 0;
@@ -339,30 +346,23 @@ async function handleUserFollowSyncAndUI() {
     const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (session) {
-        // User is logged in via Google
         let isFollowedInDB = await checkIfUserFollowed(session.user.id);
 
         if (!isFollowedInDB && localStorage.getItem('has_followed_buysecond') === 'true') {
-            // Guest follow found in localStorage -> Auto-sync to database!
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
-            localStorage.removeItem('has_followed_buysecond'); // Clean guest token
+            localStorage.removeItem('has_followed_buysecond');
             isFollowedInDB = true;
         }
 
         if (isFollowedInDB) {
-            // User has already followed, hide center billboard follow overlay
             if (overlay) overlay.style.display = 'none';
         } else {
-            // Logged in but not followed yet, show billboard follow overlay
             if (overlay) overlay.style.display = 'flex';
         }
     } else {
-        // Guest user
         if (localStorage.getItem('has_followed_buysecond') === 'true') {
-            // Guest already followed in this browser
             if (overlay) overlay.style.display = 'none';
         } else {
-            // Guest has not followed yet, show billboard follow overlay
             if (overlay) overlay.style.display = 'flex';
         }
     }
@@ -378,18 +378,15 @@ async function recordUserFollowAction() {
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
         }
     } else {
-        // Save guest state in localStorage
         localStorage.setItem('has_followed_buysecond', 'true');
     }
 
     try {
-        // Increment follower count securely via server RPC
         await supabaseClient.rpc('increment_site_followers');
     } catch (e) { }
 
     await updateFollowersDisplay();
 
-    // Hide billboard overlay immediately
     const overlay = document.getElementById('billboardFollowOverlay');
     if (overlay) overlay.style.display = 'none';
 
@@ -569,6 +566,7 @@ async function finalizeCampaignSubmission(user, data) {
         alert('Submission failed: ' + err.message);
     }
 }
+
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
@@ -665,7 +663,6 @@ async function loadMyActiveCampaign() {
             }
             return;
         }
-
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
@@ -764,14 +761,11 @@ async function renderAdOnBillboard(ad, onComplete) {
         if (typeof onComplete === 'function') onComplete();
     }
 
-    const overlayHTML = document.getElementById('billboardFollowOverlay')?.outerHTML || '';
-
     if (isVideo) {
         billboardBox.innerHTML = `
             <div class="media-wrapper-flex">
                 <video id="activeAdMedia" src="${fileUrl}" autoplay playsinline class="media-video-fill" onclick="window.open('${targetUrl}', '_blank')"></video>
             </div>
-            ${overlayHTML}
         `;
         let mediaEl = document.getElementById('activeAdMedia');
         if (mediaEl) {
@@ -784,7 +778,6 @@ async function renderAdOnBillboard(ad, onComplete) {
             <div onclick="window.open('${targetUrl}', '_blank')" class="media-wrapper-bg">
                 <img src="${fileUrl}" alt="Ad Image" class="media-img-fill">
             </div>
-            ${overlayHTML}
         `;
     }
 
@@ -808,14 +801,11 @@ async function initLiveBillboardPlayer() {
     if (!billboardBox || !supabaseClient) return;
 
     function applyDefaultBanner() {
-        const overlayHTML = document.getElementById('billboardFollowOverlay')?.outerHTML || '';
-        billboardBox.innerHTML = overlayHTML;
+        billboardBox.innerHTML = '';
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
         billboardBox.style.backgroundSize = "100% 100%";
         let timerEl = getCountdownElement();
         if (timerEl) timerEl.innerText = 'No Active Slots';
-
-        handleUserFollowSyncAndUI();
     }
 
     try {

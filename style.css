@@ -84,6 +84,36 @@ header {
     margin: 0;
 }
 
+/* --- Clean Follow Banner Strip --- */
+.follow-strip-banner {
+    background: #121824;
+    border: 1px solid #10B981;
+    padding: 10px 16px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.follow-strip-btn {
+    background: #10B981;
+    color: #ffffff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+    .follow-strip-btn:hover {
+        background: #059669;
+    }
+
 .warning-banner {
     background-color: #121824;
     border: 1px solid #1f293d;
@@ -331,7 +361,6 @@ header {
         color: #ffffff;
     }
 
-/* --- Added Classes for Dynamic Elements Moved from JS --- */
 .maintenance-screen-full {
     background: #000;
     color: #fff;
@@ -636,7 +665,6 @@ header {
     border-radius: 6px;
 }
 
-/* --- Added Google Login Button Styles --- */
 .google-login-btn {
     display: flex;
     align-items: center;
@@ -671,5 +699,15 @@ header {
 
     .billboard {
         height: 240px;
+    }
+
+    .follow-strip-banner {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+
+    .follow-strip-btn {
+        padding: 5px 12px;
+        font-size: 12px;
     }
 }
