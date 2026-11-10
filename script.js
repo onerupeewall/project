@@ -290,6 +290,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+
 // --- COUNTERS & VISITOR REGISTRATION ---
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
@@ -568,7 +569,6 @@ async function finalizeCampaignSubmission(user, data) {
         alert('Submission failed: ' + err.message);
     }
 }
-
 function parseIstSlotTimeToDate(slotTimeStr) {
     try {
         let cleanStr = slotTimeStr.replace(' (IST)', '');
@@ -591,6 +591,7 @@ function formatDateTimeToLocalUserTime(istDateObj) {
     return istDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) +
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
+
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -740,7 +741,6 @@ async function renderAdOnBillboard(ad, onComplete) {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
 
-    // Keep the follow overlay intact if still needed, but render ad underneath/around it
     let duration = parseInt(ad.duration_second) || 10;
     let filePath = ad.file_url || ad.video_url || '';
     let targetUrl = ad.target_url || '#';
@@ -764,7 +764,6 @@ async function renderAdOnBillboard(ad, onComplete) {
         if (typeof onComplete === 'function') onComplete();
     }
 
-    // Preserve overlay element inside billboardBox
     const overlayHTML = document.getElementById('billboardFollowOverlay')?.outerHTML || '';
 
     if (isVideo) {
@@ -816,7 +815,6 @@ async function initLiveBillboardPlayer() {
         let timerEl = getCountdownElement();
         if (timerEl) timerEl.innerText = 'No Active Slots';
 
-        // Re-apply follow state check after innerHTML reset
         handleUserFollowSyncAndUI();
     }
 
