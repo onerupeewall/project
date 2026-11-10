@@ -78,7 +78,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await checkWebsiteMaintenance();
 
-    // Secure Server-Side Counters
+    // Safe execution of counters so it never blocks the rest of the site
     registerVisitAndLoadCounters();
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
@@ -310,7 +310,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
-// --- SERVER-SIDE SECURE VISITORS & FOLLOWERS FETCH & INCREMENT ---
+// --- SAFE SERVER-SIDE COUNTERS FETCH & INCREMENT ---
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -318,9 +318,12 @@ async function registerVisitAndLoadCounters() {
 
     try {
         await supabaseClient.rpc('increment_site_visitors');
+    } catch (err) {
+        console.warn("RPC increment_site_visitors notice:", err);
+    }
 
+    try {
         let { data, error } = await supabaseClient.from('site_analytics').select('count, followers_count').eq('id', 1).single();
-
         if (!error && data) {
             if (visitorEl) visitorEl.innerText = data.count || 0;
             if (followerEl) followerEl.innerText = data.followers_count || 0;
@@ -333,10 +336,12 @@ async function registerVisitAndLoadCounters() {
 async function updateFollowersDisplay() {
     let followerEl = document.getElementById('totalFollowersCount');
     if (!followerEl || !supabaseClient) return;
-    let { data } = await supabaseClient.from('site_analytics').select('followers_count').eq('id', 1).single();
-    if (data) {
-        followerEl.innerText = data.followers_count || 0;
-    }
+    try {
+        let { data } = await supabaseClient.from('site_analytics').select('followers_count').eq('id', 1).single();
+        if (data) {
+            followerEl.innerText = data.followers_count || 0;
+        }
+    } catch (e) { }
 }
 
 // --- CHECK IF LOGGED IN USER FOLLOWED ---
@@ -360,12 +365,15 @@ async function recordUserFollow() {
 
     if (session) {
         let already = await checkIfUserFollowed(session.user.id);
-        if (already) return true;
-
-        await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
+        if (!already) {
+            await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
+        }
     }
 
-    await supabaseClient.rpc('increment_site_followers');
+    try {
+        await supabaseClient.rpc('increment_site_followers');
+    } catch (e) { }
+
     await updateFollowersDisplay();
     return true;
 }
@@ -672,7 +680,6 @@ async function loadMyActiveCampaign() {
             if (activeCountdownInterval) clearInterval(activeCountdownInterval);
             return;
         }
-
         if (statusBox) statusBox.style.display = 'block';
 
         if (master.status === 'rejected') {
@@ -689,6 +696,7 @@ async function loadMyActiveCampaign() {
             }
             return;
         }
+
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
