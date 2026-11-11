@@ -11,9 +11,12 @@ async function verifyAccessPassword() {
         return;
     }
 
-    let { data, error } = await secureClient.rpc('verify_admin_login', { p_pass: val });
+    let { data, error } = await secureClient
+        .from('admin_auth')
+        .select('*')
+        .eq('admin_password', val);
 
-    if (!error && data === true) {
+    if (!error && data && data.length > 0) {
         document.getElementById('authLoginModal').style.display = 'none';
         sessionStorage.setItem('secure_session_active', 'true');
         loadMaintenanceStatus();
