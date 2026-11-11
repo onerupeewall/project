@@ -46,17 +46,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     syncServerTime();
     checkWebsiteMaintenance();
 
-    // Register visit & load live counters
     await registerVisitAndLoadCounters();
-
-    // Handle Header Follow sync
     await handleHeaderFollowSyncAndUI();
 
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
     loadMyActiveCampaign();
-    
-    // Setup tomorrow's date limit
+
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
         let tomorrow = new Date();
@@ -68,7 +64,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         bookingDateInput.value = `${tYear}-${tMonth}-${tDay}`;
     }
 
-    // --- MODAL EVENT LISTENERS ---
     const slotModal = document.getElementById('slotModal');
     const openSlotModal = document.getElementById('openSlotModal');
     const closeSlotModal = document.getElementById('closeSlotModal');
@@ -91,7 +86,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         closeSlotModal.addEventListener('click', () => { slotModal.style.display = 'none'; });
     }
 
-    // Terms Modal
     const termsModal = document.getElementById('termsModal');
     const openTermsBtn = document.getElementById('openTermsBtn');
     const closeTermsModal = document.getElementById('closeTermsModal');
@@ -103,7 +97,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         closeTermsModal.addEventListener('click', () => { termsModal.style.display = 'none'; });
     }
 
-    // Privacy Modal
     const privacyModal = document.getElementById('privacyModal');
     const openPrivacyBtn = document.getElementById('openPrivacyBtn');
     const closePrivacyModal = document.getElementById('closePrivacyModal');
@@ -115,7 +108,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         closePrivacyModal.addEventListener('click', () => { privacyModal.style.display = 'none'; });
     }
 
-    // Check Record Modal
     const checkRecordModal = document.getElementById('checkRecordModal');
     const checkRecordBtn = document.getElementById('checkRecordBtn');
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
@@ -137,7 +129,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         closeCheckRecordModal.addEventListener('click', () => { checkRecordModal.style.display = 'none'; });
     }
 
-    // Close Modals on Outer Click
     window.addEventListener('click', (e) => {
         if (slotModal && e.target === slotModal) slotModal.style.display = 'none';
         if (termsModal && e.target === termsModal) termsModal.style.display = 'none';
@@ -145,7 +136,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (checkRecordModal && e.target === checkRecordModal) checkRecordModal.style.display = 'none';
     });
 
-    // Header Follow Button Click Handler
     const headerFollowBtn = document.getElementById('headerFollowBtn');
     if (headerFollowBtn) {
         headerFollowBtn.addEventListener('click', async () => {
@@ -155,7 +145,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Dynamic Campaign Fields Injection
     const slotFormContainer = document.getElementById('slotForm');
     if (slotFormContainer && !document.getElementById('frequencyInput')) {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
@@ -235,7 +224,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     updateCalculatedAmount();
 
-    // Form Submit Handler
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -279,16 +267,20 @@ window.addEventListener('DOMContentLoaded', async () => {
             await finalizeCampaignSubmission(session.user, campaignData);
         });
     }
+
+    // 🔄 Auto-refresh user campaign status every 5 seconds to instantly catch updates from database
+    setInterval(() => {
+        if (document.getElementById('billboardStatusBox')) {
+            loadMyActiveCampaign();
+        }
+    }, 5000);
 });
-// --- COUNTERS & VISITOR REGISTRATION ---
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
     let followerEl = document.getElementById('totalFollowersCount');
 
-    try {
-        await supabaseClient.rpc('increment_site_visitors');
-    } catch (err) { }
+    try { await supabaseClient.rpc('increment_site_visitors'); } catch (err) { }
 
     try {
         let { data, error } = await supabaseClient.from('site_analytics').select('count, followers_count').eq('id', 1).single();
@@ -304,55 +296,38 @@ async function updateFollowersDisplay() {
     if (!followerEl || !supabaseClient) return;
     try {
         let { data } = await supabaseClient.from('site_analytics').select('followers_count').eq('id', 1).single();
-        if (data) {
-            followerEl.innerText = data.followers_count || 0;
-        }
+        if (data) { followerEl.innerText = data.followers_count || 0; }
     } catch (e) { }
 }
 
-// --- FOLLOW STATE HANDLERS ---
 async function checkIfUserFollowed(userId) {
     try {
         let { data } = await supabaseClient.from('user_follows').select('*').eq('user_id', userId).single();
         return !!data;
-    } catch (e) {
-        return false;
-    }
+    } catch (e) { return false; }
 }
 
 async function handleHeaderFollowSyncAndUI() {
     if (!supabaseClient) return;
-
     const headerBtn = document.getElementById('headerFollowBtn');
     const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (session) {
         let isFollowedInDB = await checkIfUserFollowed(session.user.id);
-
         if (!isFollowedInDB && localStorage.getItem('has_followed_buysecond') === 'true') {
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
             localStorage.removeItem('has_followed_buysecond');
             isFollowedInDB = true;
         }
-
-        if (isFollowedInDB) {
-            if (headerBtn) headerBtn.style.display = 'none';
-        } else {
-            if (headerBtn) headerBtn.style.display = 'inline-block';
-        }
+        if (headerBtn) headerBtn.style.display = isFollowedInDB ? 'none' : 'inline-block';
     } else {
-        if (localStorage.getItem('has_followed_buysecond') === 'true') {
-            if (headerBtn) headerBtn.style.display = 'none';
-        } else {
-            if (headerBtn) headerBtn.style.display = 'inline-block';
-        }
+        if (headerBtn) headerBtn.style.display = localStorage.getItem('has_followed_buysecond') === 'true' ? 'none' : 'inline-block';
     }
 }
 
 async function recordUserFollowAction() {
     if (!supabaseClient) return;
     const { data: { session } } = await supabaseClient.auth.getSession();
-
     if (session) {
         let already = await checkIfUserFollowed(session.user.id);
         if (!already) {
@@ -361,16 +336,10 @@ async function recordUserFollowAction() {
     } else {
         localStorage.setItem('has_followed_buysecond', 'true');
     }
-
-    try {
-        await supabaseClient.rpc('increment_site_followers');
-    } catch (e) { }
-
+    try { await supabaseClient.rpc('increment_site_followers'); } catch (e) { }
     await updateFollowersDisplay();
-
     const headerBtn = document.getElementById('headerFollowBtn');
     if (headerBtn) headerBtn.style.display = 'none';
-
     return true;
 }
 
@@ -401,7 +370,6 @@ async function openGoogleLoginModal() {
     });
 }
 
-// --- MAINTENANCE CHECK ---
 async function checkWebsiteMaintenance() {
     try {
         let { data, error } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
@@ -416,7 +384,6 @@ async function checkWebsiteMaintenance() {
     } catch (e) { }
 }
 
-// --- SECURE CAMPAIGN SUBMISSION ---
 async function finalizeCampaignSubmission(user, data) {
     try {
         if (!data.adTitle || !data.targetUrl) {
@@ -487,15 +454,13 @@ async function finalizeCampaignSubmission(user, data) {
                 let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
                 let brandNameFormatted = data.adTitle + (data.frequency > 1 ? ` (Run ${f + 1}/${data.frequency})` : '');
 
-                // 🔒 HARDCODED PENDING STATUS (FRONTEND SECURITY LOCK)
+                // Clean insert object without any hardcoded approval logic (handled securely via DB triggers)
                 let newRecordObj = {
                     brand_name: brandNameFormatted,
                     target_url: data.targetUrl,
                     file_url: publicFileUrl,
                     duration_second: data.duration,
                     slot_time: finalSlotTimeFormatted,
-                    status: 'pending',
-                    unified_token: null,
                     user_id: user.id,
                     user_email: user.email
                 };
@@ -510,12 +475,7 @@ async function finalizeCampaignSubmission(user, data) {
             if (insertError) throw insertError;
         }
 
-        let { data: latestRecord } = await supabaseClient.from('buysecond_records').select('id').eq('user_id', user.id).order('id', { ascending: false }).limit(1);
-        if (latestRecord && latestRecord.length > 0) {
-            localStorage.setItem('my_latest_campaign_id', latestRecord[0].id);
-        }
-
-        alert('Campaign Submitted Successfully! Waiting for Owner Approval.');
+        alert('Campaign Submitted Successfully! Waiting for Admin Approval.');
         loadMyActiveCampaign();
     } catch (err) {
         alert('Submission failed: ' + err.message);
@@ -534,9 +494,7 @@ function parseIstSlotTimeToDate(slotTimeStr) {
         if (modifier === 'AM' && hrs === 12) hrs = 0;
         dateObj.setHours(hrs, mins, secs, 0);
         return dateObj;
-    } catch (e) {
-        return new Date(NaN);
-    }
+    } catch (e) { return new Date(NaN); }
 }
 
 function formatDateTimeToLocalUserTime(istDateObj) {
@@ -571,6 +529,7 @@ async function loadMyActiveCampaign() {
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
         return;
     }
+
     try {
         let { data: singleRecord, error } = await supabaseClient
             .from('buysecond_records')
@@ -593,7 +552,6 @@ async function loadMyActiveCampaign() {
         let master = runsList[0];
         let now = getSyncedCurrentTime();
 
-        // ⏳ PENDING STATUS UI DISPLAY
         if (master.status === 'pending') {
             if (statusBox) statusBox.style.display = 'block';
             if (statusText) statusText.innerText = `⏳ Waiting for Owner's Approval... (${cleanBrand})`;
@@ -635,7 +593,6 @@ async function loadMyActiveCampaign() {
             return;
         }
 
-        // APPROVED DISPLAY
         let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
@@ -686,11 +643,9 @@ async function loadMyActiveCampaign() {
         }
     } catch (err) { }
 }
-
 async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
-    localStorage.removeItem('my_latest_campaign_id');
     alert('Signed out successfully.');
     location.reload();
 }
@@ -769,7 +724,6 @@ async function renderAdOnBillboard(ad, onComplete) {
     }, 1000);
 }
 
-// 📺 BILLBOARD PLAYER: Strictly plays ONLY approved campaigns
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
