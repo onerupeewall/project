@@ -15,7 +15,7 @@ async function verifyAccessPassword() {
 
     if (!error && data === true) {
         document.getElementById('authLoginModal').style.display = 'none';
-        localStorage.setItem('secure_session_active', 'true');
+        sessionStorage.setItem('secure_session_active', 'true');
         loadMaintenanceStatus();
         loadSecureRecords();
     } else {
@@ -34,6 +34,12 @@ async function loginWithGoogleAdmin() {
     if (error) {
         alert('Google Admin login failed: ' + error.message);
     }
+}
+
+function adminLogout() {
+    sessionStorage.removeItem('secure_session_active');
+    secureClient.auth.signOut();
+    window.location.reload();
 }
 
 async function triggerMaintenance(enable) {
@@ -288,7 +294,6 @@ async function loadUserRecordsView(container) {
     `;
     container.innerHTML = html;
 }
-
 async function openUserPopup(userKey) {
     const modal = document.getElementById('userPopupModal');
     const title = document.getElementById('popupUserTitle');
@@ -517,16 +522,16 @@ async function deleteCampaignGroup(idsArray, fileUrl) {
 
 window.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await secureClient.auth.getSession();
-    if (session || localStorage.getItem('secure_session_active') === 'true') {
+    if (session || sessionStorage.getItem('secure_session_active') === 'true') {
         document.getElementById('authLoginModal').style.display = 'none';
-        localStorage.setItem('secure_session_active', 'true');
+        sessionStorage.setItem('secure_session_active', 'true');
         loadMaintenanceStatus();
         loadSecureRecords();
     }
 });
 
 setInterval(() => {
-    if (localStorage.getItem('secure_session_active') === 'true' && currentActiveTab === 'livePlay') {
+    if (sessionStorage.getItem('secure_session_active') === 'true' && currentActiveTab === 'livePlay') {
         loadSecureRecords();
     }
 }, 5000);
