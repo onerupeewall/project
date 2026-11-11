@@ -1,0 +1,86 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Portal - Dashboard</title>
+    <link rel="stylesheet" href="admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- SECURE LOGIN OVERLAY -->
+    <div id="authLoginModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); display:flex; align-items:center; justify-content:center; z-index:99999;">
+        <div style="background:#121824; padding:30px; border-radius:10px; border:1px solid #1f293d; width:90%; max-width:380px; text-align:center; color:#fff;">
+            <h3 style="color:#38bdf8; margin-bottom:15px;">🔒 Admin Portal Access</h3>
+            <p style="font-size:13px; color:#9ca3af; margin-bottom:20px;">Authenticate with your authorized Google Admin account or password.</p>
+
+            <input type="password" id="authPassInput" placeholder="Enter Secret Password" style="width:100%; padding:12px; background:#0b0f17; border:1px solid #1f293d; color:#fff; border-radius:6px; margin-bottom:15px; text-align:center; font-size:15px;">
+            <button onclick="verifyAccessPassword()" style="width:100%; padding:12px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin-bottom:15px;">Login with Password</button>
+
+            <div style="border-top:1px solid #1f293d; margin:10px 0; padding-top:10px; font-size:12px; color:#9ca3af;">OR</div>
+
+            <button onclick="loginWithGoogleAdmin()" class="google-login-btn">
+                <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" /><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.14C3.15 21.37 7.22 24 12 24z" /><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.62H1.18C.43 8.14 0 9.87 0 12s.43 3.86 1.18 5.38l4.09-3.14z" /><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.15 2.63 1.18 6.62l4.09 3.14c.95-2.85 3.6-4.96 6.73-4.96z" /></svg>
+                Continue with Google Admin
+            </button>
+        </div>
+    </div>
+
+    <div class="header">
+        <div class="logo">🛠️ Secure Management Dashboard</div>
+        <a href="index.html" class="back-btn">← Go to Website</a>
+    </div>
+
+    <!-- MAINTENANCE CONTROL BAR -->
+    <div style="background:#0b0f17; border:1px solid #1f293d; padding:12px 20px; border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+            <span style="color:#f59e0b; font-weight:bold; font-size:14px;">🛠️ Maintenance Control: </span>
+            <span id="maintenanceStatusText" style="color:#10B981; font-weight:bold; font-size:14px;">System Active (Live)</span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <select id="maintScope" style="background:#121824; color:#fff; border:1px solid #1f293d; padding:6px 10px; border-radius:4px; font-size:13px;">
+                <option value="all">Entire Website</option>
+                <option value="form">Booking Form Only</option>
+                <option value="billboard">Live Billboard Only</option>
+            </select>
+            <select id="maintDuration" style="background:#121824; color:#fff; border:1px solid #1f293d; padding:6px 10px; border-radius:4px; font-size:13px;">
+                <option value="10">10 Minutes</option>
+                <option value="30">30 Minutes</option>
+                <option value="60">1 Hour</option>
+                <option value="180">3 Hours</option>
+            </select>
+            <button onclick="triggerMaintenance(true)" style="background:#ef4444; color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Enable</button>
+            <button onclick="triggerMaintenance(false)" style="background:#10B981; color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Manual Resume (Off)</button>
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <button class="tab-btn active" id="pendingTabBtn" onclick="switchTab('pending')">Pending Requests ⏳</button>
+        <button class="tab-btn" id="campaignsTabBtn" onclick="switchTab('campaigns')">Campaign Details ✅</button>
+        <button class="tab-btn" id="livePlayTabBtn" onclick="switchTab('livePlay')">Live Screen Play 📺</button>
+        <button class="tab-btn" id="userRecordsTabBtn" onclick="switchTab('userRecords')">User Records & Archive 📂</button>
+    </div>
+
+    <div class="global-table-scroll-wrapper">
+        <div id="tableContainer">
+            <!-- Dynamic Loaded Campaigns -->
+        </div>
+    </div>
+
+    <!-- USER CAMPAIGN DETAILS MODAL POPUP -->
+    <div id="userPopupModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:none; align-items:center; justify-content:center; z-index:9999;">
+        <div style="background:#121824; padding:20px; border-radius:10px; border:1px solid #1f293d; width:90%; max-width:650px; color:#fff; max-height:85vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #1f293d; padding-bottom:10px;">
+                <h3 id="popupUserTitle" style="color:#38bdf8; font-size:16px;">User History</h3>
+                <button onclick="document.getElementById('userPopupModal').style.display='none'" style="background:#ef4444; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✕ Close</button>
+            </div>
+            <div id="popupUserContent">
+                <!-- User Campaigns Loaded Here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

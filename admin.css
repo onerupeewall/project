@@ -1,0 +1,202 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: #000;
+    color: #fff;
+    padding: 15px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #1f293d;
+    padding-bottom: 15px;
+}
+
+.logo {
+    font-size: 20px;
+    font-weight: bold;
+    color: #38bdf8;
+}
+
+.back-btn {
+    background: #2563eb;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.tabs-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 5px;
+}
+
+.tab-btn {
+    background: #121824;
+    color: #9ca3af;
+    border: 1px solid #1f293d;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+    .tab-btn.active {
+        background: #2563eb;
+        color: white;
+        border-color: #2563eb;
+    }
+
+.global-table-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 20px;
+}
+
+.campaign-card {
+    background: #0b0f17;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    width: 100%;
+    min-width: 950px;
+    border: 1px solid #1f293d;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid #1f293d;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+th {
+    background: #121824;
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+.runs-scroll-box {
+    max-height: 220px;
+    overflow-y: auto;
+    background: #070a10;
+}
+
+.sub-row td {
+    background: #0d121d;
+    color: #9ca3af;
+    font-size: 13px;
+    border-bottom: 1px solid #161e2e;
+}
+
+.day-divider-line {
+    border: 0;
+    border-top: 1px solid #38bdf8;
+    margin: 8px 15px;
+}
+
+.status-approved {
+    color: #10B981;
+    font-weight: bold;
+}
+
+.status-pending {
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+.status-rejected {
+    color: #ef4444;
+    font-weight: bold;
+}
+
+.btn-action {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 11px;
+    margin-right: 4px;
+}
+
+.btn-approve {
+    background: #10B981;
+    color: white;
+}
+
+.btn-reject {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-preview {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.media-link {
+    color: #38bdf8;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.google-login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: #ffffff;
+    color: #1f2937;
+    border: none;
+    width: 100%;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 15px;
+}
+
+    .google-login-btn:hover {
+        background-color: #f3f4f6;
+    }
+
+.google-icon {
+    width: 18px;
+    height: 18px;
+}
