@@ -55,6 +55,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     updateAvailableSecondsCounter();
     initLiveBillboardPlayer();
     loadMyActiveCampaign();
+    // 🔄 Auto-refresh user campaign status every 5 seconds so it instantly detects admin approval
+    setInterval(() => {
+        if (document.getElementById('billboardStatusBox')) {
+            loadMyActiveCampaign();
+        }
+    }, 5000);
 
     // Setup tomorrow's date limit
     const bookingDateInput = document.getElementById('bookingDateInput');
