@@ -268,7 +268,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 🔄 Auto-refresh user campaign status every 5 seconds to instantly catch updates from database
     setInterval(() => {
         if (document.getElementById('billboardStatusBox')) {
             loadMyActiveCampaign();
@@ -310,24 +309,34 @@ async function checkIfUserFollowed(userId) {
 async function handleHeaderFollowSyncAndUI() {
     if (!supabaseClient) return;
     const headerBtn = document.getElementById('headerFollowBtn');
+    if (!headerBtn) return;
+
     const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (session) {
         let isFollowedInDB = await checkIfUserFollowed(session.user.id);
+
         if (!isFollowedInDB && localStorage.getItem('has_followed_buysecond') === 'true') {
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
             localStorage.removeItem('has_followed_buysecond');
             isFollowedInDB = true;
         }
-        if (headerBtn) headerBtn.style.display = isFollowedInDB ? 'none' : 'inline-block';
+
+        headerBtn.style.display = isFollowedInDB ? 'none' : 'inline-block';
     } else {
-        if (headerBtn) headerBtn.style.display = localStorage.getItem('has_followed_buysecond') === 'true' ? 'none' : 'inline-block';
+        let hasFollowedLocal = localStorage.getItem('has_followed_buysecond');
+        if (hasFollowedLocal === 'true') {
+            headerBtn.style.display = 'none';
+        } else {
+            headerBtn.style.display = 'inline-block';
+        }
     }
 }
 
 async function recordUserFollowAction() {
     if (!supabaseClient) return;
     const { data: { session } } = await supabaseClient.auth.getSession();
+
     if (session) {
         let already = await checkIfUserFollowed(session.user.id);
         if (!already) {
@@ -336,8 +345,13 @@ async function recordUserFollowAction() {
     } else {
         localStorage.setItem('has_followed_buysecond', 'true');
     }
-    try { await supabaseClient.rpc('increment_site_followers'); } catch (e) { }
+
+    try {
+        await supabaseClient.rpc('increment_site_followers');
+    } catch (e) { }
+
     await updateFollowersDisplay();
+
     const headerBtn = document.getElementById('headerFollowBtn');
     if (headerBtn) headerBtn.style.display = 'none';
     return true;
@@ -454,7 +468,6 @@ async function finalizeCampaignSubmission(user, data) {
                 let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
                 let brandNameFormatted = data.adTitle + (data.frequency > 1 ? ` (Run ${f + 1}/${data.frequency})` : '');
 
-                // Clean insert object without any hardcoded approval logic (handled securely via DB triggers)
                 let newRecordObj = {
                     brand_name: brandNameFormatted,
                     target_url: data.targetUrl,
