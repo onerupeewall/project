@@ -8,6 +8,7 @@ const TOTAL_DAILY_SECONDS = 86400;
 let serverTimeOffset = 0;
 let globalTimerInterval = null;
 let activeCountdownInterval = null;
+let isSubmittingCampaign = false; // Double submit protection lock on client side
 
 // --- SMART NETWORK OPTIMIZATION ---
 function applySmartNetworkOptimization(mediaElement) {
@@ -73,6 +74,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             if (supabaseClient) {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session) {
+                    alert('Please sign in with Google first to book a campaign slot.');
                     openGoogleLoginModal();
                     return;
                 }
@@ -149,8 +151,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
         let campaignFieldsHTML = `
             <div class="form-group">
-               <label>Times per Day (Max 7 Departs):</label>
-               <input type="number" id="frequencyInput" value="1" min="1" max="7" required>
+                <label>Times per Day (Max 7 Departs):</label>
+                <input type="number" id="frequencyInput" value="1" min="1" max="7" required>
             </div>
             <div class="form-group">
                 <label>Number of Days (Max 30):</label>
@@ -227,6 +229,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            if (isSubmittingCampaign) return; // Prevent multiple clicks execution
+
             if (!supabaseClient) {
                 alert('Supabase client failed to initialize.');
                 return;
@@ -258,34 +262,41 @@ window.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            let publicFileUrl = 'default.mp4';
-            if (fileInput && fileInput.files[0]) {
-                const file = fileInput.files[0];
-                const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                const { error: uploadError } = await supabaseClient.storage.from('ad-videos').upload(fileName, file, { upsert: true });
-                if (!uploadError) publicFileUrl = fileName;
-                else { alert('File upload failed: ' + uploadError.message); return; }
+            isSubmittingCampaign = true;
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+                let publicFileUrl = 'default.mp4';
+                if (fileInput && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                    const { error: uploadError } = await supabaseClient.storage.from('ad-videos').upload(fileName, file, { upsert: true });
+                    if (!uploadError) publicFileUrl = fileName;
+                    else { throw new Error('File upload failed: ' + uploadError.message); }
+                }
+
+                // Server-side submission handled securely via RPC
+                let { error } = await supabaseClient.rpc('submit_campaign', {
+                    p_brand_name: adTitle,
+                    p_target_url: targetUrl,
+                    p_file_url: publicFileUrl,
+                    p_duration: duration,
+                    p_frequency: frequency,
+                    p_days: campaignDays,
+                    p_start_date: selectedDateVal
+                });
+
+                if (error) throw error;
+
+                if (slotModal) slotModal.style.display = 'none';
+                alert('Campaign Submitted Successfully! Waiting for Admin Approval.');
+                loadMyActiveCampaign();
+            } catch (err) {
+                alert('Submission failed: ' + err.message);
+            } finally {
+                isSubmittingCampaign = false;
+                if (submitBtn) submitBtn.disabled = false;
             }
-
-            // Server-side submission handled via RPC securely
-            let { error } = await supabaseClient.rpc('submit_campaign', {
-                p_brand_name: adTitle,
-                p_target_url: targetUrl,
-                p_file_url: publicFileUrl,
-                p_duration: duration,
-                p_frequency: frequency,
-                p_days: campaignDays,
-                p_start_date: selectedDateVal
-            });
-
-            if (error) {
-                alert('Submission failed: ' + error.message);
-                return;
-            }
-
-            if (slotModal) slotModal.style.display = 'none';
-            alert('Campaign Submitted Successfully! Waiting for Admin Approval.');
-            loadMyActiveCampaign();
         });
     }
 
@@ -295,6 +306,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     }, 5000);
 });
+
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -330,21 +342,26 @@ async function checkIfUserFollowed(userId) {
 async function handleHeaderFollowSyncAndUI() {
     if (!supabaseClient) return;
     const headerBtn = document.getElementById('headerFollowBtn');
-    if (!headerBtn) return;
 
     const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (session) {
         let isFollowedInDB = await checkIfUserFollowed(session.user.id);
+
+        // Auto-sync guest localstorage follow to database once logged in via Google
         if (!isFollowedInDB && localStorage.getItem('has_followed_buysecond') === 'true') {
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
+            try { await supabaseClient.rpc('increment_site_followers'); } catch (e) { }
             localStorage.removeItem('has_followed_buysecond');
             isFollowedInDB = true;
         }
-        headerBtn.style.display = isFollowedInDB ? 'none' : 'inline-block';
+
+        if (headerBtn) headerBtn.style.display = isFollowedInDB ? 'none' : 'inline-block';
     } else {
         let hasFollowedLocal = localStorage.getItem('has_followed_buysecond');
-        headerBtn.style.display = hasFollowedLocal === 'true' ? 'none' : 'inline-block';
+        if (headerBtn) {
+            headerBtn.style.display = hasFollowedLocal === 'true' ? 'none' : 'inline-block';
+        }
     }
 }
 
@@ -356,12 +373,12 @@ async function recordUserFollowAction() {
         let already = await checkIfUserFollowed(session.user.id);
         if (!already) {
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
+            try { await supabaseClient.rpc('increment_site_followers'); } catch (e) { }
         }
     } else {
         localStorage.setItem('has_followed_buysecond', 'true');
+        try { await supabaseClient.rpc('increment_site_followers'); } catch (e) { }
     }
-
-    try { await supabaseClient.rpc('increment_site_followers'); } catch (e) { }
 
     await updateFollowersDisplay();
     const headerBtn = document.getElementById('headerFollowBtn');
@@ -395,7 +412,6 @@ async function openGoogleLoginModal() {
         if (error) alert('Google login failed: ' + error.message);
     });
 }
-
 async function checkWebsiteMaintenance() {
     try {
         let { data, error } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
@@ -652,6 +668,7 @@ async function renderAdOnBillboard(ad, onComplete) {
         }
     }, 1000);
 }
+
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
