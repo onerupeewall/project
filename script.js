@@ -4,7 +4,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const TOTAL_DAILY_SECONDS = 86400;
-const DEPART_DURATION = 7200;
 
 let serverTimeOffset = 0;
 let globalTimerInterval = null;
@@ -150,8 +149,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         const durationGroup = document.getElementById('durationInput')?.parentElement || slotFormContainer.firstElementChild;
         let campaignFieldsHTML = `
             <div class="form-group">
-                <label>Times per Day (Max 12 Departs):</label>
-                <input type="number" id="frequencyInput" value="1" min="1" max="12" required>
+               <label>Times per Day (Max 7 Departs):</label>
+               <input type="number" id="frequencyInput" value="1" min="1" max="7" required>
             </div>
             <div class="form-group">
                 <label>Number of Days (Max 30):</label>
@@ -244,8 +243,8 @@ window.addEventListener('DOMContentLoaded', async () => {
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
 
-            if (frequency > 12) {
-                alert('Frequency cannot exceed 12 per day.');
+            if (frequency > 7) {
+                alert('Frequency cannot exceed 7 per day.');
                 return;
             }
 
@@ -259,12 +258,34 @@ window.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            let campaignData = {
-                duration, frequency, campaignDays, targetUrl, adTitle, fileInputFile: fileInput?.files[0], selectedDateVal
-            };
+            let publicFileUrl = 'default.mp4';
+            if (fileInput && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                const { error: uploadError } = await supabaseClient.storage.from('ad-videos').upload(fileName, file, { upsert: true });
+                if (!uploadError) publicFileUrl = fileName;
+                else { alert('File upload failed: ' + uploadError.message); return; }
+            }
+
+            // Server-side submission handled via RPC securely
+            let { error } = await supabaseClient.rpc('submit_campaign', {
+                p_brand_name: adTitle,
+                p_target_url: targetUrl,
+                p_file_url: publicFileUrl,
+                p_duration: duration,
+                p_frequency: frequency,
+                p_days: campaignDays,
+                p_start_date: selectedDateVal
+            });
+
+            if (error) {
+                alert('Submission failed: ' + error.message);
+                return;
+            }
 
             if (slotModal) slotModal.style.display = 'none';
-            await finalizeCampaignSubmission(session.user, campaignData);
+            alert('Campaign Submitted Successfully! Waiting for Admin Approval.');
+            loadMyActiveCampaign();
         });
     }
 
@@ -274,7 +295,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     }, 5000);
 });
-
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -306,6 +326,7 @@ async function checkIfUserFollowed(userId) {
         return !!data;
     } catch (e) { return false; }
 }
+
 async function handleHeaderFollowSyncAndUI() {
     if (!supabaseClient) return;
     const headerBtn = document.getElementById('headerFollowBtn');
@@ -315,21 +336,15 @@ async function handleHeaderFollowSyncAndUI() {
 
     if (session) {
         let isFollowedInDB = await checkIfUserFollowed(session.user.id);
-
         if (!isFollowedInDB && localStorage.getItem('has_followed_buysecond') === 'true') {
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
             localStorage.removeItem('has_followed_buysecond');
             isFollowedInDB = true;
         }
-
         headerBtn.style.display = isFollowedInDB ? 'none' : 'inline-block';
     } else {
         let hasFollowedLocal = localStorage.getItem('has_followed_buysecond');
-        if (hasFollowedLocal === 'true') {
-            headerBtn.style.display = 'none';
-        } else {
-            headerBtn.style.display = 'inline-block';
-        }
+        headerBtn.style.display = hasFollowedLocal === 'true' ? 'none' : 'inline-block';
     }
 }
 
@@ -346,12 +361,9 @@ async function recordUserFollowAction() {
         localStorage.setItem('has_followed_buysecond', 'true');
     }
 
-    try {
-        await supabaseClient.rpc('increment_site_followers');
-    } catch (e) { }
+    try { await supabaseClient.rpc('increment_site_followers'); } catch (e) { }
 
     await updateFollowersDisplay();
-
     const headerBtn = document.getElementById('headerFollowBtn');
     if (headerBtn) headerBtn.style.display = 'none';
     return true;
@@ -396,103 +408,6 @@ async function checkWebsiteMaintenance() {
             if (mFull) mFull.style.display = 'flex';
         }
     } catch (e) { }
-}
-
-async function finalizeCampaignSubmission(user, data) {
-    try {
-        if (!data.adTitle || !data.targetUrl) {
-            alert('Campaign title and target URL are required.');
-            return;
-        }
-
-        let publicFileUrl = 'default.mp4';
-        if (data.fileInputFile) {
-            const file = data.fileInputFile;
-            const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-            const { error: uploadError } = await supabaseClient.storage.from('ad-videos').upload(fileName, file, { upsert: true });
-            if (!uploadError) publicFileUrl = fileName;
-            else { alert('File upload failed: ' + uploadError.message); return; }
-        }
-
-        let baseParts = data.selectedDateVal ? data.selectedDateVal.split('-') : [];
-        let startDate = baseParts.length === 3 ? new Date(baseParts[0], baseParts[1] - 1, baseParts[2]) : new Date();
-        let optionsCheck = { day: '2-digit', month: 'long', year: 'numeric' };
-
-        let { data: existingSlots } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
-        let recordsToInsert = [];
-
-        for (let d = 0; d < data.campaignDays; d++) {
-            let currentDayDate = new Date(startDate);
-            currentDayDate.setDate(startDate.getDate() + d);
-            let targetDateStr = currentDayDate.toLocaleDateString('en-US', optionsCheck);
-            let dayExisting = existingSlots ? existingSlots.filter(rec => rec.slot_time && rec.slot_time.includes(targetDateStr)) : [];
-
-            for (let f = 0; f < data.frequency; f++) {
-                let departStartSec = f * DEPART_DURATION;
-                let departEndSec = departStartSec + DEPART_DURATION;
-
-                let slotsInThisDepart = dayExisting.filter(rec => {
-                    let timePart = rec.slot_time.split(' at ')[1];
-                    if (!timePart) return false;
-                    let [timeStr, modifier] = timePart.split(' ');
-                    let [hrs, mins, secs] = timeStr.split(':').map(Number);
-                    if (modifier === 'PM' && hrs < 12) hrs += 12;
-                    if (modifier === 'AM' && hrs === 12) hrs = 0;
-                    let totalSecsFromMidnight = (hrs * 3600) + (mins * 60) + secs;
-                    return totalSecsFromMidnight >= departStartSec && totalSecsFromMidnight < departEndSec;
-                });
-
-                let targetOffset = departStartSec;
-                if (slotsInThisDepart.length > 0) {
-                    let lastSlot = slotsInThisDepart[slotsInThisDepart.length - 1];
-                    let timePart = lastSlot.slot_time.split(' at ')[1];
-                    let [timeStr, modifier] = timePart.split(' ');
-                    let [hrs, mins, secs] = timeStr.split(':').map(Number);
-                    if (modifier === 'PM' && hrs < 12) hrs += 12;
-                    if (modifier === 'AM' && hrs === 12) hrs = 0;
-                    let lastStartSec = (hrs * 3600) + (mins * 60) + secs;
-                    let lastDur = parseInt(lastSlot.duration_second) || 10;
-                    targetOffset = lastStartSec + lastDur;
-                }
-
-                if (targetOffset >= departEndSec) {
-                    targetOffset = departEndSec - data.duration;
-                    if (targetOffset < departStartSec) targetOffset = departStartSec;
-                }
-
-                let slotTimeObj = new Date(currentDayDate);
-                slotTimeObj.setHours(0, 0, 0, 0);
-                slotTimeObj.setSeconds(targetOffset);
-
-                let timeString = slotTimeObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-                let finalSlotTimeFormatted = `${targetDateStr} at ${timeString} (IST)`;
-                let brandNameFormatted = data.adTitle + (data.frequency > 1 ? ` (Run ${f + 1}/${data.frequency})` : '');
-
-                let newRecordObj = {
-                    brand_name: brandNameFormatted,
-                    target_url: data.targetUrl,
-                    file_url: publicFileUrl,
-                    duration_second: data.duration,
-                    slot_time: finalSlotTimeFormatted,
-                    user_id: user.id,
-                    user_email: user.email
-                };
-
-                recordsToInsert.push(newRecordObj);
-                dayExisting.push(newRecordObj);
-            }
-        }
-
-        if (recordsToInsert.length > 0) {
-            let { error: insertError } = await supabaseClient.from('buysecond_records').insert(recordsToInsert);
-            if (insertError) throw insertError;
-        }
-
-        alert('Campaign Submitted Successfully! Waiting for Admin Approval.');
-        loadMyActiveCampaign();
-    } catch (err) {
-        alert('Submission failed: ' + err.message);
-    }
 }
 
 function parseIstSlotTimeToDate(slotTimeStr) {
@@ -737,12 +652,10 @@ async function renderAdOnBillboard(ad, onComplete) {
         }
     }, 1000);
 }
-
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
 
-    // --- ADMIN PREVIEW MODE CHECK ---
     const urlParams = new URLSearchParams(window.location.search);
     const previewFile = urlParams.get('preview_file');
 
@@ -756,22 +669,14 @@ async function initLiveBillboardPlayer() {
             liveBanner.style.color = '#38bdf8';
         }
 
-        const dummyAdRecord = {
-            file_url: previewFile,
-            duration_second: previewDur,
-            target_url: previewTarget
-        };
-
+        let dummyAdRecord = { file_url: previewFile, duration_second: previewDur, target_url: previewTarget };
         function playPreviewLoop() {
-            renderAdOnBillboard(dummyAdRecord, () => {
-                setTimeout(playPreviewLoop, 1000);
-            });
+            renderAdOnBillboard(dummyAdRecord, () => { setTimeout(playPreviewLoop, 1000); });
         }
         playPreviewLoop();
         return;
     }
 
-    // --- NORMAL PUBLIC SCHEDULE MODE ---
     function applyDefaultBanner() {
         billboardBox.innerHTML = '';
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
@@ -810,9 +715,7 @@ async function initLiveBillboardPlayer() {
 
             let timerEl = getCountdownElement();
             if (currentPlayingAd) {
-                renderAdOnBillboard(currentPlayingAd.adRecord, () => {
-                    setTimeout(checkAndPlaySchedule, 500);
-                });
+                renderAdOnBillboard(currentPlayingAd.adRecord, () => { setTimeout(checkAndPlaySchedule, 500); });
             } else {
                 applyDefaultBanner();
                 if (timerEl) timerEl.innerText = 'No Active Slots';
