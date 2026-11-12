@@ -463,6 +463,7 @@ async function loadLiveScreenPlayView(container) {
     container.innerHTML = html;
 }
 
+// --- UPDATED LIVE BILLBOARD PREVIEW FUNCTION ---
 async function previewOnBillboard(encodedJson) {
     let record = JSON.parse(decodeURIComponent(encodedJson));
     let filePath = record.file_url || record.video_url;
@@ -478,7 +479,15 @@ async function previewOnBillboard(encodedJson) {
             fileUrl = signedData.signedUrl;
         }
     }
-    window.open(fileUrl, '_blank');
+
+    let durationSec = parseInt(record.duration_second) || 10;
+    let targetUrl = record.target_url || '#';
+
+    // Main website par live preview URL open karega
+    const mainSiteUrl = 'index.html';
+    const previewUrl = `${mainSiteUrl}?preview_file=${encodeURIComponent(fileUrl)}&dur=${durationSec}&target=${encodeURIComponent(targetUrl)}`;
+
+    window.open(previewUrl, '_blank');
 }
 
 async function approveCampaignGroup(idsArray) {

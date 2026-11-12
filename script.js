@@ -274,6 +274,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     }, 5000);
 });
+
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -305,7 +306,6 @@ async function checkIfUserFollowed(userId) {
         return !!data;
     } catch (e) { return false; }
 }
-
 async function handleHeaderFollowSyncAndUI() {
     if (!supabaseClient) return;
     const headerBtn = document.getElementById('headerFollowBtn');
@@ -656,6 +656,7 @@ async function loadMyActiveCampaign() {
         }
     } catch (err) { }
 }
+
 async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
@@ -741,6 +742,36 @@ async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
 
+    // --- ADMIN PREVIEW MODE CHECK ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const previewFile = urlParams.get('preview_file');
+
+    if (previewFile) {
+        const previewDur = parseInt(urlParams.get('dur')) || 10;
+        const previewTarget = urlParams.get('target') || '#';
+
+        const liveBanner = document.getElementById('liveClockBanner');
+        if (liveBanner) {
+            liveBanner.innerText = '🔴 ADMIN LIVE PREVIEW MODE';
+            liveBanner.style.color = '#38bdf8';
+        }
+
+        const dummyAdRecord = {
+            file_url: previewFile,
+            duration_second: previewDur,
+            target_url: previewTarget
+        };
+
+        function playPreviewLoop() {
+            renderAdOnBillboard(dummyAdRecord, () => {
+                setTimeout(playPreviewLoop, 1000);
+            });
+        }
+        playPreviewLoop();
+        return;
+    }
+
+    // --- NORMAL PUBLIC SCHEDULE MODE ---
     function applyDefaultBanner() {
         billboardBox.innerHTML = '';
         billboardBox.style.background = "url('buysecond.png') no-repeat center center";
