@@ -4,6 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const secureClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 let currentActiveTab = 'pending';
 
+// --- SECURE SERVER-SIDE PASSWORD VERIFICATION (RPC) ---
 async function verifyAccessPassword() {
     let val = document.getElementById('authPassInput').value.trim();
     if (!val) {
@@ -11,12 +12,11 @@ async function verifyAccessPassword() {
         return;
     }
 
-    let { data, error } = await secureClient
-        .from('admin_auth')
-        .select('*')
-        .eq('admin_password', val);
+    let { data: isValid, error } = await secureClient.rpc('verify_admin_password', {
+        p_password: val
+    });
 
-    if (!error && data && data.length > 0) {
+    if (!error && isValid === true) {
         document.getElementById('authLoginModal').style.display = 'none';
         sessionStorage.setItem('secure_session_active', 'true');
         loadMaintenanceStatus();
@@ -126,7 +126,6 @@ async function loadSecureRecords() {
     }
 
     let validData = data.filter(record => record.slot_time && record.brand_name);
-
     if (validData.length === 0) {
         container.innerHTML = `<p style="color: #9ca3af; text-align: center;">No valid campaigns found.</p>`;
         return;
@@ -203,7 +202,6 @@ async function loadSecureRecords() {
                         <table>
                             <tbody>
             `;
-
             let lastDateRow = '';
             slots.forEach((slot, idx) => {
                 if (!slot.slot_time) return;
@@ -226,23 +224,18 @@ async function loadSecureRecords() {
                     </tr>
                 `;
             });
-
             html += `
                             </tbody>
                         </table>
                     </div>
             `;
         }
-
-        html += `
-            </div>
-        `;
+        html += `</div>`;
         groupIndex++;
     }
 
     container.innerHTML = html;
 }
-
 async function loadUserRecordsView(container) {
     let { data, error } = await secureClient.from('buysecond_records').select('*').order('id', { ascending: false });
     if (error || !data || data.length === 0) {
@@ -254,10 +247,7 @@ async function loadUserRecordsView(container) {
     data.forEach(record => {
         let userKey = record.user_email || record.user_phone || record.user_id || 'Unknown / Guest';
         if (!usersMap[userKey]) {
-            usersMap[userKey] = {
-                records: [],
-                email: record.user_email || 'Google User'
-            };
+            usersMap[userKey] = { records: [], email: record.user_email || 'Google User' };
         }
         usersMap[userKey].records.push(record);
     });
@@ -289,11 +279,7 @@ async function loadUserRecordsView(container) {
         `;
         idx++;
     }
-    html += `
-                </tbody>
-            </table>
-        </div>
-    `;
+    html += `</tbody></table></div>`;
     container.innerHTML = html;
 }
 
@@ -366,6 +352,7 @@ async function openUserPopup(userKey) {
 
     content.innerHTML = html;
 }
+
 async function loadLiveScreenPlayView(container) {
     let { data: approvedRecords, error } = await secureClient
         .from('buysecond_records')
@@ -454,11 +441,7 @@ async function loadLiveScreenPlayView(container) {
         `;
     });
 
-    html += `
-                </tbody>
-            </table>
-        </div>
-    `;
+    html += `</tbody></table></div>`;
     container.innerHTML = html;
 }
 
@@ -480,14 +463,12 @@ async function previewOnBillboard(encodedJson) {
 
     let durationSec = parseInt(record.duration_second) || 10;
     let targetUrl = record.target_url || '#';
-
     const mainSiteUrl = 'index.html';
     const previewUrl = `${mainSiteUrl}?preview_file=${encodeURIComponent(fileUrl)}&dur=${durationSec}&target=${encodeURIComponent(targetUrl)}`;
 
     window.open(previewUrl, '_blank');
 }
 
-// --- SERVER-SIDE ACTION HANDLERS ---
 async function approveCampaignGroup(idsArray) {
     let { error } = await secureClient.rpc('approve_campaign_group', { p_record_ids: idsArray });
     if (error) alert('Approval failed: ' + error.message);
@@ -516,13 +497,14 @@ async function deleteCampaignGroup(idsArray, fileUrl) {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-    const { data: { session } } = await secureClient.auth.getSession();
-    if (session || sessionStorage.getItem('secure_session_active') === 'true') {
-        document.getElementById('authLoginModal').style.display = 'none';
-        sessionStorage.setItem('secure_session_active', 'true');
-        loadMaintenanceStatus();
-        loadSecureRecords();
-    }
+    const { data: { session } => { }
+} = await secureClient.auth.getSession();
+if (session || sessionStorage.getItem('secure_session_active') === 'true') {
+    document.getElementById('authLoginModal').style.display = 'none';
+    sessionStorage.setItem('secure_session_active', 'true');
+    loadMaintenanceStatus();
+    loadSecureRecords();
+}
 });
 
 setInterval(() => {
