@@ -289,7 +289,6 @@ async function loadUserRecordsView(container) {
         `;
         idx++;
     }
-
     html += `
                 </tbody>
             </table>
@@ -297,6 +296,7 @@ async function loadUserRecordsView(container) {
     `;
     container.innerHTML = html;
 }
+
 async function openUserPopup(userKey) {
     const modal = document.getElementById('userPopupModal');
     const title = document.getElementById('popupUserTitle');
@@ -366,7 +366,6 @@ async function openUserPopup(userKey) {
 
     content.innerHTML = html;
 }
-
 async function loadLiveScreenPlayView(container) {
     let { data: approvedRecords, error } = await secureClient
         .from('buysecond_records')
@@ -463,7 +462,6 @@ async function loadLiveScreenPlayView(container) {
     container.innerHTML = html;
 }
 
-// --- UPDATED LIVE BILLBOARD PREVIEW FUNCTION ---
 async function previewOnBillboard(encodedJson) {
     let record = JSON.parse(decodeURIComponent(encodedJson));
     let filePath = record.file_url || record.video_url;
@@ -483,36 +481,21 @@ async function previewOnBillboard(encodedJson) {
     let durationSec = parseInt(record.duration_second) || 10;
     let targetUrl = record.target_url || '#';
 
-    // Main website par live preview URL open karega
     const mainSiteUrl = 'index.html';
     const previewUrl = `${mainSiteUrl}?preview_file=${encodeURIComponent(fileUrl)}&dur=${durationSec}&target=${encodeURIComponent(targetUrl)}`;
 
     window.open(previewUrl, '_blank');
 }
 
+// --- SERVER-SIDE ACTION HANDLERS ---
 async function approveCampaignGroup(idsArray) {
-    try {
-        let { data: approvedRecords } = await secureClient.from('buysecond_records').select('unified_token').eq('status', 'approved');
-        let maxToken = 0;
-        if (approvedRecords && approvedRecords.length > 0) {
-            approvedRecords.forEach(r => {
-                let t = parseInt(r.unified_token) || 0;
-                if (t > maxToken) maxToken = t;
-            });
-        }
-        let nextToken = maxToken + 1;
-
-        let { error } = await secureClient.from('buysecond_records').update({ status: 'approved', unified_token: nextToken }).in('id', idsArray);
-        if (error) throw error;
-
-        switchTab('campaigns');
-    } catch (err) {
-        alert('Approval failed: ' + err.message);
-    }
+    let { error } = await secureClient.rpc('approve_campaign_group', { p_record_ids: idsArray });
+    if (error) alert('Approval failed: ' + error.message);
+    else loadSecureRecords();
 }
 
 async function updateGroupStatus(idsArray, newStatus) {
-    let { error } = await secureClient.from('buysecond_records').update({ status: newStatus }).in('id', idsArray);
+    let { error } = await secureClient.rpc('update_campaign_status', { p_record_ids: idsArray, p_status: newStatus });
     if (error) alert('Error: ' + error.message);
     else loadSecureRecords();
 }
@@ -524,7 +507,7 @@ async function deleteCampaignGroup(idsArray, fileUrl) {
             let filePath = fileUrl.split('/storage/v1/object/public/ad-videos/')[1];
             if (filePath) await secureClient.storage.from('ad-videos').remove([decodeURIComponent(filePath)]);
         }
-        let { error } = await secureClient.from('buysecond_records').delete().in('id', idsArray);
+        let { error } = await secureClient.rpc('delete_campaign_group', { p_record_ids: idsArray });
         if (error) throw error;
         loadSecureRecords();
     } catch (err) {

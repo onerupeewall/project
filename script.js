@@ -1,6 +1,6 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const TOTAL_DAILY_SECONDS = 86400;
@@ -231,7 +231,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     updateCalculatedAmount();
 
-    // --- PURE SERVER-SIDE SUBMISSION VIA RPC ---
+    // --- PURE SERVER-SIDE SUBMISSION REQUEST VIA RPC ---
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -277,7 +277,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                     else { throw new Error('File upload failed: ' + uploadError.message); }
                 }
 
-                // Call Supabase Server RPC to handle all validation & scheduling securely
+                // Send request securely to Supabase Main Server RPC
                 let { error } = await supabaseClient.rpc('submit_campaign', {
                     p_brand_name: adTitle,
                     p_target_url: targetUrl,
@@ -291,7 +291,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (error) throw error;
 
                 if (slotModal) slotModal.style.display = 'none';
-                alert('Campaign Submitted Successfully! Waiting for Admin Approval.');
+                alert('Campaign Request Submitted Successfully!');
                 loadMyActiveCampaign();
             } catch (err) {
                 alert('Submission failed: ' + err.message);
@@ -497,22 +497,6 @@ async function loadMyActiveCampaign() {
         let master = runsList[0];
         let now = getSyncedCurrentTime();
 
-        if (master.status === 'pending') {
-            if (statusBox) statusBox.style.display = 'block';
-            if (statusText) statusText.innerText = `⏳ Waiting for Owner's Approval... (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = 'Your ad request is under review.';
-            if (searchResultArea) {
-                searchResultArea.innerHTML = `
-                    <div class="campaign-pending-box">
-                        <p class="pending-title">Campaign Under Review</p>
-                        <p class="pending-subtitle">Your ad booking is currently pending owner approval. It will go live once verified.</p>
-                        <button onclick="handleLogout()" class="btn-switch-danger">Sign Out</button>
-                    </div>
-                `;
-            }
-            return;
-        }
-
         let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
         if (allCompleted) {
             if (statusBox) statusBox.style.display = 'none';
@@ -523,22 +507,7 @@ async function loadMyActiveCampaign() {
 
         if (statusBox) statusBox.style.display = 'block';
 
-        if (master.status === 'rejected') {
-            if (statusText) statusText.innerText = `❌ Campaign Rejected (${cleanBrand})`;
-            if (countdownText) countdownText.innerText = 'Campaign rejected by admin.';
-            if (searchResultArea) {
-                searchResultArea.innerHTML = `
-                    <div class="campaign-pending-box" style="border-color: #ff4d4d;">
-                        <p class="pending-title" style="color: #ff4d4d;">Campaign Rejected</p>
-                        <p class="pending-subtitle">Your campaign was rejected by the admin. Please try submitting with new details.</p>
-                        <button onclick="handleLogout()" class="btn-switch-danger">Sign Out / Try Again</button>
-                    </div>
-                `;
-            }
-            return;
-        }
-
-        let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Approved';
+        let tokenDisplay = master.unified_token ? `#${master.unified_token}` : 'Active';
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
         function updateLiveCountdownUI() {
@@ -553,7 +522,7 @@ async function loadMyActiveCampaign() {
                     let hrs = Math.floor(diffSecs / 3600);
                     let mins = Math.floor((diffSecs % 3600) / 60);
                     let secs = diffSecs % 60;
-                    if (statusText) statusText.innerText = `🟢 Approved: ${cleanBrand} (#${tokenDisplay})`;
+                    if (statusText) statusText.innerText = `🟢 Live: ${cleanBrand} (#${tokenDisplay})`;
                     if (countdownText) countdownText.innerText = `Next Ad Live in: ${hrs}h : ${mins}m : ${secs}s`;
                 } else {
                     if (statusText) statusText.innerText = `📺 Ad Playing Now`;
@@ -569,11 +538,11 @@ async function loadMyActiveCampaign() {
         if (searchResultArea) {
             let html = `
                 <div class="campaign-list-box">
-                    <p class="list-status-approved">Status: APPROVED</p>
+                    <p class="list-status-approved">Status: SUBMITTED / ACTIVE</p>
                     <p><b>Token:</b> #${tokenDisplay}</p>
                     <p><b>Brand:</b> ${cleanBrand}</p>
                     <p><b>Account:</b> ${session.user.email}</p>
-                    <p class="list-active-title">Active Slots:</p>
+                    <p class="list-active-title">Scheduled Slots:</p>
             `;
             runsList.forEach((run, idx) => {
                 let runTimeObj = parseIstSlotTimeToDate(run.slot_time);
@@ -599,7 +568,7 @@ async function updateAvailableSecondsCounter() {
     if (!supabaseClient) return;
     let remainingEl = document.getElementById('remainingSecondsCount');
     if (!remainingEl) return;
-    let { data: records } = await supabaseClient.from('buysecond_records').select('duration_second').eq('status', 'approved');
+    let { data: records } = await supabaseClient.from('buysecond_records').select('duration_second');
     let booked = records ? records.reduce((t, r) => t + (parseInt(r.duration_second) || 0), 0) : 0;
     let avail = TOTAL_DAILY_SECONDS - booked;
     remainingEl.innerText = avail < 0 ? 0 : avail;
@@ -703,7 +672,7 @@ async function initLiveBillboardPlayer() {
     }
 
     try {
-        let { data: queueRecords } = await supabaseClient.from('buysecond_records').select('*').eq('status', 'approved').order('id', { ascending: true });
+        let { data: queueRecords } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
         if (!queueRecords || queueRecords.length === 0) {
             applyDefaultBanner();
             setTimeout(initLiveBillboardPlayer, 10000);
