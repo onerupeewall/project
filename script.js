@@ -170,11 +170,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     const campaignDaysInput = document.getElementById('campaignDaysInput');
     const totalAmount = document.getElementById('totalAmount');
 
+    // 100% Server-Side Price Calculation via Supabase RPC (No JS formula fallback)
     async function updateCalculatedAmount() {
         if (!durationInput || !totalAmount || !supabaseClient) return;
         let dur = parseInt(durationInput.value) || 10;
         let freq = frequencyInput ? parseInt(frequencyInput.value) || 1 : 1;
         let days = campaignDaysInput ? parseInt(campaignDaysInput.value) || 1 : 1;
+
+        totalAmount.innerText = 'Calculating...';
 
         let { data: verifiedPrice, error } = await supabaseClient.rpc('calculate_campaign_amount', {
             p_duration: dur,
@@ -182,8 +185,11 @@ window.addEventListener('DOMContentLoaded', async () => {
             p_days: days
         });
 
-        let finalPrice = error || verifiedPrice === null ? (dur * freq * days * 10) : verifiedPrice;
-        totalAmount.innerText = '₹' + finalPrice;
+        if (error || verifiedPrice === null) {
+            totalAmount.innerText = '₹--';
+        } else {
+            totalAmount.innerText = '₹' + verifiedPrice;
+        }
     }
 
     if (adFileInput) {
@@ -306,7 +312,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     }, 5000);
 });
-
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -412,6 +417,7 @@ async function openGoogleLoginModal() {
         if (error) alert('Google login failed: ' + error.message);
     });
 }
+
 async function checkWebsiteMaintenance() {
     try {
         let { data, error } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
