@@ -1,9 +1,9 @@
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-const TOTAL_DAILY_SECONDS = 86400;
+const TOTAL_DAILY_SECONDS = 50400; // 14 hours window (08:00 to 22:00)
 
 let serverTimeOffset = 0;
 let globalTimerInterval = null;
@@ -62,6 +62,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         let tDay = String(tomorrow.getDate()).padStart(2, '0');
         bookingDateInput.min = `${tYear}-${tMonth}-${tDay}`;
         bookingDateInput.value = `${tYear}-${tMonth}-${tDay}`;
+
+        // Listen to date changes to update available seconds dynamically from server
+        bookingDateInput.addEventListener('change', () => {
+            updateAvailableSecondsCounter();
+        });
     }
 
     const slotModal = document.getElementById('slotModal');
@@ -80,6 +85,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             slotModal.style.display = 'flex';
+            updateAvailableSecondsCounter();
         });
     }
 
@@ -170,7 +176,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const campaignDaysInput = document.getElementById('campaignDaysInput');
     const totalAmount = document.getElementById('totalAmount');
 
-    // Fetch Price exclusively from Server RPC
+    // --- SERVER-AUTHORITATIVE PRICE CALCULATION VIA RPC ---
     async function updateCalculatedAmount() {
         if (!durationInput || !totalAmount || !supabaseClient) return;
         let dur = parseInt(durationInput.value) || 10;
@@ -293,6 +299,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (slotModal) slotModal.style.display = 'none';
                 alert('Campaign Request Submitted Successfully!');
                 loadMyActiveCampaign();
+                updateAvailableSecondsCounter();
             } catch (err) {
                 alert('Submission failed: ' + err.message);
             } finally {
@@ -448,6 +455,26 @@ function formatDateTimeToLocalUserTime(istDateObj) {
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
 }
 
+// --- SERVER-AUTHORITATIVE AVAILABLE SECONDS FETCH VIA RPC ---
+async function updateAvailableSecondsCounter() {
+    if (!supabaseClient) return;
+    let remainingEl = document.getElementById('remainingSecondsCount');
+    if (!remainingEl) return;
+
+    let bookingDateInput = document.getElementById('bookingDateInput');
+    let targetDateStr = bookingDateInput ? bookingDateInput.value : ''; // format YYYY-MM-DD or readable
+
+    let { data: availableSecs, error } = await supabaseClient.rpc('get_available_seconds_for_date', {
+        p_target_date: targetDateStr
+    });
+
+    if (error || availableSecs === null) {
+        remainingEl.innerText = TOTAL_DAILY_SECONDS;
+    } else {
+        remainingEl.innerText = availableSecs;
+    }
+}
+
 async function loadMyActiveCampaign() {
     const searchResultArea = document.getElementById('searchResultArea');
     const statusBox = document.getElementById('billboardStatusBox');
@@ -557,21 +584,12 @@ async function loadMyActiveCampaign() {
         }
     } catch (err) { }
 }
+
 async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     alert('Signed out successfully.');
     location.reload();
-}
-
-async function updateAvailableSecondsCounter() {
-    if (!supabaseClient) return;
-    let remainingEl = document.getElementById('remainingSecondsCount');
-    if (!remainingEl) return;
-    let { data: records } = await supabaseClient.from('buysecond_records').select('duration_second');
-    let booked = records ? records.reduce((t, r) => t + (parseInt(r.duration_second) || 0), 0) : 0;
-    let avail = TOTAL_DAILY_SECONDS - booked;
-    remainingEl.innerText = avail < 0 ? 0 : avail;
 }
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
@@ -637,7 +655,6 @@ async function renderAdOnBillboard(ad, onComplete) {
         }
     }, 1000);
 }
-
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
