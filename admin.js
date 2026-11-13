@@ -4,7 +4,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const secureClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 let currentActiveTab = 'pending';
 
-// --- SECURE SERVER-SIDE PASSWORD VERIFICATION (RPC) ---
 async function verifyAccessPassword() {
     let val = document.getElementById('authPassInput').value.trim();
     if (!val) {
@@ -12,11 +11,17 @@ async function verifyAccessPassword() {
         return;
     }
 
-    let { data: isValid, error } = await secureClient.rpc('verify_admin_password', {
-        p_password: val
-    });
+    let { data, error } = await secureClient
+        .from('admin_auth')
+        .select('*')
+        .eq('admin_password', val);
 
-    if (!error && isValid === true) {
+    if (error) {
+        alert('Database error: ' + error.message);
+        return;
+    }
+
+    if (data && data.length > 0) {
         document.getElementById('authLoginModal').style.display = 'none';
         sessionStorage.setItem('secure_session_active', 'true');
         loadMaintenanceStatus();
@@ -497,14 +502,19 @@ async function deleteCampaignGroup(idsArray, fileUrl) {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-    const { data: { session } => { }
-} = await secureClient.auth.getSession();
-if (session || sessionStorage.getItem('secure_session_active') === 'true') {
-    document.getElementById('authLoginModal').style.display = 'none';
-    sessionStorage.setItem('secure_session_active', 'true');
-    loadMaintenanceStatus();
-    loadSecureRecords();
-}
+    try {
+        let sessionData = await secureClient.auth.getSession();
+        let session = sessionData?.data?.session;
+        if (session || sessionStorage.getItem('secure_session_active') === 'true') {
+            let modal = document.getElementById('authLoginModal');
+            if (modal) modal.style.display = 'none';
+            sessionStorage.setItem('secure_session_active', 'true');
+            loadMaintenanceStatus();
+            loadSecureRecords();
+        }
+    } catch (e) {
+        console.error(e);
+    }
 });
 
 setInterval(() => {
