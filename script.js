@@ -8,7 +8,7 @@ const TOTAL_DAILY_SECONDS = 86400;
 let serverTimeOffset = 0;
 let globalTimerInterval = null;
 let activeCountdownInterval = null;
-let isSubmittingCampaign = false; // Double submit protection lock on client side
+let isSubmittingCampaign = false;
 
 // --- SMART NETWORK OPTIMIZATION ---
 function applySmartNetworkOptimization(mediaElement) {
@@ -170,7 +170,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const campaignDaysInput = document.getElementById('campaignDaysInput');
     const totalAmount = document.getElementById('totalAmount');
 
-    // 100% Server-Side Price Calculation via Supabase RPC (No JS formula fallback)
+    // Fetch Price exclusively from Server RPC
     async function updateCalculatedAmount() {
         if (!durationInput || !totalAmount || !supabaseClient) return;
         let dur = parseInt(durationInput.value) || 10;
@@ -231,11 +231,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     updateCalculatedAmount();
 
+    // --- PURE SERVER-SIDE SUBMISSION VIA RPC ---
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            if (isSubmittingCampaign) return; // Prevent multiple clicks execution
+            if (isSubmittingCampaign) return;
 
             if (!supabaseClient) {
                 alert('Supabase client failed to initialize.');
@@ -252,11 +253,6 @@ window.addEventListener('DOMContentLoaded', async () => {
             let duration = parseInt(document.getElementById('durationInput')?.value) || 10;
             let frequency = parseInt(document.getElementById('frequencyInput')?.value) || 1;
             let campaignDays = parseInt(document.getElementById('campaignDaysInput')?.value) || 1;
-
-            if (frequency > 7) {
-                alert('Frequency cannot exceed 7 per day.');
-                return;
-            }
 
             const targetUrl = document.getElementById('targetUrl')?.value || '';
             const adTitle = document.getElementById('adTitle')?.value || '';
@@ -281,7 +277,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                     else { throw new Error('File upload failed: ' + uploadError.message); }
                 }
 
-                // Server-side submission handled securely via RPC
+                // Call Supabase Server RPC to handle all validation & scheduling securely
                 let { error } = await supabaseClient.rpc('submit_campaign', {
                     p_brand_name: adTitle,
                     p_target_url: targetUrl,
@@ -353,7 +349,6 @@ async function handleHeaderFollowSyncAndUI() {
     if (session) {
         let isFollowedInDB = await checkIfUserFollowed(session.user.id);
 
-        // Auto-sync guest localstorage follow to database once logged in via Google
         if (!isFollowedInDB && localStorage.getItem('has_followed_buysecond') === 'true') {
             await supabaseClient.from('user_follows').insert([{ user_id: session.user.id, user_email: session.user.email }]);
             try { await supabaseClient.rpc('increment_site_followers'); } catch (e) { }
@@ -593,7 +588,6 @@ async function loadMyActiveCampaign() {
         }
     } catch (err) { }
 }
-
 async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
