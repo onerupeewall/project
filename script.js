@@ -3,7 +3,7 @@ const SUPABASE_URL = 'https://swndqwcujyepctncxfhr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3bmRxd2N1anllcGN0bmN4ZmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzczNDQsImV4cCI6MjEwNTkxMzM0NH0.FcoPIUbbpIfUzxLOxUhMXiTirW2-j5Fw5dnfl9tqx2o';
 
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-const TOTAL_DAILY_SECONDS = 50400; // 14 hours window (08:00 to 22:00)
+const TOTAL_DAILY_SECONDS = 86400;
 
 let serverTimeOffset = 0;
 let globalTimerInterval = null;
@@ -53,20 +53,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     initLiveBillboardPlayer();
     loadMyActiveCampaign();
 
-    // Check if user just returned from Google OAuth login and auto-open slot form
-    if (supabaseClient) {
-        supabaseClient.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                const slotModal = document.getElementById('slotModal');
-                if (slotModal && sessionStorage.getItem('auto_open_slot_modal') === 'true') {
-                    sessionStorage.removeItem('auto_open_slot_modal');
-                    slotModal.style.display = 'flex';
-                    updateAvailableSecondsCounter();
-                }
-            }
-        });
-    }
-
     const bookingDateInput = document.getElementById('bookingDateInput');
     if (bookingDateInput) {
         let tomorrow = new Date();
@@ -76,10 +62,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         let tDay = String(tomorrow.getDate()).padStart(2, '0');
         bookingDateInput.min = `${tYear}-${tMonth}-${tDay}`;
         bookingDateInput.value = `${tYear}-${tMonth}-${tDay}`;
-
-        bookingDateInput.addEventListener('change', () => {
-            updateAvailableSecondsCounter();
-        });
     }
 
     const slotModal = document.getElementById('slotModal');
@@ -92,12 +74,12 @@ window.addEventListener('DOMContentLoaded', async () => {
             if (supabaseClient) {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session) {
-                    openGoogleLoginModal(); // Opens server-side Google Auth modal if not logged in
+                    alert('Please sign in with Google first to book a campaign slot.');
+                    openGoogleLoginModal();
                     return;
                 }
             }
             slotModal.style.display = 'flex';
-            updateAvailableSecondsCounter();
         });
     }
 
@@ -188,7 +170,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const campaignDaysInput = document.getElementById('campaignDaysInput');
     const totalAmount = document.getElementById('totalAmount');
 
-    // --- SERVER-AUTHORITATIVE PRICE CALCULATION VIA RPC ---
+    // Fetch Price exclusively from Server RPC
     async function updateCalculatedAmount() {
         if (!durationInput || !totalAmount || !supabaseClient) return;
         let dur = parseInt(durationInput.value) || 10;
@@ -214,7 +196,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         adFileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (fileErrorMsg) { fileErrorMsg.style.display = 'none'; fileErrorMsg.innerText = ''; }
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
             if (!file) return;
 
             if (file.type.startsWith('video/')) {
@@ -249,7 +231,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     updateCalculatedAmount();
 
-    // --- PURE SERVER-SIDE SUBMISSION REQUEST VIA RPC ---
+    // --- PURE SERVER-SIDE SUBMISSION REQUEST VIA RPC WITH BUTTON LOCK & FADE ---
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -283,7 +265,11 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
 
             isSubmittingCampaign = true;
-            if (submitBtn) submitBtn.disabled = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.4'; // Faint / fade effect so user knows it's locked
+                submitBtn.innerText = 'Submitting...';
+            }
 
             try {
                 let publicFileUrl = 'default.mp4';
@@ -311,12 +297,14 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (slotModal) slotModal.style.display = 'none';
                 alert('Campaign Request Submitted Successfully!');
                 loadMyActiveCampaign();
-                updateAvailableSecondsCounter();
             } catch (err) {
                 alert('Submission failed: ' + err.message);
-            } finally {
                 isSubmittingCampaign = false;
-                if (submitBtn) submitBtn.disabled = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerText = 'Submit Campaign';
+                }
             }
         });
     }
@@ -327,6 +315,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     }, 5000);
 });
+
 async function registerVisitAndLoadCounters() {
     if (!supabaseClient) return;
     let visitorEl = document.getElementById('totalGlobalCount');
@@ -405,7 +394,6 @@ async function recordUserFollowAction() {
     return true;
 }
 
-// --- SERVER-SIDE GOOGLE LOGIN HANDLER ---
 async function openGoogleLoginModal() {
     let existingModal = document.getElementById('googleLoginModal');
     if (existingModal) existingModal.remove();
@@ -425,7 +413,6 @@ async function openGoogleLoginModal() {
 
     document.getElementById('googleSignInBtn')?.addEventListener('click', async () => {
         if (!supabaseClient) return;
-        sessionStorage.setItem('auto_open_slot_modal', 'true'); // Flag to auto-open slot form after successful Google login
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: { redirectTo: window.location.href }
@@ -433,7 +420,6 @@ async function openGoogleLoginModal() {
         if (error) alert('Google login failed: ' + error.message);
     });
 }
-
 async function checkWebsiteMaintenance() {
     try {
         let { data, error } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
@@ -467,26 +453,6 @@ function formatDateTimeToLocalUserTime(istDateObj) {
     if (isNaN(istDateObj)) return '';
     return istDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) +
         ' (' + istDateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ' Local Time)';
-}
-
-// --- SERVER-AUTHORITATIVE AVAILABLE SECONDS FETCH VIA RPC ---
-async function updateAvailableSecondsCounter() {
-    if (!supabaseClient) return;
-    let remainingEl = document.getElementById('remainingSecondsCount');
-    if (!remainingEl) return;
-
-    let bookingDateInput = document.getElementById('bookingDateInput');
-    let targetDateStr = bookingDateInput ? bookingDateInput.value : '';
-
-    let { data: availableSecs, error } = await supabaseClient.rpc('get_available_seconds_for_date', {
-        p_target_date: targetDateStr
-    });
-
-    if (error || availableSecs === null) {
-        remainingEl.innerText = TOTAL_DAILY_SECONDS;
-    } else {
-        remainingEl.innerText = availableSecs;
-    }
 }
 
 async function loadMyActiveCampaign() {
@@ -537,6 +503,27 @@ async function loadMyActiveCampaign() {
         let runsList = allRuns && allRuns.length > 0 ? allRuns : [singleRecord];
         let master = runsList[0];
         let now = getSyncedCurrentTime();
+
+        // Check if pending owner approval
+        if (master.status === 'pending') {
+            if (statusBox) statusBox.style.display = 'block';
+            if (statusText) statusText.innerText = `⏳ Pending Owner Approval`;
+            if (countdownText) countdownText.innerText = `Campaign submitted. Waiting for owner approval.`;
+
+            if (searchResultArea) {
+                searchResultArea.innerHTML = `
+                    <div class="campaign-list-box" style="border-left: 4px solid #f59e0b;">
+                        <p class="list-status-pending" style="color: #f59e0b; font-weight: bold;">Status: WAITING FOR OWNER APPROVAL ⏳</p>
+                        <p><b>Brand:</b> ${cleanBrand}</p>
+                        <p><b>Account:</b> ${session.user.email}</p>
+                        <p style="color: #9ca3af; margin-top: 8px; font-size: 13px;">Your campaign is submitted successfully. Once the owner approves it, the scheduled timings will appear here.</p>
+                        <div class="text-center mt-12"><button onclick="handleLogout()" class="btn-switch-danger">Sign Out</button></div>
+                    </div>
+                `;
+            }
+            if (activeCountdownInterval) clearInterval(activeCountdownInterval);
+            return;
+        }
 
         let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
         if (allCompleted) {
@@ -598,12 +585,21 @@ async function loadMyActiveCampaign() {
         }
     } catch (err) { }
 }
-
 async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     alert('Signed out successfully.');
     location.reload();
+}
+
+async function updateAvailableSecondsCounter() {
+    if (!supabaseClient) return;
+    let remainingEl = document.getElementById('remainingSecondsCount');
+    if (!remainingEl) return;
+    let { data: records } = await supabaseClient.from('buysecond_records').select('duration_second');
+    let booked = records ? records.reduce((t, r) => t + (parseInt(r.duration_second) || 0), 0) : 0;
+    let avail = TOTAL_DAILY_SECONDS - booked;
+    remainingEl.innerText = avail < 0 ? 0 : avail;
 }
 
 function getCountdownElement() { return document.getElementById('timer-text'); }
@@ -669,6 +665,7 @@ async function renderAdOnBillboard(ad, onComplete) {
         }
     }, 1000);
 }
+
 async function initLiveBillboardPlayer() {
     const billboardBox = document.getElementById('billboardBox');
     if (!billboardBox || !supabaseClient) return;
@@ -703,7 +700,8 @@ async function initLiveBillboardPlayer() {
     }
 
     try {
-        let { data: queueRecords } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
+        // Only play APPROVED ads on the live public billboard player
+        let { data: queueRecords } = await supabaseClient.from('buysecond_records').select('*').eq('status', 'approved').order('id', { ascending: true });
         if (!queueRecords || queueRecords.length === 0) {
             applyDefaultBanner();
             setTimeout(initLiveBillboardPlayer, 10000);
