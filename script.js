@@ -92,7 +92,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             if (supabaseClient) {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session) {
-                    openGoogleLoginModal(); // Opens server-side Google Auth modal if not logged in
+                    openGoogleLoginModal();
                     return;
                 }
             }
@@ -214,7 +214,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         adFileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (fileErrorMsg) { fileErrorMsg.style.display = 'none'; fileErrorMsg.innerText = ''; }
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
             if (!file) return;
 
             if (file.type.startsWith('video/')) {
@@ -249,7 +249,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     updateCalculatedAmount();
 
-    // --- PURE SERVER-SIDE SUBMISSION REQUEST VIA RPC ---
+    // --- PURE SERVER-SIDE SUBMISSION REQUEST VIA RPC WITH BUTTON LOCK & FADE ---
     if (slotFormContainer) {
         slotFormContainer.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -283,7 +283,11 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
 
             isSubmittingCampaign = true;
-            if (submitBtn) submitBtn.disabled = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.4'; // Faint / fade effect so user knows it's locked
+                submitBtn.innerText = 'Submitting...';
+            }
 
             try {
                 let publicFileUrl = 'default.mp4';
@@ -309,14 +313,17 @@ window.addEventListener('DOMContentLoaded', async () => {
                 if (error) throw error;
 
                 if (slotModal) slotModal.style.display = 'none';
-                alert('Campaign Request Submitted Successfully!');
+                alert('Campaign Request Submitted Successfully! Waiting for Owner Approval.');
                 loadMyActiveCampaign();
                 updateAvailableSecondsCounter();
             } catch (err) {
                 alert('Submission failed: ' + err.message);
-            } finally {
                 isSubmittingCampaign = false;
-                if (submitBtn) submitBtn.disabled = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerText = 'Submit Campaign';
+                }
             }
         });
     }
@@ -425,7 +432,7 @@ async function openGoogleLoginModal() {
 
     document.getElementById('googleSignInBtn')?.addEventListener('click', async () => {
         if (!supabaseClient) return;
-        sessionStorage.setItem('auto_open_slot_modal', 'true'); // Flag to auto-open slot form after successful Google login
+        sessionStorage.setItem('auto_open_slot_modal', 'true');
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: { redirectTo: window.location.href }
@@ -538,6 +545,27 @@ async function loadMyActiveCampaign() {
         let master = runsList[0];
         let now = getSyncedCurrentTime();
 
+        // Check if pending owner approval
+        if (master.status === 'pending') {
+            if (statusBox) statusBox.style.display = 'block';
+            if (statusText) statusText.innerText = `⏳ Pending Owner Approval`;
+            if (countdownText) countdownText.innerText = `Campaign submitted. Waiting for owner approval.`;
+
+            if (searchResultArea) {
+                searchResultArea.innerHTML = `
+                    <div class="campaign-list-box" style="border-left: 4px solid #f59e0b;">
+                        <p class="list-status-pending" style="color: #f59e0b; font-weight: bold;">Status: WAITING FOR OWNER APPROVAL ⏳</p>
+                        <p><b>Brand:</b> ${cleanBrand}</p>
+                        <p><b>Account:</b> ${session.user.email}</p>
+                        <p style="color: #9ca3af; margin-top: 8px; font-size: 13px;">Your campaign is submitted successfully. Once the owner approves it, the scheduled timings will appear here.</p>
+                        <div class="text-center mt-12"><button onclick="handleLogout()" class="btn-switch-danger">Sign Out</button></div>
+                    </div>
+                `;
+            }
+            if (activeCountdownInterval) clearInterval(activeCountdownInterval);
+            return;
+        }
+
         let allCompleted = runsList.every(run => parseIstSlotTimeToDate(run.slot_time) < now);
         if (allCompleted) {
             if (statusBox) statusBox.style.display = 'none';
@@ -579,7 +607,7 @@ async function loadMyActiveCampaign() {
         if (searchResultArea) {
             let html = `
                 <div class="campaign-list-box">
-                    <p class="list-status-approved">Status: SUBMITTED / ACTIVE</p>
+                    <p class="list-status-approved">Status: APPROVED & ACTIVE ✅</p>
                     <p><b>Token:</b> #${tokenDisplay}</p>
                     <p><b>Brand:</b> ${cleanBrand}</p>
                     <p><b>Account:</b> ${session.user.email}</p>
@@ -703,7 +731,8 @@ async function initLiveBillboardPlayer() {
     }
 
     try {
-        let { data: queueRecords } = await supabaseClient.from('buysecond_records').select('*').order('id', { ascending: true });
+        // Only play APPROVED ads on the live public billboard player
+        let { data: queueRecords } = await supabaseClient.from('buysecond_records').select('*').eq('status', 'approved').order('id', { ascending: true });
         if (!queueRecords || queueRecords.length === 0) {
             applyDefaultBanner();
             setTimeout(initLiveBillboardPlayer, 10000);
