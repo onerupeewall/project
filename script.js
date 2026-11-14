@@ -504,7 +504,6 @@ async function loadMyActiveCampaign() {
         let master = runsList[0];
         let now = getSyncedCurrentTime();
 
-        // Check if pending owner approval
         if (master.status === 'pending') {
             if (statusBox) statusBox.style.display = 'block';
             if (statusText) statusText.innerText = `⏳ Pending Owner Approval`;
