@@ -63,7 +63,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         bookingDateInput.min = `${tYear}-${tMonth}-${tDay}`;
         bookingDateInput.value = `${tYear}-${tMonth}-${tDay}`;
 
-        // Listen to date changes to update available seconds dynamically from server
         bookingDateInput.addEventListener('change', () => {
             updateAvailableSecondsCounter();
         });
@@ -74,16 +73,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const closeSlotModal = document.getElementById('closeSlotModal');
 
     if (openSlotModal && slotModal) {
-        openSlotModal.addEventListener('click', async (e) => {
+        openSlotModal.addEventListener('click', (e) => {
             e.preventDefault();
-            if (supabaseClient) {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if (!session) {
-                    alert('Please sign in with Google first to book a campaign slot.');
-                    openGoogleLoginModal();
-                    return;
-                }
-            }
             slotModal.style.display = 'flex';
             updateAvailableSecondsCounter();
         });
@@ -120,14 +111,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const closeCheckRecordModal = document.getElementById('closeCheckRecordModal');
 
     if (checkRecordBtn && checkRecordModal) {
-        checkRecordBtn.addEventListener('click', async () => {
-            if (supabaseClient) {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if (!session) {
-                    openGoogleLoginModal();
-                    return;
-                }
-            }
+        checkRecordBtn.addEventListener('click', () => {
             checkRecordModal.style.display = 'flex';
             loadMyActiveCampaign();
         });
@@ -246,13 +230,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 
             if (!supabaseClient) {
                 alert('Supabase client failed to initialize.');
-                return;
-            }
-
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                alert('Please sign in with Google to submit campaigns.');
-                openGoogleLoginModal();
                 return;
             }
 
@@ -393,33 +370,6 @@ async function recordUserFollowAction() {
     return true;
 }
 
-async function openGoogleLoginModal() {
-    let existingModal = document.getElementById('googleLoginModal');
-    if (existingModal) existingModal.remove();
-
-    let modalHTML = `
-        <div id="googleLoginModal" class="modal" style="display: flex;">
-            <div class="modal-content text-center">
-                <button id="googleSignInBtn" class="google-login-btn">
-                    <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.14C3.15 21.37 7.22 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.62H1.18C.43 8.14 0 9.87 0 12s.43 3.86 1.18 5.38l4.09-3.14z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.15 2.63 1.18 6.62l4.09 3.14c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
-                    Continue with Google
-                </button>
-                <button onclick="document.getElementById('googleLoginModal')?.remove()" class="btn-cancel-sm" style="margin-top: 15px;">Cancel</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-    document.getElementById('googleSignInBtn')?.addEventListener('click', async () => {
-        if (!supabaseClient) return;
-        const { error } = await supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: window.location.href }
-        });
-        if (error) alert('Google login failed: ' + error.message);
-    });
-}
-
 async function checkWebsiteMaintenance() {
     try {
         let { data, error } = await supabaseClient.from('site_maintenance').select('*').eq('id', 1).single();
@@ -462,7 +412,7 @@ async function updateAvailableSecondsCounter() {
     if (!remainingEl) return;
 
     let bookingDateInput = document.getElementById('bookingDateInput');
-    let targetDateStr = bookingDateInput ? bookingDateInput.value : ''; // format YYYY-MM-DD or readable
+    let targetDateStr = bookingDateInput ? bookingDateInput.value : '';
 
     let { data: availableSecs, error } = await supabaseClient.rpc('get_available_seconds_for_date', {
         p_target_date: targetDateStr
@@ -487,16 +437,7 @@ async function loadMyActiveCampaign() {
     if (!session) {
         if (statusBox) statusBox.style.display = 'none';
         if (searchResultArea) {
-            searchResultArea.innerHTML = `
-                <div class="campaign-retrieve-box text-center">
-                    <p class="retrieve-title">Retrieve Campaign Status</p>
-                    <p class="retrieve-subtitle">Please sign in with Google to view your campaigns.</p>
-                    <button onclick="openGoogleLoginModal()" class="google-login-btn">
-                        <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.14C3.15 21.37 7.22 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.62H1.18C.43 8.14 0 9.87 0 12s.43 3.86 1.18 5.38l4.09-3.14z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.15 2.63 1.18 6.62l4.09 3.14c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
-                        Continue with Google
-                    </button>
-                </div>
-            `;
+            searchResultArea.innerHTML = '<span class="text-muted-sm">Please sign in to view your active campaigns.</span>';
         }
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
         return;
