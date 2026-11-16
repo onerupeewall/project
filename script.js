@@ -1,119 +1,113 @@
-// SUPABASE CONNECTION
 const SUPABASE_URL = "https://vsdunnvqtteqotjuinki.supabase.co";
 const SUPABASE_KEY = "sb_publishable_xLAX65yZ4ozYB2MkUYDDFA_fwxFLX-p";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
 
     const overlay = document.getElementById("popupOverlay");
     const title = document.getElementById("popupTitle");
     const closeButton = document.getElementById("popupClose");
-    const popupContent = document.querySelector(".popup-content");
+    const loginSection = document.getElementById("loginSection");
+    const bookingFormContainer = document.getElementById("bookingFormContainer");
+    const googleLoginBtn = document.getElementById("googleLoginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userEmailDisplay = document.getElementById("userEmailDisplay");
 
-    if (!overlay || !title || !closeButton || !popupContent) {
-        return;
+    if (!overlay || !title || !closeButton) return;
+
+    // Check active session on load
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    updateAuthUI(session);
+
+    function updateAuthUI(session) {
+        if (session) {
+            loginSection.style.display = "none";
+            bookingFormContainer.style.display = "block";
+            userEmailDisplay.textContent = "Logged in as: " + session.user.email;
+        } else {
+            loginSection.style.display = "block";
+            bookingFormContainer.style.display = "none";
+        }
     }
+
+    // Google Login Trigger
+    googleLoginBtn.addEventListener("click", async function () {
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.href
+            }
+        });
+        if (error) {
+            alert("Login Error: " + error.message);
+        }
+    });
+
+    // Logout Trigger
+    logoutBtn.addEventListener("click", async function () {
+        await supabaseClient.auth.signOut();
+        updateAuthUI(null);
+    });
 
     // OPEN POPUP
     function openPopup(name) {
-
         title.textContent = name;
-
-        // SHOW BOOKING FORM ONLY IN BUY YOUR SLOT
         if (name === "Buy Your Slot") {
-            popupContent.style.display = "block";
-        } else {
-            popupContent.style.display = "none";
+            supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                updateAuthUI(session);
+            });
         }
-
         overlay.style.display = "flex";
     }
 
-    // CLOSE POPUP
     function closePopup() {
         overlay.style.display = "none";
     }
 
-    // TERMS & CONDITIONS
+    // Navigation triggers
     document.querySelectorAll(".nav a").forEach(function (link) {
-
         if (link.textContent.trim() === "Terms & Conditions") {
-
             link.addEventListener("click", function (e) {
                 e.preventDefault();
                 openPopup("Terms & Conditions");
             });
-
         }
-
-    });
-
-    // PRIVACY POLICY
-    document.querySelectorAll(".nav a").forEach(function (link) {
-
         if (link.textContent.trim() === "Privacy Policy") {
-
             link.addEventListener("click", function (e) {
                 e.preventDefault();
                 openPopup("Privacy Policy");
             });
-
         }
-
     });
 
-    // MY ACTIVE CAMPAIGN
     const activeLink = document.querySelector(".active-link");
-
     if (activeLink) {
-
         activeLink.addEventListener("click", function (e) {
             e.preventDefault();
             openPopup("My Active Campaign");
         });
-
     }
 
-    // BUY YOUR SLOT
     const buyButton = document.querySelector(".buy-button");
-
     if (buyButton) {
-
         buyButton.addEventListener("click", function (e) {
             e.preventDefault();
             openPopup("Buy Your Slot");
         });
-
     }
 
-    // CLOSE BUTTON
     closeButton.addEventListener("click", closePopup);
-
-    // BACKGROUND CLICK
     overlay.addEventListener("click", function (e) {
-
-        if (e.target === overlay) {
-            closePopup();
-        }
-
+        if (e.target === overlay) closePopup();
     });
-
-    // ESCAPE KEY
     document.addEventListener("keydown", function (e) {
-
-        if (e.key === "Escape") {
-            closePopup();
-        }
-
+        if (e.key === "Escape") closePopup();
     });
 
-    // SAVE BOOKING DATA TO SUPABASE
+    // SAVE BOOKING TO EXISTING `buysecond_records` TABLE
     const paymentButton = document.querySelector(".payment-button");
-
     if (paymentButton) {
-
         paymentButton.addEventListener("click", async function () {
-
             const inputs = document.querySelectorAll(".booking-input");
             const agreement = document.getElementById("bookingAgreement");
 
@@ -122,12 +116,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                alert("Please login first!");
+                return;
+            }
+
             const slotTime = inputs[0].value;
             const mediaFile = inputs[1].files[0] ? inputs[1].files[0].name : "";
             const targetUrl = inputs[2].value;
             const durationSec = parseInt(inputs[3].value) || 10;
-            const brandName = inputs[6].value;
+            const brandName = inputs[4].value; // Updated index for brand name field
             const unifiedToken = 'TOKEN-' + Math.floor(100000 + Math.random() * 900000);
+            const userId = session.user.id;
+            const userEmail = session.user.email;
 
             const { error } = await supabaseClient
                 .from("buysecond_records")
@@ -139,6 +141,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         duration_second: durationSec,
                         brand_name: brandName,
                         unified_token: unifiedToken,
+                        user_id: userId,
+                        user_email: userEmail,
                         status: "pending"
                     }
                 ]);
@@ -149,9 +153,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 alert("Booking saved successfully in database!");
                 closePopup();
             }
-
         });
-
     }
-
 });

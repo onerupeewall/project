@@ -136,157 +136,143 @@
             <div class="popup-title" id="popupTitle"></div>
 
 
-            <!-- BOOKING FORM CONTENT -->
+            <!-- POPUP CONTENT -->
             <div class="popup-content">
 
-
-                <h2 class="booking-heading">
-                    Book Your Advertising Slot
-                </h2>
-
-
-                <!-- 1. BOOKING DATE -->
-                <div class="booking-field">
-
-                    <label>
-                        1. Select Booking Date (Tomorrow or future date):
-                    </label>
-
-                    <input type="date"
-                           class="booking-input">
-
+                <!-- GOOGLE LOGIN SECTION -->
+                <div id="loginSection" style="text-align: center; padding: 20px 0;">
+                    <p style="margin-bottom: 20px; font-size: 18px; color: #d1d5db;">Please sign in with Google to book your advertising slot.</p>
+                    <button type="button" id="googleLoginBtn" style="background: #ffffff; color: #000000; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                        🌐 Continue with Google
+                    </button>
                 </div>
 
+                <!-- BOOKING FORM CONTAINER -->
+                <div id="bookingFormContainer" style="display: none;">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <span id="userEmailDisplay" style="color: #10d6a0; font-size: 14px;"></span>
+                        <button type="button" id="logoutBtn" style="background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">Logout</button>
+                    </div>
+
+                    <h2 class="booking-heading">
+                        Book Your Advertising Slot
+                    </h2>
 
 
-                <!-- 2. MEDIA UPLOAD -->
-                <div class="booking-field">
+                    <!-- 1. BOOKING DATE -->
+                    <div class="booking-field">
 
-                    <label>
-                        2. Upload Advertisement File (Video / Image File - Max 30s):
-                    </label>
+                        <label>
+                            1. Select Booking Date (Tomorrow or future date):
+                        </label>
 
-                    <input type="file"
-                           class="booking-input file-input"
-                           accept=".mp4,.jpg,.jpeg,.png">
-
-                    <small>
-                        Only .mp4, .jpg, or .png files are accepted.
-                        (Maximum 30 seconds)
-                    </small>
-
-                </div>
-
-
-
-                <!-- 3. DESTINATION LINK -->
-                <div class="booking-field">
-
-                    <label>
-                        3. Destination Link (Target URL):
-                    </label>
-
-                    <input type="url"
-                           class="booking-input"
-                           placeholder="https://yourwebsite.com">
-
-                </div>
-
-
-
-                <!-- 4. ADVERTISEMENT DURATION -->
-                <div class="booking-field">
-
-                    <label>
-                        4. Advertisement Duration &amp; Price (₹10/sec):
-                    </label>
-
-                    <input type="number"
-                           class="booking-input"
-                           value="10"
-                           placeholder="Enter seconds">
-
-                    <div class="total-amount">
-
-                        <strong>Total Amount:</strong> ₹100
+                        <input type="date"
+                               class="booking-input">
 
                     </div>
 
+
+
+                    <!-- 2. MEDIA UPLOAD -->
+                    <div class="booking-field">
+
+                        <label>
+                            2. Upload Advertisement File (Video / Image File - Max 30s):
+                        </label>
+
+                        <input type="file"
+                               class="booking-input file-input"
+                               accept=".mp4,.jpg,.jpeg,.png">
+
+                        <small>
+                            Only .mp4, .jpg, or .png files are accepted.
+                            (Maximum 30 seconds)
+                        </small>
+
+                    </div>
+
+
+
+                    <!-- 3. DESTINATION LINK -->
+                    <div class="booking-field">
+
+                        <label>
+                            3. Destination Link (Target URL):
+                        </label>
+
+                        <input type="url"
+                               class="booking-input"
+                               placeholder="https://yourwebsite.com">
+
+                    </div>
+
+
+
+                    <!-- 4. ADVERTISEMENT DURATION -->
+                    <div class="booking-field">
+
+                        <label>
+                            4. Advertisement Duration &amp; Price (₹10/sec):
+                        </label>
+
+                        <input type="number"
+                               class="booking-input"
+                               value="10"
+                               placeholder="Enter seconds">
+
+                        <div class="total-amount">
+
+                            <strong>Total Amount:</strong> ₹100
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- 5. BRAND NAME -->
+                    <div class="booking-field">
+
+                        <label>
+                            5. Ad Title / Brand Name:
+                        </label>
+
+                        <input type="text"
+                               class="booking-input"
+                               placeholder="e.g. Enter your company or brand name">
+
+                    </div>
+
+
+
+                    <!-- POLICY AGREEMENT -->
+                    <div class="booking-agreement">
+
+                        <input type="checkbox"
+                               id="bookingAgreement">
+
+                        <label for="bookingAgreement">
+
+                            I agree that if my ad is rejected for policy
+                            violations, my money is strictly non-refundable
+                            and forfeited.
+
+                        </label>
+
+                    </div>
+
+
+
+                    <!-- PAYMENT BUTTON -->
+                    <button type="button"
+                            class="payment-button">
+
+                        Proceed to Secure Payment &amp; Submit
+
+                    </button>
+
                 </div>
-
-
-
-                <!-- TIMES PER DAY -->
-                <div class="booking-field">
-
-                    <label>
-                        Times per Day (Max 7 Departs):
-                    </label>
-
-                    <input type="number"
-                           class="booking-input"
-                           value="1">
-
-                </div>
-
-
-
-                <!-- NUMBER OF DAYS -->
-                <div class="booking-field">
-
-                    <label>
-                        Number of Days (Max 30):
-                    </label>
-
-                    <input type="number"
-                           class="booking-input"
-                           value="1">
-
-                </div>
-
-
-
-                <!-- 5. BRAND NAME -->
-                <div class="booking-field">
-
-                    <label>
-                        5. Ad Title / Brand Name:
-                    </label>
-
-                    <input type="text"
-                           class="booking-input"
-                           placeholder="e.g. Enter your company or brand name">
-
-                </div>
-
-
-
-                <!-- POLICY AGREEMENT -->
-                <div class="booking-agreement">
-
-                    <input type="checkbox"
-                           id="bookingAgreement">
-
-                    <label for="bookingAgreement">
-
-                        I agree that if my ad is rejected for policy
-                        violations, my money is strictly non-refundable
-                        and forfeited.
-
-                    </label>
-
-                </div>
-
-
-
-                <!-- PAYMENT BUTTON -->
-                <button type="button"
-                        class="payment-button">
-
-                    Proceed to Secure Payment &amp; Submit
-
-                </button>
-
 
             </div>
 
