@@ -1,165 +1,305 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Buy Second - buysecond.in</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="theme-color" content="#000000">
+
+    <title>Buy Second</title>
+
     <link rel="stylesheet" href="style.css">
-    <!-- Supabase CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
 
-    <header>
-        <div class="logo-area">
+    <div class="container">
+
+        <!-- HEADER -->
+        <header class="header">
+
             <div class="logo">Buy Second</div>
-            <!-- 🎯 Header ke aage chhota Follow Button (Dynamic visibility) -->
-            <button id="headerFollowBtn" class="header-follow-btn" style="display: none;">FOLLOW</button>
-        </div>
-        <div class="header-links">
-            <span class="terms-link" id="openTermsBtn">Terms & Conditions</span>
-            <span class="terms-link" id="openPrivacyBtn" style="margin-left: 12px;">Privacy Policy</span>
-        </div>
-    </header>
 
-    <div class="main-container">
+            <nav class="nav">
 
-        <div class="screen-time-banner" id="liveClockBanner">
-            RAI SAHAB BILLBOARD 
-             live 8am to 10pm
-        </div>
+                <a href="#" class="follow">FOLLOW</a>
 
-        <div class="warning-banner">
-            <span>Strict Warning:</span> Violation of content guidelines will result in immediate ad rejection and permanent forfeiture of funds with zero refund.
-        </div>
+                <a href="#">Terms &amp; Conditions</a>
 
-        <!-- Clean Billboard Box -->
-        <div class="billboard" id="billboardBox"></div>
+                <a href="#">Privacy Policy</a>
 
-        <!-- Live Countdown & Status Box directly below Billboard -->
-        <div id="billboardStatusBox" style="background: #121824; border: 1px solid #1f293d; padding: 12px; border-radius: 8px; text-align: center; display: none;">
-            <div id="billboardStatusText" style="color: #f59e0b; font-weight: bold; font-size: 14px; margin-bottom: 4px;">⏳ Waiting for Owner's Approval...</div>
-            <div id="billboardCountdownText" style="color: #38bdf8; font-size: 13px;"></div>
+            </nav>
+
+        </header>
+
+
+        <!-- BILLBOARD TIMING -->
+        <div class="timing">
+            RAI SAHAB BILLBOARD live 8am to 10pm
         </div>
 
-        <div class="screen-footer">
-            <span id="timer-text">Next Slot in: 0s</span>
-            <button class="check-record-btn" id="checkRecordBtn">
+
+        <!-- WARNING -->
+        <div class="warning">
+
+            <strong>Strict Warning:</strong>
+
+            Violation of content guidelines will result in
+            immediate ad rejection and permanent forfeiture
+            of funds with zero refund.
+
+        </div>
+
+
+        <!-- BANNER -->
+        <div class="hero">
+
+            <img src="buy-seconds-banner.png"
+                 alt="Buy Seconds Banner">
+
+        </div>
+
+
+        <!-- ACTIVE CAMPAIGN -->
+        <div class="active-row">
+
+            <span class="no-slots">
+                No Active Slots
+            </span>
+
+            <a href="#" class="active-link">
                 My Active Campaign
-            </button>
+            </a>
+
         </div>
 
-        <div class="slot-action-container">
-            <button class="slot-btn" id="openSlotModal">
-                Buy Your Slot →
-            </button>
-        </div>
 
-        <!-- 📊 Live Visitor & Followers Counter -->
-        <div class="global-users-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div class="global-header" style="margin-bottom: 0;">
-                👥 VISITORS: <span id="totalGlobalCount">0</span>
+        <!-- BUY BUTTON -->
+        <a href="#" class="buy-button">
+            Buy Your Slot →
+        </a>
+
+
+        <!-- STATISTICS -->
+        <div class="stats">
+
+            <div>
+
+                <strong>👥 VISITORS:</strong>
+
+                <span class="visitors">0</span>
+
             </div>
-            <div class="global-header" style="margin-bottom: 0;">
-                ⭐ FOLLOWERS: <span id="totalFollowersCount">0</span>
+
+            <div>
+
+                <strong>⭐ FOLLOWERS:</strong>
+
+                <span class="followers">0</span>
+
             </div>
+
         </div>
 
-        <!-- Total Available Seconds Seat Display -->
-        <div class="total-seats-main-display">
-            Total Available Second Seat: <span id="remainingSecondsCount">86400</span>
+
+        <!-- AVAILABLE SEATS -->
+        <div class="seats">
+
+            <strong>Total Available Second Seat:</strong>
+
+            <span>85790</span>
+
         </div>
 
     </div>
 
-    <!-- Buy Slot Modal Form -->
-    <div id="slotModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" id="closeSlotModal">&times;</span>
-            <h2 class="modal-main-title">Book Your Advertising Slot</h2>
 
-            <form id="slotForm" class="modal-form">
-                <div class="form-group">
-                    <label>1. Select Booking Date (Tomorrow or future date):</label>
-                    <input type="date" id="bookingDateInput" required style="background-color: #121824; border: 1px solid #1f293d; padding: 9px 12px; border-radius: 6px; color: #ffffff; font-size: 14px; outline: none; width: 100%;">
-                </div>
 
-                <div class="form-group">
-                    <label>2. Upload Advertisement File (Video / Image File - Max 30s):</label>
-                    <input type="file" id="adFile" accept="video/mp4, image/jpeg, image/png" required>
-                    <small>Only .mp4, .jpg, or .png files are accepted. (Maximum 30 seconds)</small>
-                    <div id="fileErrorMsg" style="color: #ef4444; font-size: 12px; font-weight: 600; display: none; margin-top: 4px;"></div>
-                </div>
+    <!-- POPUP -->
+    <div class="popup-overlay" id="popupOverlay">
 
-                <div class="form-group">
-                    <label>3. Destination Link (Target URL):</label>
-                    <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" required>
-                </div>
+        <div class="popup-box">
 
-                <div class="form-group">
-                    <label>4. Advertisement Duration & Price (₹10/sec):</label>
-                    <input type="number" id="durationInput" min="1" max="30" value="10" placeholder="Enter duration in seconds (Max 30)..." required>
-                    <div class="price-display">Total Amount: <span id="totalAmount">₹100</span></div>
-                </div>
+            <!-- CLOSE BUTTON -->
+            <button class="popup-close"
+                    id="popupClose"
+                    type="button">
 
-                <div class="form-group">
-                    <label>5. Ad Title / Brand Name:</label>
-                    <input type="text" id="adTitle" placeholder="e.g. Enter your company or brand name" required>
-                </div>
+                &times;
 
-                <div class="form-group checkbox-group-box">
-                    <input type="checkbox" id="warningCheckbox" required>
-                    <label for="warningCheckbox">
-                        I agree that if my ad is rejected for policy violations, my money is strictly non-refundable and forfeited.
+            </button>
+
+
+            <!-- POPUP TITLE -->
+            <div class="popup-title" id="popupTitle"></div>
+
+
+            <!-- BOOKING FORM CONTENT -->
+            <div class="popup-content">
+
+
+                <h2 class="booking-heading">
+                    Book Your Advertising Slot
+                </h2>
+
+
+                <!-- 1. BOOKING DATE -->
+                <div class="booking-field">
+
+                    <label>
+                        1. Select Booking Date (Tomorrow or future date):
                     </label>
+
+                    <input type="date"
+                           class="booking-input">
+
                 </div>
 
-                <button type="submit" class="slot-btn" style="margin-top: 5px;">
-                    Proceed to Secure Payment & Submit
+
+
+                <!-- 2. MEDIA UPLOAD -->
+                <div class="booking-field">
+
+                    <label>
+                        2. Upload Advertisement File (Video / Image File - Max 30s):
+                    </label>
+
+                    <input type="file"
+                           class="booking-input file-input"
+                           accept=".mp4,.jpg,.jpeg,.png">
+
+                    <small>
+                        Only .mp4, .jpg, or .png files are accepted.
+                        (Maximum 30 seconds)
+                    </small>
+
+                </div>
+
+
+
+                <!-- 3. DESTINATION LINK -->
+                <div class="booking-field">
+
+                    <label>
+                        3. Destination Link (Target URL):
+                    </label>
+
+                    <input type="url"
+                           class="booking-input"
+                           placeholder="https://yourwebsite.com">
+
+                </div>
+
+
+
+                <!-- 4. ADVERTISEMENT DURATION -->
+                <div class="booking-field">
+
+                    <label>
+                        4. Advertisement Duration &amp; Price (₹10/sec):
+                    </label>
+
+                    <input type="number"
+                           class="booking-input"
+                           value="10"
+                           placeholder="Enter seconds">
+
+                    <div class="total-amount">
+
+                        <strong>Total Amount:</strong> ₹100
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- TIMES PER DAY -->
+                <div class="booking-field">
+
+                    <label>
+                        Times per Day (Max 7 Departs):
+                    </label>
+
+                    <input type="number"
+                           class="booking-input"
+                           value="1">
+
+                </div>
+
+
+
+                <!-- NUMBER OF DAYS -->
+                <div class="booking-field">
+
+                    <label>
+                        Number of Days (Max 30):
+                    </label>
+
+                    <input type="number"
+                           class="booking-input"
+                           value="1">
+
+                </div>
+
+
+
+                <!-- 5. BRAND NAME -->
+                <div class="booking-field">
+
+                    <label>
+                        5. Ad Title / Brand Name:
+                    </label>
+
+                    <input type="text"
+                           class="booking-input"
+                           placeholder="e.g. Enter your company or brand name">
+
+                </div>
+
+
+
+                <!-- POLICY AGREEMENT -->
+                <div class="booking-agreement">
+
+                    <input type="checkbox"
+                           id="bookingAgreement">
+
+                    <label for="bookingAgreement">
+
+                        I agree that if my ad is rejected for policy
+                        violations, my money is strictly non-refundable
+                        and forfeited.
+
+                    </label>
+
+                </div>
+
+
+
+                <!-- PAYMENT BUTTON -->
+                <button type="button"
+                        class="payment-button">
+
+                    Proceed to Secure Payment &amp; Submit
+
                 </button>
-            </form>
-        </div>
-    </div>
 
-    <!-- My Active Campaign Modal -->
-    <div id="checkRecordModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" id="closeCheckRecordModal">&times;</span>
-            <h2 class="modal-main-title">My Active Campaign Status</h2>
-            <div id="searchResultArea" style="margin-top: 15px; color: #d1d5db; font-size: 14px;">
-                Loading campaign status...
+
             </div>
+
         </div>
+
     </div>
 
-    <!-- Terms & Conditions Modal -->
-    <div id="termsModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" id="closeTermsModal">&times;</span>
-            <h2 class="modal-main-title">Terms & Conditions</h2>
-            <div class="modal-scroll-text">
-                <p><b>1.</b> All ad slots and campaigns submitted on the platform are final, and bookings cannot be canceled or refunded under any circumstances.</p>
-                <p><b>2.</b> Users are solely responsible for ad content; any violation of rules or policies will result in immediate ad rejection without warning.</p>
-                <p><b>3.</b> Ads will play strictly according to the scheduled time slots, and the platform will not be responsible for minor variances caused by network or technical issues.</p>
-                <p><b>4.</b> Uploading any incorrect, illegal, or adult media content onto the platform will result in a permanent ban with zero refund.</p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Privacy Policy Modal -->
-    <div id="privacyModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" id="closePrivacyModal">&times;</span>
-            <h2 class="modal-main-title">Privacy Policy</h2>
-            <div class="modal-scroll-text">
-                <p><b>1.</b> User mobile numbers and verification data are securely maintained in the database solely for tracking bookings and campaign statuses.</p>
-                <p><b>2.</b> We do not share, rent, or sell your personal data or phone number to any third parties.</p>
-                <p><b>3.</b> Visitor tracking and analytics on the website are used exclusively to calculate system performance and global active seconds.</p>
-                <p><b>4.</b> By using the platform, you permit your data and media files to be processed securely.</p>
-            </div>
-        </div>
-    </div>
 
+    <!-- SUPABASE & JAVASCRIPT -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
+
 </body>
+
 </html>
