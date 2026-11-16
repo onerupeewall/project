@@ -15,48 +15,53 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (!overlay || !title || !closeButton) return;
 
-    // Check active session on load
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    updateAuthUI(session);
-
     function updateAuthUI(session) {
         if (session) {
-            loginSection.style.display = "none";
-            bookingFormContainer.style.display = "block";
-            userEmailDisplay.textContent = "Logged in as: " + session.user.email;
+            if (loginSection) loginSection.style.display = "none";
+            if (bookingFormContainer) bookingFormContainer.style.display = "block";
+            if (userEmailDisplay) userEmailDisplay.textContent = "Logged in as: " + session.user.email;
         } else {
-            loginSection.style.display = "block";
-            bookingFormContainer.style.display = "none";
+            if (loginSection) loginSection.style.display = "block";
+            if (bookingFormContainer) bookingFormContainer.style.display = "none";
         }
     }
 
     // Google Login Trigger
-    googleLoginBtn.addEventListener("click", async function () {
-        const { error } = await supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: window.location.href
+    if (googleLoginBtn) {
+        googleLoginBtn.addEventListener("click", async function () {
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.href
+                }
+            });
+            if (error) {
+                alert("Login Error: " + error.message);
             }
         });
-        if (error) {
-            alert("Login Error: " + error.message);
-        }
-    });
+    }
 
     // Logout Trigger
-    logoutBtn.addEventListener("click", async function () {
-        await supabaseClient.auth.signOut();
-        updateAuthUI(null);
-    });
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", async function () {
+            await supabaseClient.auth.signOut();
+            updateAuthUI(null);
+        });
+    }
 
     // OPEN POPUP
-    function openPopup(name) {
+    async function openPopup(name) {
         title.textContent = name;
+
         if (name === "Buy Your Slot") {
-            supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                updateAuthUI(session);
-            });
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            updateAuthUI(session);
+        } else {
+            // Hide login and form for other popups (Terms, Privacy, etc.)
+            if (loginSection) loginSection.style.display = "none";
+            if (bookingFormContainer) bookingFormContainer.style.display = "none";
         }
+
         overlay.style.display = "flex";
     }
 
@@ -126,7 +131,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             const mediaFile = inputs[1].files[0] ? inputs[1].files[0].name : "";
             const targetUrl = inputs[2].value;
             const durationSec = parseInt(inputs[3].value) || 10;
-            const brandName = inputs[4].value; // Updated index for brand name field
+            const brandName = inputs[4].value;
             const unifiedToken = 'TOKEN-' + Math.floor(100000 + Math.random() * 900000);
             const userId = session.user.id;
             const userEmail = session.user.email;
